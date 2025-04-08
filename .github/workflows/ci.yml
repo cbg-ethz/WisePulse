@@ -21,6 +21,6 @@ jobs:
           cargo build --release
           cp test_data/* silo_input
           make
-          LAPIS_PORT=80 docker compose up --detach
+          LAPIS_PORT=80 docker compose up --detach --wait
           curl localhost:80/sample/info
           docker compose down
