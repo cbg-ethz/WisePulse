@@ -1,0 +1,43 @@
+schema:
+  metadata:
+    - name: sample_id
+      type: string
+      generateIndex: true
+    - name: batch_id
+      type: string
+      generateIndex: true
+    - name: sequencing_well_position
+      type: string
+      generateIndex: true
+    - name: location_code
+      type: string
+      generateIndex: true
+    - name: sampling_date
+      type: date
+    - name: sequencing_date
+      type: string
+      generateIndex: true
+    - name: flow_cell_serial_number
+      type: string
+      generateIndex: true
+    - name: read_length
+      type: string 
+      generateIndex: true
+    - name: primer_protocol
+      type: string
+      generateIndex: true
+    - name: location_name
+      type: string
+      generateIndex: true
+    - name: primer_protocol_name
+      type: string
+      generateIndex: true
+    - name: nextclade_reference
+      type: string
+      generateIndex: true
+    - name: read_id
+      type: string
+  opennessLevel: OPEN
+  instanceName: wise-sarsCoV2
+  features: []
+  primaryKey: read_id

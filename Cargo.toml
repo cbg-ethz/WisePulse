@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "add_offset",
+    "split_into_sorted_chunks",
+    "merge_sorted_chunks"
+]
