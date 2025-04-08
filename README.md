@@ -1,20 +1,14 @@
-To generate the input data run `./generate_silo_input.bash`.
+To build the Rust helper scripts, run `cargo build --release`.
 
-This downloads all data from the loculus instance wise-seqs.loculus.org,
-looks at the short-read s3Link, downloads all s3 buckets where the file
-ends with .ndjson.bz2 and merges them into a single .ndjson file.
+To process a set of `.ndjson.zst` files, put these in the directory `silo_input`. Then run `make`. 
+This will generate SILO Indexes which can be readily used to run a LAPIS/SILO API.
 
-To build the indexes and start the api, run `LAPIS_PORT=8080 docker compose up` where
-you can replace the `LAPIS_PORT`.
+To start the API you can run `LAPIS_PORT=80 docker compose up`.
+Note that you can replace the `LAPIS_PORT` with another port that the api should listen on.
 
-This builds the SILO indexes (service `siloPreprocessing`),
-starts the silo api (service `silo`) and the LAPIS api (service `lapis`).
-
-The GUI to the API can be accessed at:
-`http://localhost:8080/swagger-ui/index.html`
+A swagger UI to the API can then be accessed at:
+`http://localhost:80/swagger-ui/index.html`
 
 Prerequisites:
+- installed cargo
 - installed Docker Compose
-- install jq (on Ubuntu: `sudo apt-get install jq`)
-- install aws cli (on Ubuntu: `sudo apt install awscli`)
-- authenticate aws cli for S3 bucket containing files (`aws configure`)
