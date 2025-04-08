@@ -9,14 +9,13 @@ env:
 
 jobs:
   endToEnd:
-    name: Build docker images
+    name: End to end setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-
       - shell: bash
-        name: Start the docker compose
+        name: Process the data and run a docker container
         run: |
           cargo build --release
           cp test_data/* silo_input
