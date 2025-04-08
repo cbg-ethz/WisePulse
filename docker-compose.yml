@@ -1,0 +1,50 @@
+services:
+  lapisOpen:
+    image: ghcr.io/genspectrum/lapis:0.3
+    ports:
+      - ${LAPIS_PORT}:8080
+    command: --silo.url=http://silo:8081
+    volumes:
+      - type: bind
+        source: ./database_config.yaml
+        target: /workspace/database_config.yaml
+        read_only: true
+      - type: bind
+        source: ./reference_genomes.json
+        target: /workspace/reference_genomes.json
+        read_only: true
+    stop_grace_period: 0s
+
+  silo:
+    image: ghcr.io/genspectrum/lapis-silo:pr-720
+    ports:
+      - 8081:8081
+    command: api
+    volumes:
+      - type: bind
+        source: ./silo_output
+        target: /data
+        read_only: true
+    depends_on:
+      siloPreprocessing:
+        condition: service_completed_successfully
+    stop_grace_period: 0s
+
+  siloPreprocessing:
+    image: ghcr.io/genspectrum/lapis-silo:pr-720
+    command: preprocessing
+    mem_limit: 80g
+    volumes:
+      - type: bind
+        source: ./silo_output
+        target: /preprocessing/output
+        read_only: false
+      - type: bind
+        source: ./preprocessing_config.yaml
+        target: /app/preprocessing_config.yaml
+        read_only: true
+      - type: bind
+        source: ./
+        target: /preprocessing/input
+        read_only: false
+    stop_grace_period: 5s
