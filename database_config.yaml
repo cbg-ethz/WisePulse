@@ -39,7 +39,7 @@ schema:
       type: string
     - name: sr2silo_version
       type: string
-      generateIndex: false
+      generateIndex: true
   opennessLevel: OPEN
   instanceName: wise-sarsCoV2
   features: []
