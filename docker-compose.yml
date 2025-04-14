@@ -25,4 +25,8 @@ services:
         source: ./silo_output
         target: /data
         read_only: true
+      - type: bind
+        source: logs
+        target: /app/logs
+        read_only: false
     stop_grace_period: 0s

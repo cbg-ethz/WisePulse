@@ -1,3 +1,4 @@
 sorted.ndjson.zst
 silo_output/*
 silo_input/*
+logs
