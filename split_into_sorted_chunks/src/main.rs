@@ -16,8 +16,8 @@ fn write_ndjson_lines<W: Write>(writer: &mut W, lines: &[Value]) -> std::io::Res
 
 fn sort_by(mut lines: Vec<Value>, sort_column: &String) -> Vec<Value> {
     lines.sort_by(|a, b| {
-        let a_length = a[sort_column].as_i64().unwrap_or(0);
-        let b_length = b[sort_column].as_i64().unwrap_or(0);
+        let a_length = a["metadata"][sort_column].as_str().unwrap_or("");
+        let b_length = b["metadata"][sort_column].as_str().unwrap_or("");
         a_length.cmp(&b_length)
     });
     lines

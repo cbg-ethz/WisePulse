@@ -140,7 +140,7 @@ where
 // Wrapper struct to allow sorting JSON values in a min-heap
 #[derive(Eq, PartialEq)]
 struct HeapEntry {
-    sort_field: i64,
+    sort_field: String,
     value: Value,
     index: usize,
 }
@@ -180,9 +180,8 @@ where
         if let Some(Ok(line)) = iter.next() {
             let json: Value = serde_json::from_str(&line)?;
             heap.push(HeapEntry {
-                sort_field: json[sort_field_name]
-                    .as_i64()
-                    .expect("the specified sort_column is not of type i64"),
+                sort_field: json["metadata"][sort_field_name]
+                    .to_string(),
                 value: json,
                 index,
             });
@@ -200,9 +199,8 @@ where
         if let Some(Ok(line)) = reader_iters[index].next() {
             let json: Value = serde_json::from_str(&line)?;
             heap.push(HeapEntry {
-                sort_field: json[sort_field_name]
-                    .as_i64()
-                    .expect("the specified sort_column is not of type i64"),
+                sort_field: json["metadata"][sort_field_name]
+                    .to_string(),
                 value: json,
                 index,
             });
