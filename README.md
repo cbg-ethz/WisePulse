@@ -12,3 +12,4 @@ A swagger UI to the API can then be accessed at:
 Prerequisites:
 - installed cargo
 - installed Docker Compose
+- platform: Linux (w.r.t. pre-processing scripts invoked by `make`)
