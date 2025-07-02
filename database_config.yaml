@@ -32,7 +32,6 @@ schema:
     - name: primer_protocol_name
       type: string
       generateIndex: true
-      generateIndex: true
     - name: read_id
       type: string
     - name: sr2silo_version
