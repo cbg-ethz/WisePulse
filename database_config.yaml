@@ -32,8 +32,6 @@ schema:
     - name: primer_protocol_name
       type: string
       generateIndex: true
-    - name: nextclade_reference
-      type: string
       generateIndex: true
     - name: read_id
       type: string
