@@ -21,7 +21,7 @@ $(SORTED): $(SORTED_CHUNKS_FILE) $(TMP_DIR)
 	cat $(SORTED_CHUNKS_FILE) | target/release/merge_sorted_chunks --tmp-directory $(TMP_DIR) --sort-field offset | zstd > $@
 
 $(SILO_OUTPUT_FLAG): $(SORTED)
-	docker compose -f docker-compose-preprocessing.yml up
+	sudo docker compose -f docker-compose-preprocessing.yml up
 	touch $(SILO_OUTPUT_FLAG)
 
 .PHONY: clean
