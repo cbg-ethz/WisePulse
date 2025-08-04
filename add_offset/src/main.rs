@@ -15,7 +15,7 @@ fn main() -> std::io::Result<()> {
         let line = line?;
         let mut json_value: Value = serde_json::from_str(&line).expect("Invalid JSON format");
 
-        if let Some(main_seq) = json_value.pointer("/alignedNucleotideSequences/main") {
+        if let Some(main_seq) = json_value.pointer("/main") {
             if let Some(main_seq_str) = main_seq.as_str() {
                 let offset = count_leading_ns(main_seq_str);
 
