@@ -32,7 +32,10 @@ fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
     if let Some(num_threads) = args.num_threads {
-        rayon::ThreadPoolBuilder::new().num_threads(num_threads).build_global().unwrap();
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build_global()
+            .unwrap();
     }
 
     let tmp_dir = if let Some(given_tmp_dir) = args.tmp_directory {
@@ -200,9 +203,13 @@ where
         if let Some(Ok(line)) = reader_iters[index].next() {
             let json: Value = serde_json::from_str(&line)?;
             heap.push(HeapEntry {
-                sort_field: json[sort_field_name]
-                    .as_i64()
-                    .expect("the specified sort_column is not of type i64"),
+                sort_field: json[sort_field_name].as_i64().expect(
+                    format!(
+                        "the specified sort_column is not of type i64: {}",
+                        json.to_string()
+                    )
+                    .as_str(),
+                ),
                 value: json,
                 index,
             });
