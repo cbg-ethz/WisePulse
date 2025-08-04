@@ -1,6 +1,7 @@
 services:
   lapisOpen:
     image: ghcr.io/genspectrum/lapis:0.3
+    restart: unless-stopped
     ports:
       - ${LAPIS_PORT}:8080
     command: --silo.url=http://silo:8081
@@ -17,6 +18,7 @@ services:
 
   silo:
     image: ghcr.io/genspectrum/lapis-silo:pr-720
+    restart: unless-stopped
     ports:
       - 8081:8081
     command: api
