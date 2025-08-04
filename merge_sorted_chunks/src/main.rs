@@ -16,7 +16,7 @@ use zstd::Encoder;
 #[command(version, about, long_about = None)]
 struct Args {
     #[arg(long)]
-    sort_field: String,
+    sort_field_path: String,
 
     #[arg(long)]
     tmp_directory: Option<String>,
@@ -70,7 +70,7 @@ fn main() -> std::io::Result<()> {
     let mut input_files = merge_files_in_batches(
         input_files_stdin,
         &tmp_dir,
-        &args.sort_field,
+        &args.sort_field_path,
         args.parallel_files,
         merge_iteration,
     )?;
@@ -85,14 +85,14 @@ fn main() -> std::io::Result<()> {
         input_files = merge_files_in_batches(
             input_files,
             &tmp_dir,
-            &args.sort_field,
+            &args.sort_field_path,
             args.parallel_files,
             merge_iteration,
         )?;
         merge_iteration += 1;
     }
 
-    merge_files(input_files, &mut stdout().lock(), &args.sort_field)?;
+    merge_files(input_files, &mut stdout().lock(), &args.sort_field_path)?;
 
     Ok(())
 }
@@ -100,7 +100,7 @@ fn main() -> std::io::Result<()> {
 fn merge_files_in_batches<I>(
     input_files: I,
     tmp_dir: &PathBuf,
-    sort_field: &String,
+    sort_field_path: &String,
     batch_size: usize,
     merge_iteration: usize,
 ) -> std::io::Result<Vec<PathBuf>>
@@ -132,7 +132,7 @@ where
 
             let file = File::create(file_name.clone()).unwrap();
             let mut encoder = Encoder::new(file, 3)?;
-            merge_files(batch, &mut encoder, &sort_field)?;
+            merge_files(batch, &mut encoder, &sort_field_path)?;
             encoder.finish()?;
 
             Ok(file_name)
@@ -164,7 +164,7 @@ impl PartialOrd for HeapEntry {
 fn merge_files<I, W: Write>(
     files: I,
     output: &mut W,
-    sort_field_name: &String,
+    sort_field_path: &String,
 ) -> std::io::Result<()>
 where
     I: IntoIterator<Item = PathBuf>,
@@ -183,9 +183,19 @@ where
         if let Some(Ok(line)) = iter.next() {
             let json: Value = serde_json::from_str(&line)?;
             heap.push(HeapEntry {
-                sort_field: json[sort_field_name]
+                sort_field: json
+                    .pointer(sort_field_path)
+                    .expect(
+                        format!("Did not find field {sort_field_path} in object {json}").as_str(),
+                    )
                     .as_i64()
-                    .expect("the specified sort_column is not of type i64"),
+                    .expect(
+                        format!(
+                            "the specified sort_column is not of type i64: {}",
+                            json.to_string()
+                        )
+                        .as_str(),
+                    ),
                 value: json,
                 index,
             });
@@ -203,13 +213,19 @@ where
         if let Some(Ok(line)) = reader_iters[index].next() {
             let json: Value = serde_json::from_str(&line)?;
             heap.push(HeapEntry {
-                sort_field: json[sort_field_name].as_i64().expect(
-                    format!(
-                        "the specified sort_column is not of type i64: {}",
-                        json.to_string()
+                sort_field: json
+                    .pointer(sort_field_path)
+                    .expect(
+                        format!("Did not find field {sort_field_path} in object {json}").as_str(),
                     )
-                    .as_str(),
-                ),
+                    .as_i64()
+                    .expect(
+                        format!(
+                            "the specified sort_column is not of type i64: {}",
+                            json.to_string()
+                        )
+                        .as_str(),
+                    ),
                 value: json,
                 index,
             });
