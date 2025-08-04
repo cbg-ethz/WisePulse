@@ -14,11 +14,11 @@ $(TMP_DIR):
 	mkdir $(TMP_DIR)
 
 $(SORTED_CHUNKS_FILE): $(SORTED_CHUNKS_DIR)
-	find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f -print0 | xargs -0 -P 16 -I {} sh -c 'zstdcat "{}" | target/release/add_offset | target/release/split_into_sorted_chunks --output-path "$</{}" --chunk-size 100000 --sort-field offset' > $@
+	find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f -print0 | xargs -0 -P 16 -I {} sh -c 'zstdcat "{}" | target/release/split_into_sorted_chunks --output-path "$</{}" --chunk-size 100000 --sort-field-path /main/offset' > $@
 
 
 $(SORTED): $(SORTED_CHUNKS_FILE) $(TMP_DIR)
-	cat $(SORTED_CHUNKS_FILE) | target/release/merge_sorted_chunks --tmp-directory $(TMP_DIR) --sort-field offset | zstd > $@
+	cat $(SORTED_CHUNKS_FILE) | target/release/merge_sorted_chunks --tmp-directory $(TMP_DIR) --sort-field-path /main/offset | zstd > $@
 
 $(SILO_OUTPUT_FLAG): $(SORTED)
 	sudo docker compose -f docker-compose-preprocessing.yml up

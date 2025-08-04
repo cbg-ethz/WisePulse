@@ -14,10 +14,10 @@ fn write_ndjson_lines<W: Write>(writer: &mut W, lines: &[Value]) -> std::io::Res
     Ok(())
 }
 
-fn sort_by(mut lines: Vec<Value>, sort_column: &String) -> Vec<Value> {
+fn sort_by(mut lines: Vec<Value>, sort_field_path: &String) -> Vec<Value> {
     lines.sort_by(|a, b| {
-        let a_length = a[sort_column].as_i64().unwrap_or(0);
-        let b_length = b[sort_column].as_i64().unwrap_or(0);
+        let a_length = a.pointer(sort_field_path).expect(format!("Did not find field {sort_field_path} in object {a}").as_str()).as_i64().unwrap_or(0);
+        let b_length = b.pointer(sort_field_path).expect(format!("Did not find field {sort_field_path} in object {b}").as_str()).as_i64().unwrap_or(0);
         a_length.cmp(&b_length)
     });
     lines
@@ -33,7 +33,7 @@ struct Args {
     filename_stem: String,
 
     #[arg(long)]
-    sort_field: String,
+    sort_field_path: String,
 
     #[arg(long, default_value_t = 10000)]
     chunk_size: usize,
@@ -66,7 +66,7 @@ fn main() -> std::io::Result<()> {
         lines.push(json);
 
         if lines.len() >= args.chunk_size {
-            let sorted_lines = sort_by(lines, &args.sort_field);
+            let sorted_lines = sort_by(lines, &args.sort_field_path);
             let chunk_file: PathBuf = Path::join(
                 output_path,
                 format!("{}_{}.ndjson.zst", args.filename_stem, chunk_counter),
@@ -83,7 +83,7 @@ fn main() -> std::io::Result<()> {
 
     // Process any remaining lines
     if !lines.is_empty() {
-        let sorted_lines = sort_by(lines, &args.sort_field);
+        let sorted_lines = sort_by(lines, &args.sort_field_path);
         let chunk_file: PathBuf = Path::join(
             output_path,
             format!("{}_{}.ndjson.zst", args.filename_stem, chunk_counter),
