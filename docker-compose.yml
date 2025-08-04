@@ -17,7 +17,7 @@ services:
     stop_grace_period: 0s
 
   silo:
-    image: ghcr.io/genspectrum/lapis-silo:pr-720
+    image: ghcr.io/genspectrum/lapis-silo:pr-920
     restart: unless-stopped
     ports:
       - 8081:8081
