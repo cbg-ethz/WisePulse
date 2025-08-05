@@ -2,3 +2,6 @@ sorted.ndjson.zst
 silo_output/*
 silo_input/*
 logs
+euler_silo_inputs_1.1.0/
+euler_silo_inputs_1.2.0
+target/
