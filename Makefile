@@ -14,7 +14,7 @@ $(TMP_DIR):
 	mkdir $(TMP_DIR)
 
 $(SORTED_CHUNKS_FILE): $(SORTED_CHUNKS_DIR)
-	find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f -print0 | xargs -0 -P 16 -I {} sh -c 'zstdcat "{}" | target/release/split_into_sorted_chunks --output-path "$</{}" --chunk-size 100000 --sort-field-path /main/offset' > $@
+	find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f -print0 | xargs -0 -P 16 -I {} sh -c 'zstdcat "{}" | target/release/split_into_sorted_chunks --output-path "$</{}" --chunk-size 1000000 --sort-field-path /main/offset' > $@
 
 
 $(SORTED): $(SORTED_CHUNKS_FILE) $(TMP_DIR)
