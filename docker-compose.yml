@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     ports:
       - 8081:8081
-    command: api
+    command: api --api-threads-for-http-connections 96 --api-max-queued-http-connections 1024
     volumes:
       - type: bind
         source: ./silo_output
