@@ -1,6 +1,6 @@
 services:
   lapisOpen:
-    image: ghcr.io/genspectrum/lapis:0.3
+    image: ghcr.io/genspectrum/lapis:0.5.14
     restart: unless-stopped
     ports:
       - ${LAPIS_PORT}:8080
