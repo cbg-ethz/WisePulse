@@ -2,7 +2,7 @@ services:
   siloPreprocessing:
     image: ghcr.io/genspectrum/lapis-silo:pr-920
     command: preprocessing
-    mem_limit: 80g
+    mem_limit: 300g
     volumes:
       - type: bind
         source: ./silo_output
