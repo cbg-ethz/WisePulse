@@ -1,3 +1,5 @@
+## srSILO
+
 To build the Rust helper scripts, run `cargo build --release`.
 
 To process a set of `.ndjson.zst` files, put these in the directory `silo_input`. Then run `make`. 
@@ -13,3 +15,14 @@ Prerequisites:
 - installed cargo
 - installed Docker Compose
 - platform: Linux (w.r.t. pre-processing scripts invoked by `make`)
+
+## W-ASAP Loculus
+
+Deploy to Kubernetes using Ansible:
+
+```bash
+cd ansible
+echo "your-vault-password" > .vault_pass    # Configure vault password
+ansible-vault edit secrets/my-values.yaml  # Configure your values
+ansible-playbook apply-values.yml         # Deploy
+```
