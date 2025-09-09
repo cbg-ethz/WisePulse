@@ -29,3 +29,4 @@ schema:
   instanceName: wise-sarsCoV2
   features: []
   primaryKey: read_id
+siloClientThreadCount: 96
