@@ -1,0 +1,1 @@
+Folder for Docker/K8s monitoring with Prometheus, Grafana, cAdvisor for resource tracking (CPU, RAM, network). 
