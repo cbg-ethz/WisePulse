@@ -21,9 +21,9 @@ services:
       - --storage.tsdb.retention.time=7d
       - --storage.tsdb.retention.size=2GB
       - --web.listen-address=0.0.0.0:9090
-    # Remove public port exposure - only internal network access
-    expose:
-      - "9090"
+    # Bind to localhost only - no external access
+    ports:
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus/config/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
       - prometheus-data:/prometheus
@@ -34,16 +34,16 @@ services:
   grafana:
     image: docker.io/grafana/grafana-oss:12.1.1
     container_name: grafana
-    # Remove public port exposure - only internal network access
-    expose:
-      - "3000"
+    # Bind to localhost only - no external access
+    ports:
+      - "127.0.0.1:3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
     networks:
       - monitoring
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=secure_password_change_this
-      - GF_SERVER_ROOT_URL=http://localhost/grafana/
+      - GF_SERVER_ROOT_URL=https://localhost/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     restart: unless-stopped
 
