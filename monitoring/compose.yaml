@@ -43,7 +43,7 @@ services:
       - monitoring
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=secure_password_change_this
-      - GF_SERVER_ROOT_URL=https://localhost/grafana/
+      - GF_SERVER_ROOT_URL=https://monitoring.localhost/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     restart: unless-stopped
 
