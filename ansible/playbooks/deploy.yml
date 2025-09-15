@@ -1,7 +1,7 @@
 ---
 - name: Deploy Kubernetes configuration to loculus cluster
   hosts: localhost
-  gather_facts: false
+  gather_facts: true
   vars:
     temp_dir: "/tmp/loculus-deployment-{{ ansible_date_time.epoch }}"
     
