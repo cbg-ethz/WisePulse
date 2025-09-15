@@ -6,7 +6,28 @@ runDevelopmentMainDatabase: false
 runDevelopmentKeycloakDatabase: false
 runDevelopmentS3: false
 
-welcomeMessageHTML: '<div>Welcome to the (<a href="https://loculus.org" class="underline">Loculus</a>-powered) database of <a href="https://wise.ethz.ch" class="underline">WISE</a>, a wastewater-based infectious disease surveillance project in Switzerland.</div>'
+welcomeMessageHTML: '<div class="space-y-4">
+    <div>
+      <h2 class="text-xl font-semibold mb-2">Welcome to W-ASAP</h2>
+      <p>The <strong>Wastewater Analysis and Sharing Platform (W-ASAP)</strong> — a joint effort of the <a href="https://bsse.ethz.ch/cbg" class="underline text-blue-600">Computational Biology Group (CBG)</a> and <a href="https://bsse.ethz.ch/cevo" class="underline text-blue-600">Computational Evolution Group (cEVO)</a> at ETH Zürich.</p>
+    </div>
+    
+    <div>
+      <p>This database powers the interactive visualizations and analyses available at <a href="https://wasap.genspectrum.org/" class="underline text-blue-600">wasap.genspectrum.org</a>. Here we share processed alignment files and intermediary files for real-time plotting and analysis of wastewater surveillance data.</p>
+    </div>
+    
+    <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+      <p><strong>⚠️ Beta Version:</strong> This platform is currently in beta. Please expect occasional modifications to the datastore structure and content as we continue to improve the system.</p>
+    </div>
+    
+    <div>
+      <p>We currently support SARS-CoV-2. For complete raw sequencing data and metadata, please refer to our ENA project: <a href="https://www.ebi.ac.uk/ena/browser/view/PRJEB85524" class="underline text-blue-600">PRJEB85524</a> (Study: <a href="https://www.ebi.ac.uk/ena/browser/view/ERP168898" class="underline text-blue-600">ERP168898</a>).</p>
+    </div>
+    
+    <div>
+      <p>Built with <a href="https://loculus.org" class="underline text-blue-600">Loculus</a> — an open-source platform for pathogen sequence sharing.</p>
+    </div>
+  </div>'
 
 public:
   backendUrl: 'https://api.db.wasap.genspectrum.org/backend'
