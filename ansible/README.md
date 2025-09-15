@@ -24,12 +24,6 @@ ansible/
     └── my-values.yaml            # Original monolithic config
 ```
 
-## Security Model
-
-- **Encrypted Secrets**: All sensitive data is stored in `group_vars/all/vault.yml` using Ansible Vault
-- **Clear Configuration**: Non-sensitive configuration is in `group_vars/all/main.yml`
-- **Host-specific**: Host-specific variables are in `host_vars/localhost/main.yml`
-
 ## Usage
 
 ### Deploy to Kubernetes
@@ -49,15 +43,6 @@ ansible-vault edit group_vars/all/vault.yml
 cd ansible
 ansible-vault view group_vars/all/vault.yml
 ```
-
-## Migration from Legacy Setup
-
-The original `secrets/my-values.yaml` has been split into:
-
-1. **Non-sensitive config** → `group_vars/all/main.yml`
-2. **Sensitive data** → `group_vars/all/vault.yml` (encrypted)
-3. **Host-specific** → `host_vars/localhost/main.yml`
-4. **Template** → `templates/values.yaml.j2`
 
 ## Adding New Secrets
 
