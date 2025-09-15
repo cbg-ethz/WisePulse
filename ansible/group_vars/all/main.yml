@@ -1,0 +1,96 @@
+---
+# Common configuration for all environments
+app_name: 'W-ASAP'
+environment: local
+
+# Public configuration (non-sensitive)
+public_config:
+  backendUrl: 'https://api.db.wasap.genspectrum.org/backend'
+  lapisUrlTemplate: 'https://api.db.wasap.genspectrum.org/%organism%'
+  keycloakUrl: 'https://auth.db.wasap.genspectrum.org'
+
+# Auth configuration
+auth_config:
+  verifyEmail: false
+  resetPasswordAllowed: false
+  registrationAllowed: true
+
+# Feature flags
+features:
+  seqSets_enabled: false
+  dataUseTerms_enabled: false
+  disableIngest: true
+  disableEnaSubmission: true
+
+# S3 configuration (non-sensitive parts)
+s3_config:
+  enabled: true
+  bucket:
+    region: eu-central
+    endpoint: https://fsn1.your-objectstorage.com/
+    bucket: wasap
+
+# Database configuration (non-sensitive parts)
+database_config:
+  runDevelopmentMainDatabase: false
+  runDevelopmentKeycloakDatabase: false
+  runDevelopmentS3: false
+
+# Organism configuration
+organism_config:
+  accessionPrefix: "WISE_"
+  organisms:
+    sc2:
+      schema:
+        organismName: 'SC2'
+        metadata:
+          - name: date
+            type: date
+            displayName: Date
+          - name: sampleId
+            type: string
+            displayName: Sample ID
+          - name: batchId
+            type: string
+            displayName: Batch ID
+          - name: locationCode
+            type: string
+            displayName: Location Code
+          - name: locationName
+            type: string
+            displayName: Location
+          - name: samplingDate
+            type: string
+            displayName: Sampling Date
+          - name: sr2siloVersion
+            type: date
+            displayName: sr2silo Version
+          - name: countReads
+            type: string
+            displayName: Read Count
+        website:
+          tableColumns:
+            - date
+            - locationName
+            - samplingDate
+            - countReads
+          defaultOrder: ascending
+          defaultOrderBy: date
+        submissionDataTypes:
+          consensusSequences: false
+          files:
+            enabled: true
+            categories:
+              - name: silo_reads
+        files:
+          - name: silo_reads
+      preprocessing:
+        - version: 1
+          image: ghcr.io/loculus-project/preprocessing-dummy
+          args:
+            - "--watch"
+            - "--disableConsensusSequences"
+      referenceGenomes:
+        singleReference:
+          nucleotideSequences: []
+          genes: []

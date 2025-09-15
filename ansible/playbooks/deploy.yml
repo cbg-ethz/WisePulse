@@ -1,0 +1,40 @@
+---
+- name: Deploy Kubernetes configuration to loculus cluster
+  hosts: localhost
+  gather_facts: false
+  vars:
+    temp_dir: "/tmp/loculus-deployment-{{ ansible_date_time.epoch }}"
+    
+  tasks:
+    - name: Ensure temp directory exists
+      file:
+        path: "{{ temp_dir }}"
+        state: directory
+        mode: '0750'
+
+    - name: Generate values file from template
+      template:
+        src: ../templates/values.yaml.j2
+        dest: "{{ temp_dir }}/values.yaml"
+        mode: '0640'
+
+    - name: Verify kubectl context is available
+      shell: kubectl config get-contexts {{ kubectl_context }}
+      register: kubectl_context_check
+      failed_when: kubectl_context_check.rc != 0
+
+    - name: Apply Helm chart with values to loculus cluster
+      shell: |
+        kubectl config use-context {{ kubectl_context }}
+        helm upgrade --install my-loculus {{ helm_chart_path }} -f {{ temp_dir }}/values.yaml
+      register: helm_output
+
+    - name: Display Helm output
+      debug:
+        var: helm_output.stdout_lines
+
+    - name: Clean up temporary files
+      file:
+        path: "{{ temp_dir }}"
+        state: absent
+      when: cleanup_temp_files | default(true)

@@ -1,0 +1,73 @@
+---
+# Generated values.yaml for Kubernetes deployment
+# This file is generated from template and should not be edited directly
+
+name: '{{ app_name }}'
+host: '{{ host }}'
+environment: {{ environment }}
+
+runDevelopmentMainDatabase: {{ database_config.runDevelopmentMainDatabase | lower }}
+runDevelopmentKeycloakDatabase: {{ database_config.runDevelopmentKeycloakDatabase | lower }}
+runDevelopmentS3: {{ database_config.runDevelopmentS3 | lower }}
+
+public:
+  backendUrl: '{{ public_config.backendUrl }}'
+  lapisUrlTemplate: '{{ public_config.lapisUrlTemplate }}'
+  keycloakUrl: '{{ public_config.keycloakUrl }}'
+
+auth:
+  verifyEmail: {{ auth_config.verifyEmail | lower }}
+  resetPasswordAllowed: {{ auth_config.resetPasswordAllowed | lower }}
+  registrationAllowed: {{ auth_config.registrationAllowed | lower }}
+
+seqSets:
+  enabled: {{ features.seqSets_enabled | lower }}
+
+s3:
+  enabled: {{ s3_config.enabled | lower }}
+  bucket:
+    region: {{ s3_config.bucket.region }}
+    endpoint: {{ s3_config.bucket.endpoint }}
+    bucket: {{ s3_config.bucket.bucket }}
+
+secrets:
+  keycloak-admin:
+    type: raw
+    data:
+      initialAdminPassword: '{{ vault_secrets.keycloak_admin.initialAdminPassword }}'
+  database:
+    type: raw
+    data:
+      url: '{{ vault_secrets.database.url }}'
+      username: '{{ vault_secrets.database.username }}'
+      password: '{{ vault_secrets.database.password }}'
+  keycloak-database:
+    type: raw
+    data:
+      addr: '{{ vault_secrets.keycloak_database.addr }}'
+      port: '{{ vault_secrets.keycloak_database.port }}'
+      database: '{{ vault_secrets.keycloak_database.database }}'
+      username: '{{ vault_secrets.keycloak_database.username }}'
+      password: '{{ vault_secrets.keycloak_database.password }}'
+  s3-bucket:
+    type: raw
+    clusterWide: 'true'
+    data:
+      accessKey: {{ vault_secrets.s3_bucket.accessKey }}
+      secretKey: {{ vault_secrets.s3_bucket.secretKey }}
+  service-accounts:
+    type: raw
+    data:
+      insdcIngestUserPassword: "{{ vault_secrets.service_accounts.insdcIngestUserPassword }}"
+      preprocessingPipelinePassword: "{{ vault_secrets.service_accounts.preprocessingPipelinePassword }}"
+      externalMetadataUpdaterPassword: "{{ vault_secrets.service_accounts.externalMetadataUpdaterPassword }}"
+      backendUserPassword: "{{ vault_secrets.service_accounts.backendUserPassword }}"
+
+organisms:
+{{ organism_config.organisms | to_nice_yaml | indent(2, first=False) }}
+
+dataUseTerms:
+  enabled: {{ features.dataUseTerms_enabled | lower }}
+disableIngest: {{ features.disableIngest | lower }}
+disableEnaSubmission: {{ features.disableEnaSubmission | lower }}
+accessionPrefix: "{{ organism_config.accessionPrefix }}"
