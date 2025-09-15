@@ -6,6 +6,8 @@ runDevelopmentMainDatabase: {{ runDevelopmentMainDatabase | lower }}
 runDevelopmentKeycloakDatabase: {{ runDevelopmentKeycloakDatabase | lower }}
 runDevelopmentS3: {{ runDevelopmentS3 | lower }}
 
+welcomeMessageHTML: '{{ welcomeMessageHTML | default("") }}'
+
 public:
   backendUrl: '{{ public.backendUrl }}'
   lapisUrlTemplate: '{{ public.lapisUrlTemplate }}'
