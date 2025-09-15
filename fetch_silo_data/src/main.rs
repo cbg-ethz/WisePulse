@@ -7,5 +7,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Fetching data from: {}", url); 
 
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(url)
+        .header("Accept", "application/json")
+        .send()
+        .await?;
+
+    println!("Response Status: {}", response.status());
+
+    let body = response.text().await?;
+    println!("Response Body: \n{}", body);
+
     Ok(())
 }
