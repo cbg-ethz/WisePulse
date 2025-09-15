@@ -5,6 +5,7 @@ logs
 euler_silo_inputs_1.1.0/
 euler_silo_inputs_1.2.0
 target/
+sorted_chunks/
 
 # Ansible
 .vault_pass
