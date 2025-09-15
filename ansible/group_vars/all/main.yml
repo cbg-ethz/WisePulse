@@ -6,6 +6,8 @@ runDevelopmentMainDatabase: false
 runDevelopmentKeycloakDatabase: false
 runDevelopmentS3: false
 
+welcomeMessageHTML: '<div>Welcome to the (<a href="https://loculus.org" class="underline">Loculus</a>-powered) database of <a href="https://wise.ethz.ch" class="underline">WISE</a>, a wastewater-based infectious disease surveillance project in Switzerland.</div>'
+
 public:
   backendUrl: 'https://api.db.wasap.genspectrum.org/backend'
   lapisUrlTemplate: 'https://api.db.wasap.genspectrum.org/%organism%'
