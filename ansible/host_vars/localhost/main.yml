@@ -1,0 +1,8 @@
+---
+# Host-specific configuration for localhost
+host: 'db.wasap.genspectrum.org'
+kubectl_context: 'k3d-loculusCluster'
+helm_chart_path: '/opt/loculus/loculus/kubernetes/loculus'
+
+# Cleanup temporary files after deployment
+cleanup_temp_files: true
