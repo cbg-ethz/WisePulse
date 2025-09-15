@@ -1,110 +1,103 @@
----
-# Common configuration for all environments
-app_name: 'W-ASAP'
-environment: local
+name: 'W-ASAP'
+host: 'db.wasap.genspectrum.org'
+loculus_environment: 'local' # Do not change this: this setup uses a "local" environment as the public traffic is proxied through nginx.
 
-# Public configuration (non-sensitive)
-public_config:
+runDevelopmentMainDatabase: false
+runDevelopmentKeycloakDatabase: false
+runDevelopmentS3: false
+
+public:
   backendUrl: 'https://api.db.wasap.genspectrum.org/backend'
   lapisUrlTemplate: 'https://api.db.wasap.genspectrum.org/%organism%'
   keycloakUrl: 'https://auth.db.wasap.genspectrum.org'
 
-# Auth configuration
-auth_config:
+auth:
   verifyEmail: false
   resetPasswordAllowed: false
   registrationAllowed: true
 
-# Feature flags
-features:
-  seqSets_enabled: false
-  dataUseTerms_enabled: false
-  disableIngest: true
-  disableEnaSubmission: true
+seqSets:
+  enabled: false
 
-# S3 configuration (non-sensitive parts)
-s3_config:
+s3:
   enabled: true
   bucket:
     region: eu-central
     endpoint: https://fsn1.your-objectstorage.com/
     bucket: wasap
 
-# Database configuration (non-sensitive parts)
-database_config:
-  runDevelopmentMainDatabase: false
-  runDevelopmentKeycloakDatabase: false
-  runDevelopmentS3: false
-
-# Organism configuration
-organism_config:
-  accessionPrefix: "WISE_"
-  organisms:
-    covid:
-      schema:
-        organismName: 'SARS-CoV-2'
-        metadata:
-          - name: date
-            type: date
-            header: Sample details
-            displayName: Submission Date
-          - name: sampleId
-            type: string
-            header: Sample details
-            displayName: Sample ID
-          - name: batchId
-            type: string
-            definition: "Sequencing batch"
-            header: Sample details
-            displayName: Batch ID
-          - name: locationCode
-            type: string
-            header: Sample details
-            displayName: Location Code
-          - name: locationName
-            type: string
-            generateIndex: true
-            autocomplete: true
-            header: Sample details
-            displayName: Location
-          - name: samplingDate
-            type: date
-            header: Sample details
-            displayName: Sampling Date
-          - name: sr2siloVersion
-            type: string
-            header: srSILO info
-            definition: "Version of sr2silo transformer"
-            displayName: sr2silo Version
-          - name: countSiloReads
-            type: string
-            header: srSILO info
-            definition: "Number of reads subsampled srSILO aligments"
-            displayName: srSILO Read Count
-        website:
-          tableColumns:
-            - date
-            - locationName
-            - samplingDate
-          defaultOrder: ascending
-          defaultOrderBy: date
-        submissionDataTypes:
-          consensusSequences: false
-          files:
-            enabled: true
-            categories:
-              - name: nucleotideAlignment
-              - name: siloReads
+organisms:
+   covid:
+    schema:
+      organismName: 'SARS-CoV-2'
+      metadata:
+        - name: date
+          type: date
+          header: Sample details
+          displayName: Submission Date
+        - name: sampleId
+          type: string
+          header: Sample details
+          displayName: Sample ID
+        - name: batchId
+          type: string
+          definition: "Sequencing batch"
+          header: Sample details
+          displayName: Batch ID
+        - name: locationCode
+          type: string
+          header: Sample details
+          displayName: Location Code
+        - name: locationName
+          type: string
+          generateIndex: true
+          autocomplete: true
+          header: Sample details
+          displayName: Location
+        - name: samplingDate
+          type: date
+          header: Sample details
+          displayName: Sampling Date
+        - name: sr2siloVersion
+          type: string
+          header: srSILO info
+          definition: "Version of sr2silo transformer"
+          displayName: sr2silo Version
+        - name: countSiloReads
+          type: string
+          header: srSILO info
+          definition: "Number of reads subsampled srSILO aligments"
+          displayName: srSILO Read Count 
+      website:
+        tableColumns:
+          - date
+          - locationName
+          - samplingDate
+        defaultOrder: ascending
+        defaultOrderBy: date
+      submissionDataTypes:
+        consensusSequences: false
         files:
-          - name: nucleotideAlignment
-          - name: siloReads
-      preprocessing:
-        - version: 1
-          image: ghcr.io/loculus-project/preprocessing-dummy
-          args:
-            - "--watch"
-            - "--disableConsensusSequences"
-      referenceGenomes:
-        singleReference:
-          nucleotideSequences: []
-          genes: []
+          enabled: true
+          categories:
+            - name: nucleotideAlignment
+            - name: siloReads
+      files:
+        - name: nucleotideAlignment
+        - name: siloReads
+    preprocessing:
+      - version: 1
+        image: ghcr.io/loculus-project/preprocessing-dummy
+        args:
+          - "--watch"
+          - "--disableConsensusSequences"
+    referenceGenomes:
+      singleReference:
+        nucleotideSequences: []
+        genes: []
+
+dataUseTerms:
+  enabled: false
+disableIngest: true
+disableEnaSubmission: true
+accessionPrefix: "WISE_"

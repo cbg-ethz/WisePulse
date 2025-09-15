@@ -1,73 +1,123 @@
----
-# Generated values.yaml for Kubernetes deployment
-# This file is generated from template and should not be edited directly
-
-name: '{{ app_name }}'
+name: '{{ name }}'
 host: '{{ host }}'
-environment: {{ environment }}
+environment: '{{ loculus_environment }}' # Do not change this: this setup uses a "local" environment as the public traffic is proxied through nginx.
 
-runDevelopmentMainDatabase: {{ database_config.runDevelopmentMainDatabase | lower }}
-runDevelopmentKeycloakDatabase: {{ database_config.runDevelopmentKeycloakDatabase | lower }}
-runDevelopmentS3: {{ database_config.runDevelopmentS3 | lower }}
+runDevelopmentMainDatabase: {{ runDevelopmentMainDatabase | lower }}
+runDevelopmentKeycloakDatabase: {{ runDevelopmentKeycloakDatabase | lower }}
+runDevelopmentS3: {{ runDevelopmentS3 | lower }}
 
 public:
-  backendUrl: '{{ public_config.backendUrl }}'
-  lapisUrlTemplate: '{{ public_config.lapisUrlTemplate }}'
-  keycloakUrl: '{{ public_config.keycloakUrl }}'
+  backendUrl: '{{ public.backendUrl }}'
+  lapisUrlTemplate: '{{ public.lapisUrlTemplate }}'
+  keycloakUrl: '{{ public.keycloakUrl }}'
 
 auth:
-  verifyEmail: {{ auth_config.verifyEmail | lower }}
-  resetPasswordAllowed: {{ auth_config.resetPasswordAllowed | lower }}
-  registrationAllowed: {{ auth_config.registrationAllowed | lower }}
+  verifyEmail: {{ auth.verifyEmail | lower }}
+  resetPasswordAllowed: {{ auth.resetPasswordAllowed | lower }}
+  registrationAllowed: {{ auth.registrationAllowed | lower }}
 
 seqSets:
-  enabled: {{ features.seqSets_enabled | lower }}
+  enabled: {{ seqSets.enabled | lower }}
 
 s3:
-  enabled: {{ s3_config.enabled | lower }}
+  enabled: {{ s3.enabled | lower }}
   bucket:
-    region: {{ s3_config.bucket.region }}
-    endpoint: {{ s3_config.bucket.endpoint }}
-    bucket: {{ s3_config.bucket.bucket }}
+    region: {{ s3.bucket.region }}
+    endpoint: {{ s3.bucket.endpoint }}
+    bucket: {{ s3.bucket.bucket }}
 
 secrets:
   keycloak-admin:
-    type: raw
+    type: {{ secrets['keycloak-admin'].type }}
     data:
-      initialAdminPassword: '{{ vault_secrets.keycloak_admin.initialAdminPassword }}'
+      initialAdminPassword: '{{ secrets['keycloak-admin'].data.initialAdminPassword }}'
   database:
-    type: raw
+    type: {{ secrets.database.type }}
     data:
-      url: '{{ vault_secrets.database.url }}'
-      username: '{{ vault_secrets.database.username }}'
-      password: '{{ vault_secrets.database.password }}'
+      url: '{{ secrets.database.data.url }}'
+      username: '{{ secrets.database.data.username }}'
+      password: '{{ secrets.database.data.password }}'
   keycloak-database:
-    type: raw
+    type: {{ secrets['keycloak-database'].type }}
     data:
-      addr: '{{ vault_secrets.keycloak_database.addr }}'
-      port: '{{ vault_secrets.keycloak_database.port }}'
-      database: '{{ vault_secrets.keycloak_database.database }}'
-      username: '{{ vault_secrets.keycloak_database.username }}'
-      password: '{{ vault_secrets.keycloak_database.password }}'
+      addr: '{{ secrets['keycloak-database'].data.addr }}'
+      port: '{{ secrets['keycloak-database'].data.port }}'
+      database: '{{ secrets['keycloak-database'].data.database }}'
+      username: '{{ secrets['keycloak-database'].data.username }}'
+      password: '{{ secrets['keycloak-database'].data.password }}'
   s3-bucket:
-    type: raw
-    clusterWide: 'true'
+    type: {{ secrets['s3-bucket'].type }}
+    clusterWide: '{{ secrets['s3-bucket'].clusterWide }}'
     data:
-      accessKey: {{ vault_secrets.s3_bucket.accessKey }}
-      secretKey: {{ vault_secrets.s3_bucket.secretKey }}
+      accessKey: {{ secrets['s3-bucket'].data.accessKey }}
+      secretKey: {{ secrets['s3-bucket'].data.secretKey }}
   service-accounts:
-    type: raw
+    type: {{ secrets['service-accounts'].type }}
     data:
-      insdcIngestUserPassword: "{{ vault_secrets.service_accounts.insdcIngestUserPassword }}"
-      preprocessingPipelinePassword: "{{ vault_secrets.service_accounts.preprocessingPipelinePassword }}"
-      externalMetadataUpdaterPassword: "{{ vault_secrets.service_accounts.externalMetadataUpdaterPassword }}"
-      backendUserPassword: "{{ vault_secrets.service_accounts.backendUserPassword }}"
+      insdcIngestUserPassword: "{{ secrets['service-accounts'].data.insdcIngestUserPassword }}"
+      preprocessingPipelinePassword: "{{ secrets['service-accounts'].data.preprocessingPipelinePassword }}"
+      externalMetadataUpdaterPassword: "{{ secrets['service-accounts'].data.externalMetadataUpdaterPassword }}"
+      backendUserPassword: "{{ secrets['service-accounts'].data.backendUserPassword }}"
 
 organisms:
-{{ organism_config.organisms | to_nice_yaml | indent(2, first=False) }}
+{% for organism_key, organism_config in organisms.items() %}
+  {{ organism_key }}:
+    schema:
+      organismName: '{{ organism_config.schema.organismName }}'
+      metadata:
+{% for metadata_item in organism_config.schema.metadata %}
+        - name: {{ metadata_item.name }}
+          type: {{ metadata_item.type }}
+{% if metadata_item.header is defined %}
+          header: {{ metadata_item.header }}
+{% endif %}
+          displayName: {{ metadata_item.displayName }}
+{% if metadata_item.definition is defined %}
+          definition: "{{ metadata_item.definition }}"
+{% endif %}
+{% if metadata_item.generateIndex is defined %}
+          generateIndex: {{ metadata_item.generateIndex | lower }}
+{% endif %}
+{% if metadata_item.autocomplete is defined %}
+          autocomplete: {{ metadata_item.autocomplete | lower }}
+{% endif %}
+{% endfor %}
+      website:
+        tableColumns:
+{% for column in organism_config.schema.website.tableColumns %}
+          - {{ column }}
+{% endfor %}
+        defaultOrder: {{ organism_config.schema.website.defaultOrder }}
+        defaultOrderBy: {{ organism_config.schema.website.defaultOrderBy }}
+      submissionDataTypes:
+        consensusSequences: {{ organism_config.schema.submissionDataTypes.consensusSequences | lower }}
+        files:
+          enabled: {{ organism_config.schema.submissionDataTypes.files.enabled | lower }}
+          categories:
+{% for category in organism_config.schema.submissionDataTypes.files.categories %}
+            - name: {{ category.name }}
+{% endfor %}
+      files:
+{% for file_item in organism_config.schema.files %}
+        - name: {{ file_item.name }}
+{% endfor %}
+    preprocessing:
+{% for preprocessing_item in organism_config.preprocessing %}
+      - version: {{ preprocessing_item.version }}
+        image: {{ preprocessing_item.image }}
+        args:
+{% for arg in preprocessing_item.args %}
+          - "{{ arg }}"
+{% endfor %}
+{% endfor %}
+    referenceGenomes:
+      singleReference:
+        nucleotideSequences: {{ organism_config.referenceGenomes.singleReference.nucleotideSequences }}
+        genes: {{ organism_config.referenceGenomes.singleReference.genes }}
+{% endfor %}
 
 dataUseTerms:
-  enabled: {{ features.dataUseTerms_enabled | lower }}
-disableIngest: {{ features.disableIngest | lower }}
-disableEnaSubmission: {{ features.disableEnaSubmission | lower }}
-accessionPrefix: "{{ organism_config.accessionPrefix }}"
+  enabled: {{ dataUseTerms.enabled | lower }}
+disableIngest: {{ disableIngest | lower }}
+disableEnaSubmission: {{ disableEnaSubmission | lower }}
+accessionPrefix: "{{ accessionPrefix }}"
