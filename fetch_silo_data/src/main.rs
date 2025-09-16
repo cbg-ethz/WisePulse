@@ -146,16 +146,17 @@ async fn download_all_files(
     stats: &mut ProcessingStats,
 ) -> Result<()> {
     for (i, file) in files.iter().enumerate() {
-        println!("[{}/{}] {}", i + 1, files.len(), file.name);
+        println!("[{}/{}] Downloading: {} (sample: {})", 
+                 i + 1, files.len(), file.name, file.sample_id);
 
         match download_single_file(client, &file.name, &file.url).await {
             Ok(bytes) => {
                 stats.downloaded_files += 1;
-                println!("   Success: {} bytes", bytes);
+                println!("   Success: {} bytes (sample: {})", bytes_downloaded, file.sample_id);
             }
             Err(e) => {
                 stats.download_errors += 1;
-                println!("   Error: {}", e);
+                println!("   Failed: {} (sample: {})", e, file.sample_id);
             }
         }
         
@@ -224,6 +225,18 @@ fn process_samples_for_date(samples: &[SampleData]) -> Result<Vec<FileToDownload
 
     for sample in samples {
         let read_count: u64 = sample.count_silo_reads.parse()?;
+        let actual_date = sample.sampling_date.parse::<NaiveDate>()?;
+        
+        if date != actual_date {
+            println!("   WARNING: Sampling date mismatch for sample_id {}: expected {}, got {}",
+                     sample.sample_id, date, actual_date);
+        }
+        
+        total_reads += read_count;
+
+        println!("   Sample ID: {} ({} reads, sampled: {})", 
+                 sample.sample_id, read_count, actual_date);
+
         let silo_files: Vec<SiloFile> = serde_json::from_str(&sample.silo_reads)?;
         
         // Parse the actual sampling date from the API
