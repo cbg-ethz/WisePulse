@@ -16,7 +16,6 @@ use chrono::{Duration, NaiveDate};
 use clap::{Arg, Command};
 use reqwest::Client;
 use serde::Deserialize;
-use std::collections::HashSet;
 use std::path::Path;
 use tokio::{fs, io::AsyncWriteExt, time};
 
@@ -137,8 +136,15 @@ async fn main() -> Result<()> {
 async fn run_fetch_with_config(config: Config) -> Result<()> {
     let client = Client::new();
     
+    // Print starting banner
+    println!("___ WisePulse SILO Data Fetcher ___");
+    println!("Fetching genomic data from LAPIS API");
+    println!();
+    
     fs::create_dir_all(&config.output_dir).await?;
-    println!("Output directory: {}", config.output_dir);
+    println!("Configuration:");
+    println!("  Output directory: {}", config.output_dir);
+    println!("  API base URL: {}", config.api_base_url);
 
     let start_date = config.start_date;
     let earliest_allowed = start_date - Duration::days(config.days_to_fetch);
@@ -146,20 +152,44 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
     let mut stats = ProcessingStats::default();
     let mut all_files = Vec::<FileToDownload>::new();
 
+    println!("  Start date: {}", start_date);
+    println!("  Date range: {} -> {} (max {} days)", start_date, earliest_allowed, config.days_to_fetch);
+    println!("  Max reads: {}", config.max_reads);
+    println!();
     println!("Starting data collection...");
-    println!("Date range: {} -> {} (max {} days)", start_date, earliest_allowed, config.days_to_fetch);
-    println!("Max reads: {}", config.max_reads);
     println!();
 
     let mut current_date = start_date;
+    let mut days_processed = 0;
+    let mut consecutive_empty_days = 0;
+    let total_days_to_check = (start_date - earliest_allowed).num_days() + 1;
+
     while current_date >= earliest_allowed {
-        println!("Processing date: {}", current_date);
+        days_processed += 1;
+        let progress = (days_processed as f32 / total_days_to_check as f32 * 100.0) as u32;
 
         let samples = fetch_samples_for_single_date(&client, current_date, &config.api_base_url).await?;
 
         if samples.is_empty() {
-            println!("   No samples found");
+            consecutive_empty_days += 1;
+            
+            // Only show individual empty days for the first few, then summarize
+            if consecutive_empty_days <= 3 {
+                println!("Processing date: {} - No samples found ({}%)", current_date, progress);
+            } else if consecutive_empty_days == 4 {
+                println!("Processing date: {} - No samples found ({}%)", current_date, progress);
+                println!("   Continuing to check dates (will summarize empty streaks)...");
+            }
+            // For days 5+ with no samples, we'll just count them silently
         } else {
+            // If we had a streak of empty days, summarize them
+            if consecutive_empty_days > 3 {
+                let days_to_summarize = consecutive_empty_days - 3; // Don't count the first 3 we already showed
+                println!("   Checked {} additional empty days", days_to_summarize);
+            }
+            consecutive_empty_days = 0;
+            
+            println!("Processing date: {} - SUCCESS ({}%)", current_date, progress);
             println!("   Found {} samples", samples.len());
 
             let date_files = process_samples_for_date(&samples, current_date)?;
@@ -189,6 +219,12 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
         current_date = current_date - Duration::days(1);
         time::sleep(time::Duration::from_millis(100)).await;
     }
+
+    // Show final summary of empty days if we ended on a streak
+    if consecutive_empty_days > 3 {
+        let days_to_summarize = consecutive_empty_days - 3;
+        println!("   Final {} empty days checked", days_to_summarize);
+    }
     
     if let (Some(earliest), Some(latest)) = (stats.earliest_date, stats.latest_date) {
         stats.date_range_days = (latest - earliest).num_days() + 1;
@@ -197,7 +233,6 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
     print_collection_summary(&stats, &all_files);
 
 
-    // Download files
     println!();
     println!("Starting file downloads...");
     download_all_files(&client, &all_files, &mut stats, &config.output_dir).await?;
@@ -213,13 +248,15 @@ async fn download_all_files(
     output_dir: &str,
 ) -> Result<()> {
     for (i, file) in files.iter().enumerate() {
-        println!("[{}/{}] Downloading: {} (sample: {})", 
-                 i + 1, files.len(), file.name, file.sample_id);
+        let progress = ((i + 1) as f32 / files.len() as f32 * 100.0) as u32;
+        println!("[{}/{}] Downloading: {} ({}%)", 
+                 i + 1, files.len(), file.name, progress);
 
         match download_single_file(client, &file.name, &file.url, output_dir).await {
             Ok(bytes) => {
                 stats.downloaded_files += 1;
-                println!("   Success: {} bytes (sample: {})", bytes, file.sample_id);
+                let size_mb = bytes as f64 / 1024.0 / 1024.0;
+                println!("   Success: {:.1} MB (sample: {})", size_mb, file.sample_id);
             }
             Err(e) => {
                 stats.download_errors += 1;
@@ -238,7 +275,8 @@ async fn download_single_file(client: &Client, filename: &str, url: &str, output
     // Skip if file already exists
     if file_path.exists() {
         let metadata = fs::metadata(&file_path).await?;
-        println!("   Already exists ({} bytes)", metadata.len());
+        let size_mb = metadata.len() as f64 / 1024.0 / 1024.0;
+        println!("   Already exists ({:.1} MB)", size_mb);
         return Ok(metadata.len());
     }
 
@@ -287,9 +325,10 @@ async fn fetch_samples_for_single_date(client: &Client, date: NaiveDate, api_bas
 
 fn process_samples_for_date(samples: &[SampleData], current_date: NaiveDate) -> Result<Vec<FileToDownload>> {
     let mut files = Vec::new();
-    let mut seen_sample_ids = HashSet::new();
+    let mut sample_map = std::collections::HashMap::new();
     let mut duplicates_found = 0;
 
+    // First pass: collect all samples, keeping the latest occurrence of each sample_id
     for sample in samples {
         let read_count: u64 = sample.count_silo_reads.parse()?;
         let actual_date = sample.sampling_date.parse::<NaiveDate>()?;
@@ -299,40 +338,42 @@ fn process_samples_for_date(samples: &[SampleData], current_date: NaiveDate) -> 
                      sample.sample_id, current_date, actual_date);
         }
 
-        println!("   Sample ID: {} ({} reads, sampled: {})", 
-                 sample.sample_id, read_count, actual_date);
-
-        let silo_files: Vec<SiloFile> = serde_json::from_str(&sample.silo_reads)?;
+        // Check if this sample_id was already seen
+        if sample_map.contains_key(&sample.sample_id) {
+            duplicates_found += 1;
+            println!("   Sample ID: {} ({} reads, sampled: {}) - REPLACING PREVIOUS", 
+                     sample.sample_id, read_count, actual_date);
+        } else {
+            println!("   Sample ID: {} ({} reads, sampled: {})", 
+                     sample.sample_id, read_count, actual_date);
+        }
         
-        // Parse the actual sampling date from the API
+        // Always insert/replace - this keeps the latest occurrence
+        sample_map.insert(sample.sample_id.clone(), sample);
+    }
+
+    // Second pass: process the deduplicated samples
+    for (sample_id, sample) in sample_map {
+        let read_count: u64 = sample.count_silo_reads.parse()?;
         let actual_date = sample.sampling_date.parse::<NaiveDate>()
             .map_err(|e| format!("Failed to parse sampling_date '{}': {}", sample.sampling_date, e))?;
 
-        println!("   Sample ID: {} ({} reads, sampled: {})", sample.sample_id, read_count, actual_date);
-        
-        // Check for duplicate sample_id
-        if seen_sample_ids.contains(&sample.sample_id) {
-            duplicates_found += 1;
-            println!("     WARNING: Duplicate sample_id found, skipping");
-            continue;
-        }
-        
-        seen_sample_ids.insert(sample.sample_id.clone());
+        let silo_files: Vec<SiloFile> = serde_json::from_str(&sample.silo_reads)?;
         
         for file in silo_files {
             println!("     -> File: {}", file.name);
             files.push(FileToDownload {
-                sample_id: sample.sample_id.clone(),
+                sample_id: sample_id.clone(),
                 name: file.name,
                 url: file.url,
-                date: actual_date, // Use the actual sampling date from API
+                date: actual_date,
                 read_count,
             });
         }
     }
     
     if duplicates_found > 0 {
-        println!("   Found {} duplicate sample_ids (skipped)", duplicates_found);
+        println!("   Found {} duplicate sample_ids (kept latest version)", duplicates_found);
     }
     
     Ok(files)
@@ -341,7 +382,7 @@ fn process_samples_for_date(samples: &[SampleData], current_date: NaiveDate) -> 
 fn print_collection_summary(stats: &ProcessingStats, files: &[FileToDownload]) {
     println!();
     println!("COLLECTION SUMMARY");
-    println!("==================");
+    println!("------------------");
     println!("Total reads: {}", stats.total_reads);
     println!("Files found: {}", files.len());
     
@@ -354,7 +395,8 @@ fn print_collection_summary(stats: &ProcessingStats, files: &[FileToDownload]) {
         println!();
         println!("Sample files:");
         for file in files.iter().take(3) {
-            println!("   {} [{}] ({}, {} reads)", file.name, file.sample_id, file.date, file.read_count);
+            let reads_millions = file.read_count as f64 / 1_000_000.0; // Number of reads in millions
+            println!("   {} [{}] ({}, ~{:.1}M reads)", file.name, file.sample_id, file.date, reads_millions);
         }
         if files.len() > 3 {
             println!("   ... and {} more files", files.len() - 3);
@@ -365,7 +407,7 @@ fn print_collection_summary(stats: &ProcessingStats, files: &[FileToDownload]) {
 fn print_final_summary(stats: &ProcessingStats, output_dir: &str) {
     println!();
     println!("FINAL SUMMARY");
-    println!("=============");
+    println!("--------------");
     println!("Downloaded: {}", stats.downloaded_files);
     
     if stats.download_errors > 0 {
@@ -377,5 +419,8 @@ fn print_final_summary(stats: &ProcessingStats, output_dir: &str) {
     if stats.download_errors == 0 && stats.downloaded_files > 0 {
         println!();
         println!("All files downloaded successfully!");
+    } else if stats.download_errors > 0 {
+        println!();
+        println!("Some downloads failed. Check the logs above for details.");
     }
 }

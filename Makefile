@@ -13,7 +13,7 @@ SILO_OUTPUT_FLAG = $(SILO_OUTPUT_DIR)/.processed
 # === FETCH CONFIGURATION ===
 FETCH_START_DATE ?= $(shell date +%Y-%m-%d)
 FETCH_DAYS ?= 60
-FETCH_MAX_READS ?= 1000000
+FETCH_MAX_READS ?= 5000000 # 10 million
 FETCH_OUTPUT_DIR ?= $(INPUT_DIR)
 FETCH_API_BASE_URL ?= https://api.db.wasap.genspectrum.org
 
@@ -52,19 +52,28 @@ help:
 
 # Build individual Rust tools
 $(RUST_BINARIES):
+	@echo "=== Building Rust tools ==="
 	cargo build --release
+	@echo "✓ Build complete"
+	@echo
 
 # Fetch data from LAPIS API
 fetch-data:
+	@echo "=== Fetching data from LAPIS API ==="
 	cd fetch_silo_data && cargo run --release -- \
 		--start-date "$(FETCH_START_DATE)" \
 		--days $(FETCH_DAYS) \
 		--max-reads $(FETCH_MAX_READS) \
 		--output-dir "../$(FETCH_OUTPUT_DIR)" \
 		--api-base-url "$(FETCH_API_BASE_URL)"
+	@echo
 
 # Convenience target to fetch fresh data and run full pipeline
-fetch-and-process: fetch-data all
+fetch-and-process:
+	@echo "=== WisePulse Pipeline ==="
+	@$(MAKE) fetch-data
+	@$(MAKE) all
+	@echo "✓ Pipeline complete"
 
 # Create directories
 $(SORTED_CHUNKS_DIR):
@@ -78,18 +87,35 @@ $(SILO_OUTPUT_DIR):
 
 # Processing pipeline
 $(SORTED_CHUNKS_FILE): $(SORTED_CHUNKS_DIR) build
-	find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f -print0 | xargs -0 -P 16 -I {} sh -c 'zstdcat "{}" | target/release/split_into_sorted_chunks --output-path "$(SORTED_CHUNKS_DIR)/{}" --chunk-size 1000000 --sort-field-path /main/offset' > $@
+	@echo "=== Splitting into sorted chunks ==="
+	@file_count=$$(find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f | wc -l); \
+	echo "Processing $$file_count files..."; \
+	> $@; \
+	find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f | while read -r file; do \
+		echo "  $$(basename "$$file")"; \
+		zstdcat "$$file" | target/release/split_into_sorted_chunks --output-path "$(SORTED_CHUNKS_DIR)/$$(basename "$$file")" --chunk-size 1000000 --sort-field-path /main/offset >> $@; \
+	done; \
+	chunk_count=$$(wc -l < $@ 2>/dev/null || echo 0); \
+	echo "✓ Created $$chunk_count chunks"
+	@echo
 
 $(SORTED_FILE): $(SORTED_CHUNKS_FILE) $(TMP_DIR) build
-	cat $(SORTED_CHUNKS_FILE) | target/release/merge_sorted_chunks --tmp-directory $(TMP_DIR) --sort-field-path /main/offset | zstd > $@
+	@echo "=== Merging sorted chunks ==="
+	@chunk_count=$$(wc -l < $(SORTED_CHUNKS_FILE) 2>/dev/null || echo 0); \
+	echo "Merging $$chunk_count chunks..."; \
+	cat $(SORTED_CHUNKS_FILE) | target/release/merge_sorted_chunks --tmp-directory $(TMP_DIR) --sort-field-path /main/offset | zstd > $@; \
+	file_size=$$(du -h $@ | cut -f1); \
+	echo "✓ Created $@ ($$file_size)"
+	@echo
 
 $(SILO_OUTPUT_FLAG): $(SORTED_FILE) $(SILO_OUTPUT_DIR)
-	@echo "=== Docker preprocessing step ==="
-	@echo "Running: docker compose -f docker-compose-preprocessing.yml up"
+	@echo "=== SILO preprocessing ==="
 	@if command -v docker >/dev/null 2>&1; then \
-		docker compose -f docker-compose-preprocessing.yml up && touch $(SILO_OUTPUT_FLAG); \
+		docker compose -f docker-compose-preprocessing.yml up && \
+		echo "✓ SILO preprocessing complete" && \
+		touch $(SILO_OUTPUT_FLAG) || \
+		(echo "✗ SILO preprocessing failed" && exit 1); \
 	else \
-		echo "Warning: Docker not found. Skipping Docker preprocessing step."; \
-		echo "The pipeline has successfully processed data up to: $(SORTED_FILE)"; \
+		echo "⚠ Docker not found, skipping SILO step"; \
 		touch $(SILO_OUTPUT_FLAG); \
 	fi
