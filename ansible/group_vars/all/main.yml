@@ -1,0 +1,126 @@
+name: 'W-ASAP'
+host: 'db.wasap.genspectrum.org'
+loculus_environment: 'local' # Do not change this: this setup uses a "local" environment as the public traffic is proxied through nginx.
+
+runDevelopmentMainDatabase: false
+runDevelopmentKeycloakDatabase: false
+runDevelopmentS3: false
+
+welcomeMessageHTML: '<div class="space-y-4">
+    <div>
+      <h2 class="text-xl font-semibold mb-2">Welcome to W-ASAP</h2>
+      <p>The <strong>Wastewater Analysis and Sharing Platform (W-ASAP)</strong> — a joint effort of the <a href="https://bsse.ethz.ch/cbg" class="underline text-blue-600">Computational Biology Group (CBG)</a> and <a href="https://bsse.ethz.ch/cevo" class="underline text-blue-600">Computational Evolution Group (cEvo)</a> at ETH Zürich.</p>
+    </div>
+    
+    <div>
+      <p>This database powers the interactive visualizations and analyses available at <a href="https://wasap.genspectrum.org/" class="underline text-blue-600">wasap.genspectrum.org</a>. Here we share processed alignment files and intermediary files for real-time plotting and analysis of wastewater surveillance data.</p>
+    </div>
+    
+    <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+      <p><strong>⚠️ Beta Version:</strong> This platform is currently in beta. Please expect occasional modifications to the datastore structure and content as we continue to improve the system.</p>
+    </div>
+    
+    <div>
+      <p>We currently support SARS-CoV-2. For complete raw sequencing data and metadata, please refer to our ENA project: <a href="https://www.ebi.ac.uk/ena/browser/view/PRJEB85524" class="underline text-blue-600">PRJEB85524</a> (Study: <a href="https://www.ebi.ac.uk/ena/browser/view/ERP168898" class="underline text-blue-600">ERP168898</a>).</p>
+    </div>
+    
+    <div>
+      <p>Built with <a href="https://loculus.org" class="underline text-blue-600">Loculus</a> — an open-source platform for pathogen sequence sharing.</p>
+    </div>
+  </div>'
+
+public:
+  backendUrl: 'https://api.db.wasap.genspectrum.org/backend'
+  lapisUrlTemplate: 'https://api.db.wasap.genspectrum.org/%organism%'
+  keycloakUrl: 'https://auth.db.wasap.genspectrum.org'
+
+auth:
+  verifyEmail: false
+  resetPasswordAllowed: false
+  registrationAllowed: true
+
+seqSets:
+  enabled: false
+
+s3:
+  enabled: true
+  bucket:
+    region: eu-central
+    endpoint: https://fsn1.your-objectstorage.com/
+    bucket: wasap
+
+organisms:
+   covid:
+    schema:
+      organismName: 'SARS-CoV-2'
+      metadata:
+        - name: date
+          type: date
+          header: Sample details
+          displayName: Submission Date
+        - name: sampleId
+          type: string
+          header: Sample details
+          displayName: Sample ID
+        - name: batchId
+          type: string
+          definition: "Sequencing batch"
+          header: Sample details
+          displayName: Batch ID
+        - name: locationCode
+          type: string
+          header: Sample details
+          displayName: Location Code
+        - name: locationName
+          type: string
+          generateIndex: true
+          autocomplete: true
+          header: Sample details
+          displayName: Location
+        - name: samplingDate
+          type: date
+          header: Sample details
+          displayName: Sampling Date
+        - name: sr2siloVersion
+          type: string
+          header: srSILO info
+          definition: "Version of sr2silo transformer"
+          displayName: sr2silo Version
+        - name: countSiloReads
+          type: string
+          header: srSILO info
+          definition: "Number of reads subsampled srSILO alignments"
+          displayName: srSILO Read Count 
+      website:
+        tableColumns:
+          - date
+          - locationName
+          - samplingDate
+        defaultOrder: ascending
+        defaultOrderBy: date
+      submissionDataTypes:
+        consensusSequences: false
+        files:
+          enabled: true
+          categories:
+            - name: nucleotideAlignment
+            - name: siloReads
+      files:
+        - name: nucleotideAlignment
+        - name: siloReads
+    preprocessing:
+      - version: 1
+        image: ghcr.io/loculus-project/preprocessing-dummy
+        args:
+          - "--watch"
+          - "--disableConsensusSequences"
+    referenceGenomes:
+      singleReference:
+        nucleotideSequences: []
+        genes: []
+
+dataUseTerms:
+  enabled: false
+disableIngest: true
+disableEnaSubmission: true
+accessionPrefix: "WISE_"
