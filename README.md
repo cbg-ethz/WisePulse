@@ -2,15 +2,14 @@
 
 To build the Rust helper scripts, run `cargo build --release`.
 
+
 To process a set of `.ndjson.zst` files, put these in the directory `silo_input`. Then run `make all`. 
 This will generate SILO Indexes which can be readily used to run a LAPIS/SILO API.
 
 To automatically fetch genomic data files from the LAPIS API:
 ```bash
 make fetch-data                                          # Fetch with default settings
-make fetch-data FETCH_DAYS=14 FETCH_MAX_READS=50000000  # Custom parameters  
-make fetch-data FETCH_API_BASE_URL=https://other-api.org # Custom API endpoint
-make fresh-data                                          # Fetch new data and run full pipeline
+make fetch-and-process                                   # Fetch new data and run full pipeline
 ```
 
 Available fetch configuration variables:

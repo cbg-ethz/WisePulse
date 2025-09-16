@@ -7,7 +7,7 @@ SILO_OUTPUT_FLAG = silo_output.file
 
 # Fetch configuration variables
 FETCH_START_DATE ?= $(shell date +%Y-%m-%d)
-FETCH_DAYS ?= 7
+FETCH_DAYS ?= 60
 FETCH_MAX_READS ?= 1000000
 FETCH_OUTPUT_DIR ?= $(INPUT_DIR)
 FETCH_API_BASE_URL ?= https://api.db.wasap.genspectrum.org
@@ -25,8 +25,8 @@ fetch-data:
 		--api-base-url "$(FETCH_API_BASE_URL)"
 
 # Convenience target to fetch fresh data and run full pipeline
-.PHONY: fresh-data
-fresh-data: fetch-data all
+.PHONY: fetch-and-process
+fetch-and-process: fetch-data all
 
 $(SORTED_CHUNKS_DIR):
 	mkdir $(SORTED_CHUNKS_DIR)
