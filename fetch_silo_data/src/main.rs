@@ -13,6 +13,7 @@
 //! Integration: Downloads to silo_input/ for processing by existing WisePulse pipeline
 
 use chrono::{Duration, NaiveDate};
+use clap::{Arg, Command};
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -21,10 +22,26 @@ use tokio::{fs, io::AsyncWriteExt, time};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-const MAX_READS: u64 = 100_000_000;
-const MAX_WEEKS: i64 = 6;
-const OUTPUT_DIR: &str = "./silo_data_test";
-const API_BASE_URL: &str = "https://api.db.wasap.genspectrum.org";
+#[derive(Debug)]
+struct Config {
+    start_date: NaiveDate,
+    days_to_fetch: i64,
+    max_reads: u64,
+    output_dir: String,
+    api_base_url: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            start_date: chrono::Local::now().date_naive(),
+            days_to_fetch: 42, // 6 weeks 
+            max_reads: 100_000_000,
+            output_dir: "./silo_data_test".to_string(),
+            api_base_url: "https://api.db.wasap.genspectrum.org".to_string(),
+        }
+    }
+}
 
 #[derive(Deserialize, Debug)]
 struct ApiResponse {
@@ -69,37 +86,95 @@ struct FileToDownload {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let matches = Command::new("fetch_silo_data")
+        .about("Fetches genomic data files from LAPIS API")
+        .arg(
+            Arg::new("start-date")
+                .long("start-date")
+                .value_name("YYYY-MM-DD")
+                .help("Start date for fetching (default: today)")
+                .required(false)
+        )
+        .arg(
+            Arg::new("days")
+                .long("days")
+                .value_name("NUMBER")
+                .help("Number of days to fetch backwards (default: 42)")
+                .required(false)
+        )
+        .arg(
+            Arg::new("max-reads")
+                .long("max-reads")
+                .value_name("NUMBER")
+                .help("Maximum number of reads to fetch (default: 100000000)")
+                .required(false)
+        )
+        .arg(
+            Arg::new("output-dir")
+                .long("output-dir")
+                .value_name("PATH")
+                .help("Output directory for downloaded files (default: ./silo_data_test)")
+                .required(false)
+        )
+        .get_matches();
+    
+    let mut config = Config::default();
+    
+    // Parse command line arguments
+    if let Some(date_str) = matches.get_one::<String>("start-date") {
+        config.start_date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+            .map_err(|e| format!("Invalid date format: {}", e))?;
+    }
+    
+    if let Some(days_str) = matches.get_one::<String>("days") {
+        config.days_to_fetch = days_str.parse()
+            .map_err(|e| format!("Invalid days value: {}", e))?;
+    }
+    
+    if let Some(reads_str) = matches.get_one::<String>("max-reads") {
+        config.max_reads = reads_str.parse()
+            .map_err(|e| format!("Invalid max-reads value: {}", e))?;
+    }
+    
+    if let Some(dir_str) = matches.get_one::<String>("output-dir") {
+        config.output_dir = dir_str.to_string();
+    }
+
+    run_fetch_with_config(config).await
+}
+
+async fn run_fetch_with_config(config: Config) -> Result<()> {
     let client = Client::new();
     
-    fs::create_dir_all(OUTPUT_DIR).await?;
-    println!("Output directory: {}", OUTPUT_DIR);
+    fs::create_dir_all(&config.output_dir).await?;
+    println!("Output directory: {}", config.output_dir);
 
-    let start_date = chrono::Local::now().date_naive();
-    let earliest_allowed = start_date - Duration::weeks(MAX_WEEKS);
+    let start_date = config.start_date;
+    let earliest_allowed = start_date - Duration::days(config.days_to_fetch);
 
     let mut stats = ProcessingStats::default();
     let mut all_files = Vec::<FileToDownload>::new();
 
     println!("Starting data collection...");
-    println!("Date range: {} -> {} (max {} weeks)", start_date, earliest_allowed, MAX_WEEKS);
-    println!("Max reads: {}", MAX_READS);
+    println!("Date range: {} -> {} (max {} days)", start_date, earliest_allowed, config.days_to_fetch);
+    println!("Max reads: {}", config.max_reads);
     println!();
 
     let mut current_date = start_date;
     while current_date >= earliest_allowed {
         println!("Processing date: {}", current_date);
 
-        let samples = fetch_samples_for_single_date(&client, current_date).await?;
+        let samples = fetch_samples_for_single_date(&client, current_date, &config.api_base_url).await?;
 
         if samples.is_empty() {
             println!("   No samples found");
         } else {
             println!("   Found {} samples", samples.len());
 
-            let date_files = process_samples_for_date(&samples)?;
+            let date_files = process_samples_for_date(&samples, current_date)?;
             let date_reads: u64 = date_files.iter().map(|f| f.read_count).sum();
 
-            if stats.total_reads + date_reads > MAX_READS {
+            if stats.total_reads + date_reads > config.max_reads {
                 println!("   Would exceed read limit, stopping");
                 break;
             }
@@ -134,9 +209,9 @@ async fn main() -> Result<()> {
     // Download files
     println!();
     println!("Starting file downloads...");
-    download_all_files(&client, &all_files, &mut stats).await?;
+    download_all_files(&client, &all_files, &mut stats, &config.output_dir).await?;
 
-    print_final_summary(&stats);
+    print_final_summary(&stats, &config.output_dir);
     Ok(())
 }
 
@@ -144,15 +219,16 @@ async fn download_all_files(
     client: &Client,
     files: &[FileToDownload],
     stats: &mut ProcessingStats,
+    output_dir: &str,
 ) -> Result<()> {
     for (i, file) in files.iter().enumerate() {
         println!("[{}/{}] Downloading: {} (sample: {})", 
                  i + 1, files.len(), file.name, file.sample_id);
 
-        match download_single_file(client, &file.name, &file.url).await {
+        match download_single_file(client, &file.name, &file.url, output_dir).await {
             Ok(bytes) => {
                 stats.downloaded_files += 1;
-                println!("   Success: {} bytes (sample: {})", bytes_downloaded, file.sample_id);
+                println!("   Success: {} bytes (sample: {})", bytes, file.sample_id);
             }
             Err(e) => {
                 stats.download_errors += 1;
@@ -165,8 +241,8 @@ async fn download_all_files(
     Ok(())
 }
 
-async fn download_single_file(client: &Client, filename: &str, url: &str) -> Result<u64> {
-    let file_path = Path::new(OUTPUT_DIR).join(filename);
+async fn download_single_file(client: &Client, filename: &str, url: &str, output_dir: &str) -> Result<u64> {
+    let file_path = Path::new(output_dir).join(filename);
 
     // Skip if file already exists
     if file_path.exists() {
@@ -197,11 +273,11 @@ async fn download_single_file(client: &Client, filename: &str, url: &str) -> Res
 }
 
 
-async fn fetch_samples_for_single_date(client: &Client, date: NaiveDate) -> Result<Vec<SampleData>> {
+async fn fetch_samples_for_single_date(client: &Client, date: NaiveDate, api_base_url: &str) -> Result<Vec<SampleData>> {
     let date_str = date.format("%Y-%m-%d");
     let url = format!(
         "{}/covid/sample/details?samplingDate={}&dataFormat=JSON&downloadAsFile=false",
-        API_BASE_URL, date_str
+        api_base_url, date_str
     );
 
     let response = client
@@ -218,7 +294,7 @@ async fn fetch_samples_for_single_date(client: &Client, date: NaiveDate) -> Resu
     Ok(api_response.data)
 }
 
-fn process_samples_for_date(samples: &[SampleData]) -> Result<Vec<FileToDownload>> {
+fn process_samples_for_date(samples: &[SampleData], current_date: NaiveDate) -> Result<Vec<FileToDownload>> {
     let mut files = Vec::new();
     let mut seen_sample_ids = HashSet::new();
     let mut duplicates_found = 0;
@@ -227,12 +303,10 @@ fn process_samples_for_date(samples: &[SampleData]) -> Result<Vec<FileToDownload
         let read_count: u64 = sample.count_silo_reads.parse()?;
         let actual_date = sample.sampling_date.parse::<NaiveDate>()?;
         
-        if date != actual_date {
+        if current_date != actual_date {
             println!("   WARNING: Sampling date mismatch for sample_id {}: expected {}, got {}",
-                     sample.sample_id, date, actual_date);
+                     sample.sample_id, current_date, actual_date);
         }
-        
-        total_reads += read_count;
 
         println!("   Sample ID: {} ({} reads, sampled: {})", 
                  sample.sample_id, read_count, actual_date);
@@ -297,7 +371,7 @@ fn print_collection_summary(stats: &ProcessingStats, files: &[FileToDownload]) {
     }
 }
 
-fn print_final_summary(stats: &ProcessingStats) {
+fn print_final_summary(stats: &ProcessingStats, output_dir: &str) {
     println!();
     println!("FINAL SUMMARY");
     println!("=============");
@@ -307,7 +381,7 @@ fn print_final_summary(stats: &ProcessingStats) {
         println!("Errors: {}", stats.download_errors);
     }
     
-    println!("Location: {}/", OUTPUT_DIR);
+    println!("Location: {}/", output_dir);
     
     if stats.download_errors == 0 && stats.downloaded_files > 0 {
         println!();

@@ -5,7 +5,26 @@ TMP_DIR = tmp
 SORTED = sorted.ndjson.zst
 SILO_OUTPUT_FLAG = silo_output.file
 
+# Fetch configuration variables
+FETCH_START_DATE ?= $(shell date +%Y-%m-%d)
+FETCH_DAYS ?= 7
+FETCH_MAX_READS ?= 1000000
+FETCH_OUTPUT_DIR ?= $(INPUT_DIR)
+
 all: $(SILO_OUTPUT_FLAG)
+
+# Fetch data from LAPIS API
+.PHONY: fetch-data
+fetch-data:
+	cd fetch_silo_data && cargo run --release -- \
+		--start-date "$(FETCH_START_DATE)" \
+		--days $(FETCH_DAYS) \
+		--max-reads $(FETCH_MAX_READS) \
+		--output-dir "../$(FETCH_OUTPUT_DIR)"
+
+# Convenience target to fetch fresh data and run full pipeline
+.PHONY: fresh-data
+fresh-data: fetch-data all
 
 $(SORTED_CHUNKS_DIR):
 	mkdir $(SORTED_CHUNKS_DIR)
