@@ -40,8 +40,8 @@ clean-all: clean clean-data
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  build              - Build all Rust tools"
-	@echo "  fetch-data         - Fetch data from LAPIS API"
+	@echo "  build             - Build all Rust tools"
+	@echo "  fetch-data        - Fetch data from LAPIS API"
 	@echo "  all               - Process existing data through pipeline"
 	@echo "  fetch-and-process - Fetch data and run full pipeline"
 	@echo "  clean             - Clean intermediate files"
