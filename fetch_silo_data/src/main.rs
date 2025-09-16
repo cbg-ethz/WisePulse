@@ -3,9 +3,13 @@ use tokio;
 use serde::{Deserialize};
 use chrono::{NaiveDate, Duration};
 use std::{collections::HashMap, f32::consts::E};
+use tokio::fs;
+use tokio::io::AsyncWriteExt;
+use std::path::Path;
 
 const MAX_READS: u64 = 100_000_000;
 const MAX_WEEKS: i64 = 6;
+const OUTPUT_DIR: &str = "./silo_data_test";
 
 #[derive(Deserialize, Debug)]
 struct ApiResponse {
@@ -34,6 +38,8 @@ struct ProcessingStats {
     date_range_days: i64,
     earliest_date: Option<NaiveDate>,
     latest_date: Option<NaiveDate>,
+    downloaded_files: u32,
+    download_errors: u32,
 }
 
 
@@ -41,6 +47,9 @@ struct ProcessingStats {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client: reqwest::Client = reqwest::Client::new();
+
+    fs::create_dir_all(OUTPUT_DIR).await?;
+    println!("Output directory: {}", OUTPUT_DIR);
 
     let start_date = chrono::Local::now().date_naive();
     let mut current_date = start_date;
@@ -52,6 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         date_range_days: 0,
         earliest_date: None, 
         latest_date: None,
+        downloaded_files: 0,
+        download_errors: 0,
     };
 
     let mut all_files: Vec<(String, String, NaiveDate, u64)> = Vec::new(); // (name, url, date, read_count)
@@ -104,46 +115,71 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         stats.date_range_days = (latest - earliest).num_days() + 1;
     }
 
-    print_final_summary(&stats, &all_files);
+    print_collection_summary(&stats, &all_files);
 
-    // let url = format!(
-    //     "https://api.db.wasap.genspectrum.org/covid/sample/details?samplingDateFrom={}&samplingDateTo={}&limit=1000&dataFormat=JSON&downloadAsFile=false",
-    //     SAMPLE_FROM_DATE, SAMPLE_TO_DATE
-    // );
 
-    // println!("Fetching data from: {}", url); 
+    println!("");
+    println!(" Starting file downloads...");
+    download_all_files(&client, &all_files, &mut stats).await?;
 
-    // let response: reqwest::Response = client
-    //     .get(url)
-    //     .header("Accept", "application/json")
-    //     .send()
-    //     .await?;
 
-    // println!("Response Status: {}", response.status());
-
-    // let api_response: ApiResponse = response.json().await?;
-
-    // print!("Fetched {} records\n", api_response.data.len());
-
-    // for (i, sample) in api_response.data.iter().enumerate() {
-
-    //     println!("Sample #{}", i + 1);
-    //     println!("  Sample ID: {}", sample.sample_id);
-    //     println!("  Sampling Date: {}", sample.sampling_date);
-    //     println!("  Read Count: {}", sample.count_silo_reads);
-
-    //     let silo_files: Vec<SiloFile> = serde_json::from_str(&sample.silo_reads)?;
-
-    //     println!("  Files:");
-    //     for file in silo_files {
-    //         println!(" {}", file.name);
-    //         println!(" {}", file.url);
-    //     }
-    //     println!()
-    // }
-
+    print_final_summary(&stats);
 
     Ok(())
+}
+
+
+async fn download_all_files(
+    client: &reqwest::Client, 
+    files: &[(String, String, NaiveDate, u64)],
+    stats: &mut ProcessingStats,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for (i, (filename, url, date, reads)) in files.iter().enumerate() {
+        println!(" [{}/{}] Downloading: {} ", i+1, files.len(), filename);
+
+        match download_single_file(client, filename, url).await {
+            Ok(bytes_downloaded) => {
+                stats.downloaded_files += 1;
+                println!("    Downloaded {} bytes", bytes_downloaded);
+            }
+            Err(e) => {
+                stats.download_errors += 1;
+                println!("    Error downloading {}: {}", filename, e);
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn download_single_file(
+    client: &reqwest::Client,
+    filename: &str,
+    url: &str,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let file_path = Path::new(OUTPUT_DIR).join(filename);
+    
+    // Skip if file already exists
+    if file_path.exists() {
+        let metadata = fs::metadata(&file_path).await?;
+        println!("     File already exists ({} bytes)", metadata.len());
+        return Ok(metadata.len());
+    }
+    
+    // Download the file
+    let response = client.get(url).send().await?;
+    
+    if !response.status().is_success() {
+        return Err(format!("HTTP error: {}", response.status()).into());
+    }
+    
+    let content = response.bytes().await?;
+    let bytes_downloaded = content.len() as u64;
+    
+    // Write to file
+    let mut file = fs::File::create(&file_path).await?;
+    file.write_all(&content).await?;
+    
+    Ok(bytes_downloaded)
 }
 
 
@@ -191,23 +227,40 @@ fn process_samples_for_date(
     Ok((files, total_reads))
 }
 
-fn print_final_summary(stats: &ProcessingStats, files: &[(String, String, NaiveDate, u64)]) {
+fn print_collection_summary(stats: &ProcessingStats, files: &[(String, String, NaiveDate, u64)]) {
     println!();
-    println!("FINAL SUMMARY");
-    println!("================");
-    println!("Total reads: {}", stats.total_reads);
-    println!("Total files: {}", files.len());
-    println!("Date range: {} days", stats.date_range_days);
+    println!(" COLLECTION SUMMARY");
+    println!("====================");
+    println!(" Total reads: {}", stats.total_reads);
+    println!(" Total files found: {}", files.len());
+    println!(" Date range: {} days", stats.date_range_days);
     if let (Some(earliest), Some(latest)) = (stats.earliest_date, stats.latest_date) {
-        println!("From {} to {}", earliest, latest);
+        println!(" From {} to {}", earliest, latest);
     }
     println!();
     
     println!(" Files to download:");
-    for (name, _url, date, reads) in files.iter().take(5) { // Show first 5
-        println!("   {} ({}) - {} reads", name, date, reads);
+    for (name, _url, date, reads) in files.iter().take(3) {
+        println!("    {} ({}) - {} reads", name, date, reads);
     }
-    if files.len() > 5 {
-        println!("  ... and {} more files", files.len() - 5);
+    if files.len() > 3 {
+        println!("   ... and {} more files", files.len() - 3);
+    }
+}
+
+fn print_final_summary(stats: &ProcessingStats) {
+    println!();
+    println!(" FINAL SUMMARY");
+    println!("================");
+    println!(" Files downloaded: {}", stats.downloaded_files);
+    println!(" Download errors: {}", stats.download_errors);
+    println!(" Files saved to: {}/", OUTPUT_DIR);
+    println!();
+    
+    if stats.download_errors == 0 {
+        println!(" All files downloaded successfully!");
+        println!(" Ready for processing with: make");
+    } else {
+        println!("  Some downloads failed. Check the logs above.");
     }
 }
