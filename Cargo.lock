@@ -306,6 +306,7 @@ name = "fetch_silo_data"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "clap",
  "reqwest",
  "serde",
  "serde_json",
