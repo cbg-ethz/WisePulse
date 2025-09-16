@@ -2,9 +2,9 @@ use reqwest;
 use tokio;
 use serde::{Deserialize};
 use chrono::{NaiveDate, Duration};
-use std::collections::HashMap;
+use std::{collections::HashMap, f32::consts::E};
 
-const MAX_READS: i64 = 1000000;
+const MAX_READS: u64 = 100_000_000;
 const MAX_WEEKS: i64 = 6;
 
 #[derive(Deserialize, Debug)]
@@ -67,9 +67,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         current_date = current_date - Duration::days(1);
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await; 
+        let samples = fetch_samples_for_single_date(&client, current_date).await?;
+
+        if samples.is_empty() {
+            println!(" No samples found for this date.");
+        } else {
+            println!(" Found {} samples.", samples.len());
+        
+
+            let (date_files, date_reads) = process_samples_for_date(&samples, current_date)?;
+
+            if stats.total_reads + date_reads > MAX_READS {
+                println!("Reached max reads limit. Stopping.");
+                break;
+            }
+            
+            all_files.extend(date_files);
+            stats.total_reads += date_reads;
+            stats.total_files = all_files.len() as u32;
+
+            if stats.latest_date.is_none() {
+                stats.latest_date = Some(current_date);
+            }
+            stats.earliest_date = Some(current_date);
+
+            println!("   Added {} files, {} reads (total: {} reads)", 
+                        samples.len(), date_reads, stats.total_reads);
+        }
+
+        current_date = current_date - Duration::days(1);
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await; 
     }
     
+    if let (Some(earliest), Some(latest)) = (stats.earliest_date, stats.latest_date) {
+        stats.date_range_days = (latest - earliest).num_days() + 1;
+    }
+
+    print_final_summary(&stats, &all_files);
 
     // let url = format!(
     //     "https://api.db.wasap.genspectrum.org/covid/sample/details?samplingDateFrom={}&samplingDateTo={}&limit=1000&dataFormat=JSON&downloadAsFile=false",
@@ -109,4 +144,70 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     Ok(())
+}
+
+
+async fn fetch_samples_for_single_date(
+    client: &reqwest::Client, 
+    date: NaiveDate
+) -> Result<Vec<SampleData>, Box<dyn std::error::Error>> {
+    let url = format!(
+        "https://api.db.wasap.genspectrum.org/covid/sample/details?samplingDateFrom={}&samplingDateTo={}&dataFormat=JSON&downloadAsFile=false",
+        date.format("%Y-%m-%d"),
+        date.format("%Y-%m-%d")
+    );
+    
+    let response = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()
+        .await?;
+    
+    if !response.status().is_success() {
+        return Err(format!("API request failed: {}", response.status()).into());
+    }
+    
+    let api_response: ApiResponse = response.json().await?;
+    Ok(api_response.data)
+}
+
+fn process_samples_for_date(
+    samples: &[SampleData],
+    date: NaiveDate
+) -> Result<(Vec<(String, String, NaiveDate, u64)>, u64), Box<dyn std::error::Error>> {
+    let mut files = Vec::new();
+    let mut total_reads: u64 = 0;
+
+    for sample in samples {
+        let read_count: u64 = sample.count_silo_reads.parse()?;
+        total_reads += read_count;
+
+        let silo_files: Vec<SiloFile> = serde_json::from_str(&sample.silo_reads)?;
+
+        for file in silo_files {
+            files.push((file.name, file.url, date, read_count));
+        }
+    }
+    Ok((files, total_reads))
+}
+
+fn print_final_summary(stats: &ProcessingStats, files: &[(String, String, NaiveDate, u64)]) {
+    println!();
+    println!("FINAL SUMMARY");
+    println!("================");
+    println!("Total reads: {}", stats.total_reads);
+    println!("Total files: {}", files.len());
+    println!("Date range: {} days", stats.date_range_days);
+    if let (Some(earliest), Some(latest)) = (stats.earliest_date, stats.latest_date) {
+        println!("From {} to {}", earliest, latest);
+    }
+    println!();
+    
+    println!(" Files to download:");
+    for (name, _url, date, reads) in files.iter().take(5) { // Show first 5
+        println!("   {} ({}) - {} reads", name, date, reads);
+    }
+    if files.len() > 5 {
+        println!("  ... and {} more files", files.len() - 5);
+    }
 }
