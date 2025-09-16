@@ -10,6 +10,7 @@ FETCH_START_DATE ?= $(shell date +%Y-%m-%d)
 FETCH_DAYS ?= 7
 FETCH_MAX_READS ?= 1000000
 FETCH_OUTPUT_DIR ?= $(INPUT_DIR)
+FETCH_API_BASE_URL ?= https://api.db.wasap.genspectrum.org
 
 all: $(SILO_OUTPUT_FLAG)
 
@@ -20,7 +21,8 @@ fetch-data:
 		--start-date "$(FETCH_START_DATE)" \
 		--days $(FETCH_DAYS) \
 		--max-reads $(FETCH_MAX_READS) \
-		--output-dir "../$(FETCH_OUTPUT_DIR)"
+		--output-dir "../$(FETCH_OUTPUT_DIR)" \
+		--api-base-url "$(FETCH_API_BASE_URL)"
 
 # Convenience target to fetch fresh data and run full pipeline
 .PHONY: fresh-data

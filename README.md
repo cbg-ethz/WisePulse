@@ -7,10 +7,18 @@ This will generate SILO Indexes which can be readily used to run a LAPIS/SILO AP
 
 To automatically fetch genomic data files from the LAPIS API:
 ```bash
-make fetch-data                              # Fetch with default settings
-make fetch-data FETCH_DAYS=14 FETCH_MAX_READS=50000000  # Custom parameters
-make fresh-data                              # Fetch new data and run full pipeline
+make fetch-data                                          # Fetch with default settings
+make fetch-data FETCH_DAYS=14 FETCH_MAX_READS=50000000  # Custom parameters  
+make fetch-data FETCH_API_BASE_URL=https://other-api.org # Custom API endpoint
+make fresh-data                                          # Fetch new data and run full pipeline
 ```
+
+Available fetch configuration variables:
+- `FETCH_START_DATE` (default: today's date)
+- `FETCH_DAYS` (default: 7) 
+- `FETCH_MAX_READS` (default: 1000000)
+- `FETCH_OUTPUT_DIR` (default: silo_input)
+- `FETCH_API_BASE_URL` (default: https://api.db.wasap.genspectrum.org)
 
 To start the API you can run `LAPIS_PORT=80 docker compose up`.
 Note that you can replace the `LAPIS_PORT` with another port that the api should listen on.

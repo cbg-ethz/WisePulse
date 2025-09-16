@@ -31,18 +31,6 @@ struct Config {
     api_base_url: String,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            start_date: chrono::Local::now().date_naive(),
-            days_to_fetch: 42, // 6 weeks 
-            max_reads: 100_000_000,
-            output_dir: "./silo_data_test".to_string(),
-            api_base_url: "https://api.db.wasap.genspectrum.org".to_string(),
-        }
-    }
-}
-
 #[derive(Deserialize, Debug)]
 struct ApiResponse {
     data: Vec<SampleData>,
@@ -92,53 +80,56 @@ async fn main() -> Result<()> {
             Arg::new("start-date")
                 .long("start-date")
                 .value_name("YYYY-MM-DD")
-                .help("Start date for fetching (default: today)")
-                .required(false)
+                .help("Start date for fetching")
+                .required(true)
         )
         .arg(
             Arg::new("days")
                 .long("days")
                 .value_name("NUMBER")
-                .help("Number of days to fetch backwards (default: 42)")
-                .required(false)
+                .help("Number of days to fetch backwards")
+                .required(true)
         )
         .arg(
             Arg::new("max-reads")
                 .long("max-reads")
                 .value_name("NUMBER")
-                .help("Maximum number of reads to fetch (default: 100000000)")
-                .required(false)
+                .help("Maximum number of reads to fetch")
+                .required(true)
         )
         .arg(
             Arg::new("output-dir")
                 .long("output-dir")
                 .value_name("PATH")
-                .help("Output directory for downloaded files (default: ./silo_data_test)")
-                .required(false)
+                .help("Output directory for downloaded files")
+                .required(true)
+        )
+        .arg(
+            Arg::new("api-base-url")
+                .long("api-base-url")
+                .value_name("URL")
+                .help("Base URL for the LAPIS API")
+                .required(true)
         )
         .get_matches();
     
-    let mut config = Config::default();
+    // Parse command line arguments (all required)
+    let date_str = matches.get_one::<String>("start-date").unwrap();
+    let days_str = matches.get_one::<String>("days").unwrap();
+    let reads_str = matches.get_one::<String>("max-reads").unwrap();
+    let dir_str = matches.get_one::<String>("output-dir").unwrap();
+    let api_url_str = matches.get_one::<String>("api-base-url").unwrap();
     
-    // Parse command line arguments
-    if let Some(date_str) = matches.get_one::<String>("start-date") {
-        config.start_date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-            .map_err(|e| format!("Invalid date format: {}", e))?;
-    }
-    
-    if let Some(days_str) = matches.get_one::<String>("days") {
-        config.days_to_fetch = days_str.parse()
-            .map_err(|e| format!("Invalid days value: {}", e))?;
-    }
-    
-    if let Some(reads_str) = matches.get_one::<String>("max-reads") {
-        config.max_reads = reads_str.parse()
-            .map_err(|e| format!("Invalid max-reads value: {}", e))?;
-    }
-    
-    if let Some(dir_str) = matches.get_one::<String>("output-dir") {
-        config.output_dir = dir_str.to_string();
-    }
+    let config = Config {
+        start_date: NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+            .map_err(|e| format!("Invalid date format: {}", e))?,
+        days_to_fetch: days_str.parse()
+            .map_err(|e| format!("Invalid days value: {}", e))?,
+        max_reads: reads_str.parse()
+            .map_err(|e| format!("Invalid max-reads value: {}", e))?,
+        output_dir: dir_str.to_string(),
+        api_base_url: api_url_str.to_string(),
+    };
 
     run_fetch_with_config(config).await
 }
