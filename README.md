@@ -1,20 +1,21 @@
 ## srSILO
 
-To build the Rust helper scripts, run `cargo build --release`.
+WisePulse genomic data pipeline for processing COVID-19 sequencing data into SILO indexes.
 
-To process a set of `.ndjson.zst` files, put these in the directory `silo_input`. Then run `make`. 
-This will generate SILO Indexes which can be readily used to run a LAPIS/SILO API.
+### Quick Start
 
-To start the API you can run `LAPIS_PORT=80 docker compose up`.
-Note that you can replace the `LAPIS_PORT` with another port that the api should listen on.
+```bash
+make help    # See all available targets and usage
+make build   # Build required Rust tools
+make all     # Process data in silo_input/ directory
+```
 
-A swagger UI to the API can then be accessed at:
-`http://localhost:80/swagger-ui/index.html`
+Configure desired data to fetch directly in the Makefile.
 
-Prerequisites:
-- installed cargo
-- installed Docker Compose
-- platform: Linux (w.r.t. pre-processing scripts invoked by `make`)
+### Prerequisites
+- Rust/Cargo
+- Docker Compose (optional for final SILO step)
+- Linux platform (for preprocessing scripts)
 
 ## W-ASAP Loculus
 
