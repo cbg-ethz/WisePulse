@@ -9,7 +9,7 @@ runDevelopmentS3: false
 welcomeMessageHTML: '<div class="space-y-4">
     <div>
       <h2 class="text-xl font-semibold mb-2">Welcome to W-ASAP</h2>
-      <p>The <strong>Wastewater Analysis and Sharing Platform (W-ASAP)</strong> — a joint effort of the <a href="https://bsse.ethz.ch/cbg" class="underline text-blue-600">Computational Biology Group (CBG)</a> and <a href="https://bsse.ethz.ch/cevo" class="underline text-blue-600">Computational Evolution Group (cEVO)</a> at ETH Zürich.</p>
+      <p>The <strong>Wastewater Analysis and Sharing Platform (W-ASAP)</strong> — a joint effort of the <a href="https://bsse.ethz.ch/cbg" class="underline text-blue-600">Computational Biology Group (CBG)</a> and <a href="https://bsse.ethz.ch/cevo" class="underline text-blue-600">Computational Evolution Group (cEvo)</a> at ETH Zürich.</p>
     </div>
     
     <div>
