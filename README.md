@@ -10,6 +10,8 @@ make build   # Build required Rust tools
 make all     # Process data in silo_input/ directory
 ```
 
+Configure desired data to fetch directly in the Makefile.
+
 ### Prerequisites
 - Rust/Cargo
 - Docker Compose (optional for final SILO step)
