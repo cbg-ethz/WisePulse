@@ -1,6 +1,6 @@
 services:
   siloPreprocessing:
-    image: ghcr.io/genspectrum/lapis-silo:pr-920
+    image: ghcr.io/genspectrum/lapis-silo:0.8.5
     command: preprocessing
     mem_limit: 300g
     volumes:

@@ -1,2 +1,2 @@
 ndjsonInputFilename: sorted.ndjson.zst
-withUnalignedSequences: false
+withoutUnalignedSequences: true
