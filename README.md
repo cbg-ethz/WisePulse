@@ -1,20 +1,33 @@
 ## srSILO
 
-To build the Rust helper scripts, run `cargo build --release`.
+WisePulse genomic data pipeline for processing COVID-19 sequencing data into SILO indexes.
 
-To process a set of `.ndjson.zst` files, put these in the directory `silo_input`. Then run `make`. 
-This will generate SILO Indexes which can be readily used to run a LAPIS/SILO API.
+## Usage
 
-To start the API you can run `LAPIS_PORT=80 docker compose up`.
-Note that you can replace the `LAPIS_PORT` with another port that the api should listen on.
+To fetch data from the W-ASAP Loculus LAPIS and pre-process the set of `.ndjson.zst` files 
+use the functionality in the `make`, see `make help`
 
-A swagger UI to the API can then be accessed at:
-`http://localhost:80/swagger-ui/index.html`
+ This will generate SILO Indexes which can be readily used to run a LAPIS/SILO API.
 
-Prerequisites:
-- installed cargo
-- installed Docker Compose
-- platform: Linux (w.r.t. pre-processing scripts invoked by `make`)
+Configure the desired data to fetch and directories directly in the Makefile.
+
+To start the API you can run `LAPIS_PORT=8083 docker compose up`. Note that you can replace the `LAPIS_PORT` with another port that the api should listen on.
+
+A swagger UI to the API can then be accessed at: http://localhost:80/swagger-ui/index.html
+
+### Quick Start
+
+```bash
+    make build                           # Build all Rust tools
+    make clean-all                       # Clean everything including Docker
+    make fetch-and-process               # Fetch data and run full pipeline
+    LAPIS_PORT=8083 docker compose up -d   # Run srSILO on port 8083
+````
+
+### Prerequisites
+- Rust/Cargo
+- Docker Compose (optional for final SILO step)
+- Linux platform (for preprocessing scripts)
 
 ## W-ASAP Loculus
 
@@ -22,7 +35,7 @@ Deploy to Kubernetes using Ansible:
 
 ```bash
 cd ansible
-echo "your-vault-password" > .vault_pass    # Configure vault password
-ansible-vault edit secrets/my-values.yaml  # Configure your values
-ansible-playbook apply-values.yml         # Deploy
+ansible-playbook playbooks/deploy.yml
 ```
+
+for more detail see `ansible/README.md`
