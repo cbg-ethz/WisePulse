@@ -53,7 +53,7 @@ organisms:
    covid:
     schema:
       organismName: 'SARS-CoV-2'
-      image: '/static/images/covid-virus.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/covid-virus.png'
       metadata:
         - name: date
           type: date
