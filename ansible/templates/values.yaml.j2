@@ -66,6 +66,9 @@ organisms:
   {{ organism_key }}:
     schema:
       organismName: '{{ organism_config.schema.organismName }}'
+{% if organism_config.schema.image is defined %}
+      image: '{{ organism_config.schema.image }}'
+{% endif %}
       metadata:
 {% for metadata_item in organism_config.schema.metadata %}
         - name: {{ metadata_item.name }}
