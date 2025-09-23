@@ -11,3 +11,4 @@ sorted_chunks/
 .vault_pass
 
 .vscode/
+.DS_Store

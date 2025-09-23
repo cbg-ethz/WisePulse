@@ -12,6 +12,27 @@
         state: directory
         mode: '0750'
 
+    # TODO: Add nginx configuration automation for static file serving in future
+    # This should include adding location /static/ block to nginx config
+
+    - name: Ensure static images directory exists
+      file:
+        path: /var/www/html/static/images
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      become: yes
+
+    - name: Copy COVID virus image for static serving
+      copy:
+        src: ../files/images/covid-virus.png
+        dest: /var/www/html/static/images/covid-virus.png
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      become: yes
+
     - name: Generate values file from template
       template:
         src: ../templates/values.yaml.j2
