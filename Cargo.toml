@@ -5,4 +5,6 @@ members = [
     "add_offset",
     "split_into_sorted_chunks",
     "merge_sorted_chunks",
-    "fetch_silo_data"]
+    "fetch_silo_data",
+    "check_new_data",
+    "update_timestamp"]

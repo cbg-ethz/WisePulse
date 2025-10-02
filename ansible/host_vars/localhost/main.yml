@@ -1,8 +1,33 @@
 ---
 # Host-specific configuration for localhost
+
+# ============================================================================
+# Loculus Deployment Configuration
+# ============================================================================
 host: 'db.wasap.genspectrum.org'
 kubectl_context: 'k3d-loculusCluster'
 helm_chart_path: '/opt/loculus/loculus/kubernetes/loculus'
-
-# Cleanup temporary files after deployment
 cleanup_temp_files: true
+
+# ============================================================================
+# WisePulse Pipeline Configuration
+# ============================================================================
+
+# Deployment settings
+wisepulse_repo_path: /opt/wisepulse
+wisepulse_user: wisepulse
+wisepulse_group: wisepulse
+wisepulse_log_dir: /var/log/wisepulse
+
+# Schedule settings
+wisepulse_timer_oncalendar: "*-*-* 02:00:00"  # Daily at 2 AM
+
+# API settings
+wisepulse_api_base_url: https://api.db.wasap.genspectrum.org
+
+# Data fetching settings
+wisepulse_fetch_days: 90
+wisepulse_fetch_max_reads: 125000000  # 125 million reads
+
+# Optional settings
+wisepulse_lapis_port: 8083

@@ -5,20 +5,26 @@ TMP_DIR = tmp
 SILO_OUTPUT_DIR = silo_output
 
 # === BUILD ARTIFACTS ===
-RUST_BINARIES = target/release/split_into_sorted_chunks target/release/merge_sorted_chunks target/release/fetch_silo_data target/release/add_offset
+RUST_BINARIES = target/release/split_into_sorted_chunks target/release/merge_sorted_chunks target/release/fetch_silo_data target/release/add_offset target/release/check_new_data target/release/update_timestamp
 SORTED_CHUNKS_FILE = $(SORTED_CHUNKS_DIR)/chunks.list
 SORTED_FILE = sorted.ndjson.zst
 SILO_OUTPUT_FLAG = $(SILO_OUTPUT_DIR)/.processed
+TIMESTAMP_FILE = .last_update
 
 # === FETCH CONFIGURATION ===
 FETCH_START_DATE ?= $(shell date +%Y-%m-%d)
-FETCH_DAYS ?= 60
-FETCH_MAX_READS ?= 5000000 # 10 million
+FETCH_DAYS ?= 90
+FETCH_MAX_READS ?= 125000000
 FETCH_OUTPUT_DIR ?= $(INPUT_DIR)
 FETCH_API_BASE_URL ?= https://api.db.wasap.genspectrum.org
 
+# === API CONFIGURATION ===
+# LAPIS_PORT: Port for SILO API (default: 8083)
+# Set via environment: LAPIS_PORT=8083 make smart-fetch-and-process
+LAPIS_PORT ?= 8083
+
 # === MAIN TARGETS ===
-.PHONY: all build fetch-data fetch-and-process clean clean-all help
+.PHONY: all build fetch-data fetch-and-process smart-fetch-and-process clean clean-all help
 
 all: $(SILO_OUTPUT_FLAG)
 
@@ -40,13 +46,19 @@ clean-all: clean clean-data
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  build             - Build all Rust tools"
-	@echo "  fetch-data        - Fetch data from LAPIS API"
-	@echo "  all               - Process existing data through pipeline"
-	@echo "  fetch-and-process - Fetch data and run full pipeline"
-	@echo "  clean             - Clean intermediate files"
-	@echo "  clean-data        - Clean downloaded data"
-	@echo "  clean-all         - Clean everything including Docker"
+	@echo "  build                   - Build all Rust tools"
+	@echo "  fetch-data              - Fetch data from LAPIS API"
+	@echo "  all                     - Process existing data through pipeline"
+	@echo "  fetch-and-process       - Fetch data and run full pipeline (no API mgmt)"
+	@echo "  smart-fetch-and-process - Smart: check for new data, stop API, process, restart API"
+	@echo "  clean                   - Clean intermediate files"
+	@echo "  clean-data              - Clean downloaded data"
+	@echo "  clean-all               - Clean everything including Docker"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  LAPIS_PORT              - Port for SILO API (default: 8083)"
+	@echo "  FETCH_DAYS              - Days of data to fetch (default: 90)"
+	@echo "  FETCH_MAX_READS         - Max reads per batch (default: 125000000)"
 
 # === TARGET IMPLEMENTATIONS ===
 
@@ -69,11 +81,33 @@ fetch-data:
 	@echo
 
 # Convenience target to fetch fresh data and run full pipeline
+# Note: This target does NOT manage the API - use smart-fetch-and-process for automated runs
 fetch-and-process:
 	@echo "=== WisePulse Pipeline ==="
 	@$(MAKE) fetch-data
 	@$(MAKE) all
 	@echo "✓ Pipeline complete"
+
+# Smart pipeline: only fetch and process if new data is available
+smart-fetch-and-process: build
+	@echo "=== WisePulse Smart Pipeline ==="
+	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)"; then \
+		echo "=== New data detected - running full pipeline ==="; \
+		$(MAKE) clean-data; \
+		$(MAKE) fetch-data; \
+		echo "=== Stopping SILO API for preprocessing ==="; \
+		docker compose down || true; \
+		$(MAKE) all && \
+		(echo "=== Restarting SILO API ===" && \
+		LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d && \
+		target/release/update_timestamp "$(TIMESTAMP_FILE)" && \
+		echo "✓ Pipeline complete - timestamp updated") || \
+		(echo "✗ Pipeline failed - restarting API anyway" && \
+		LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d && \
+		exit 1); \
+	else \
+		echo "=== No new data - skipping pipeline ==="; \
+	fi
 
 # Create directories
 $(SORTED_CHUNKS_DIR):
