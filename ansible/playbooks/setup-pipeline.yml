@@ -1,0 +1,19 @@
+---
+- name: Setup WisePulse Data Pipeline Automation
+  hosts: localhost
+  gather_facts: yes
+  become: yes
+  
+  roles:
+    - wisepulse_pipeline
+  
+  post_tasks:
+    - name: Display next scheduled run
+      shell: systemctl list-timers wisepulse-pipeline.timer --no-pager
+      register: timer_output
+      changed_when: false
+      become: yes
+    
+    - name: Show timer schedule
+      debug:
+        msg: "{{ timer_output.stdout_lines }}"

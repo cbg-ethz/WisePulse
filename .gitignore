@@ -8,6 +8,9 @@ euler_silo_inputs_1.2.0
 target/
 sorted_chunks/
 
+# Pipeline automation
+.last_update
+
 # Ansible
 .vault_pass
 

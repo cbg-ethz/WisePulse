@@ -1,0 +1,144 @@
+---
+# Tasks for setting up WisePulse data pipeline automation
+
+- name: Display configuration
+  debug:
+    msg:
+      - "WisePulse Pipeline Configuration:"
+      - "  Repository path: {{ wisepulse_repo_path }}"
+      - "  User: {{ wisepulse_user }}"
+      - "  Log directory: {{ wisepulse_log_dir }}"
+      - "  Schedule: {{ wisepulse_timer_oncalendar }}"
+      - "  API URL: {{ wisepulse_api_base_url }}"
+
+- name: Check if repository exists
+  stat:
+    path: "{{ wisepulse_repo_path }}"
+  register: repo_stat
+
+- name: Fail if repository does not exist
+  fail:
+    msg: |
+      WisePulse repository not found at {{ wisepulse_repo_path }}
+      Please clone the repository first:
+        sudo mkdir -p {{ wisepulse_repo_path | dirname }}
+        sudo git clone https://github.com/cbg-ethz/WisePulse.git {{ wisepulse_repo_path }}
+  when: not repo_stat.stat.exists
+
+- name: Check if Docker is installed
+  command: docker --version
+  register: docker_check
+  failed_when: false
+  changed_when: false
+
+- name: Fail if Docker is not installed
+  fail:
+    msg: |
+      Docker is not installed.
+      Please install Docker first: https://docs.docker.com/engine/install/
+  when: docker_check.rc != 0
+
+- name: Ensure wisepulse group exists
+  group:
+    name: "{{ wisepulse_group }}"
+    state: present
+  become: yes
+
+- name: Ensure wisepulse user exists
+  user:
+    name: "{{ wisepulse_user }}"
+    group: "{{ wisepulse_group }}"
+    shell: /bin/bash
+    create_home: yes
+    comment: "WisePulse Pipeline User"
+  become: yes
+
+- name: Ensure wisepulse user can run Docker
+  user:
+    name: "{{ wisepulse_user }}"
+    groups: docker
+    append: yes
+  become: yes
+  notify: restart docker
+
+- name: Ensure log directory exists
+  file:
+    path: "{{ wisepulse_log_dir }}"
+    state: directory
+    owner: "{{ wisepulse_user }}"
+    group: "{{ wisepulse_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Set group ownership and permissions of repository
+  file:
+    path: "{{ wisepulse_repo_path }}"
+    group: "{{ wisepulse_group }}"
+    mode: 'g+w'
+    recurse: yes
+  become: yes
+
+- name: Install Rust for wisepulse user
+  shell: |
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  args:
+    creates: /home/{{ wisepulse_user }}/.cargo/bin/cargo
+  become: yes
+  become_user: "{{ wisepulse_user }}"
+
+- name: Build Rust binaries
+  command: cargo build --release
+  args:
+    chdir: "{{ wisepulse_repo_path }}"
+  become: yes
+  become_user: "{{ wisepulse_user }}"
+  environment:
+    PATH: "/home/{{ wisepulse_user }}/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+  register: build_result
+  changed_when: build_result.rc == 0
+
+- name: Deploy systemd service file
+  template:
+    src: wisepulse-pipeline.service.j2
+    dest: /etc/systemd/system/wisepulse-pipeline.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: reload systemd
+
+- name: Deploy systemd timer file
+  template:
+    src: wisepulse-pipeline.timer.j2
+    dest: /etc/systemd/system/wisepulse-pipeline.timer
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: reload systemd
+
+- name: Force systemd reload if files changed
+  meta: flush_handlers
+
+- name: Enable wisepulse-pipeline timer
+  systemd:
+    name: wisepulse-pipeline.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  become: yes
+
+- name: Display status information
+  debug:
+    msg:
+      - "WisePulse pipeline setup complete!"
+      - ""
+      - "Useful commands:"
+      - "  View timer status:       sudo systemctl status wisepulse-pipeline.timer"
+      - "  View timer schedule:     sudo systemctl list-timers wisepulse-pipeline.timer"
+      - "  View service logs:       sudo journalctl -u wisepulse-pipeline.service -f"
+      - "  Run pipeline manually:   sudo systemctl start wisepulse-pipeline.service"
+      - "  Stop timer:              sudo systemctl stop wisepulse-pipeline.timer"
+      - "  Disable timer:           sudo systemctl disable wisepulse-pipeline.timer"
+      - ""
+      - "The pipeline will run automatically at: {{ wisepulse_timer_oncalendar }}"
