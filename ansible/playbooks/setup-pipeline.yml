@@ -2,6 +2,7 @@
 - name: Setup WisePulse Data Pipeline Automation
   hosts: localhost
   gather_facts: yes
+  become: yes
   
   roles:
     - wisepulse_pipeline

@@ -15,10 +15,11 @@ This role configures automated data pipeline execution using systemd timers (sim
 
 The following must be installed on the target system **before** running this role:
 
-- **Rust/Cargo**: Install with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - **Docker and Docker Compose**: Follow [official Docker installation](https://docs.docker.com/engine/install/)
 - **git**: Usually pre-installed on most systems
-- **WisePulse repository**: Cloned to the target location (default: `/opt/wisepulse`)
+- **WisePulse repository**: Cloned to the target location (default: `/opt/WisePulse`)
+
+**Note**: Rust/Cargo will be automatically installed for the `wisepulse` user by this role.
 
 ## Role Variables
 

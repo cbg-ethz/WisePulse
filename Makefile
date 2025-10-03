@@ -94,6 +94,7 @@ smart-fetch-and-process: build
 	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)"; then \
 		echo "=== New data detected - running full pipeline ==="; \
 		$(MAKE) clean-data; \
+		$(MAKE) clean; \
 		$(MAKE) fetch-data; \
 		echo "=== Stopping SILO API for preprocessing ==="; \
 		docker compose down || true; \

@@ -25,20 +25,6 @@
         sudo git clone https://github.com/cbg-ethz/WisePulse.git {{ wisepulse_repo_path }}
   when: not repo_stat.stat.exists
 
-- name: Check if Rust is installed
-  command: cargo --version
-  register: cargo_check
-  failed_when: false
-  changed_when: false
-
-- name: Fail if Rust is not installed
-  fail:
-    msg: |
-      Rust/Cargo is not installed.
-      Please install Rust first: https://rustup.rs/
-      Or run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-  when: cargo_check.rc != 0
-
 - name: Check if Docker is installed
   command: docker --version
   register: docker_check
@@ -84,13 +70,21 @@
     mode: '0755'
   become: yes
 
-- name: Set ownership of repository to wisepulse user
+- name: Set group ownership and permissions of repository
   file:
     path: "{{ wisepulse_repo_path }}"
-    owner: "{{ wisepulse_user }}"
     group: "{{ wisepulse_group }}"
+    mode: 'g+w'
     recurse: yes
   become: yes
+
+- name: Install Rust for wisepulse user
+  shell: |
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  args:
+    creates: /home/{{ wisepulse_user }}/.cargo/bin/cargo
+  become: yes
+  become_user: "{{ wisepulse_user }}"
 
 - name: Build Rust binaries
   command: cargo build --release
@@ -99,7 +93,7 @@
   become: yes
   become_user: "{{ wisepulse_user }}"
   environment:
-    PATH: "/usr/local/bin:/usr/bin:/bin:/usr/local/cargo/bin:{{ ansible_env.HOME }}/.cargo/bin"
+    PATH: "/home/{{ wisepulse_user }}/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
   register: build_result
   changed_when: build_result.rc == 0
 
