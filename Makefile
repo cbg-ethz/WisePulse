@@ -33,8 +33,12 @@ build: $(RUST_BINARIES)
 
 # Enhanced clean with options
 clean:
-	rm -f $(SORTED_CHUNKS_FILE) $(SORTED_FILE) $(SILO_OUTPUT_FLAG)
-	rm -rf $(SORTED_CHUNKS_DIR) $(TMP_DIR)
+	@echo "=== Cleaning intermediate files ==="
+	-rm -f $(SORTED_CHUNKS_FILE) $(SORTED_FILE) $(SILO_OUTPUT_FLAG)
+	-find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete 2>/dev/null || true
+	-find $(TMP_DIR) -mindepth 1 -delete 2>/dev/null || true
+	@mkdir -p $(SORTED_CHUNKS_DIR) $(TMP_DIR)
+	@echo "✓ Clean complete"
 
 clean-data:
 	rm -rf $(INPUT_DIR)/*.ndjson.zst
@@ -98,7 +102,7 @@ smart-fetch-and-process: build
 		$(MAKE) fetch-data; \
 		echo "=== Stopping SILO API for preprocessing ==="; \
 		docker compose down || true; \
-		$(MAKE) all && \
+		$(MAKE) $(SILO_OUTPUT_FLAG) && \
 		(echo "=== Restarting SILO API ===" && \
 		LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d && \
 		target/release/update_timestamp "$(TIMESTAMP_FILE)" && \
@@ -146,6 +150,7 @@ $(SORTED_FILE): $(SORTED_CHUNKS_FILE) $(TMP_DIR) build
 $(SILO_OUTPUT_FLAG): $(SORTED_FILE) $(SILO_OUTPUT_DIR)
 	@echo "=== SILO preprocessing ==="
 	@if command -v docker >/dev/null 2>&1; then \
+		docker compose -f docker-compose-preprocessing.yml down -v 2>/dev/null || true; \
 		docker compose -f docker-compose-preprocessing.yml up && \
 		echo "✓ SILO preprocessing complete" && \
 		touch $(SILO_OUTPUT_FLAG) || \
