@@ -6,6 +6,19 @@ runDevelopmentMainDatabase: {{ runDevelopmentMainDatabase | lower }}
 runDevelopmentKeycloakDatabase: {{ runDevelopmentKeycloakDatabase | lower }}
 runDevelopmentS3: {{ runDevelopmentS3 | lower }}
 
+{% if logo is defined %}
+logo:
+  url: '{{ logo.url }}'
+{% endif %}
+
+{% if bannerMessage is defined %}
+bannerMessage: '{{ bannerMessage }}'
+{% endif %}
+
+{% if gitHubMainUrl is defined %}
+gitHubMainUrl: '{{ gitHubMainUrl }}'
+{% endif %}
+
 welcomeMessageHTML: '{{ welcomeMessageHTML | default("") }}'
 
 public:
