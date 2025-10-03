@@ -1,5 +1,13 @@
 name: 'W-ASAP'
 host: 'db.wasap.genspectrum.org'
+
+logo:
+  url: 'https://db.wasap.genspectrum.org/static/images/wasap-logo.png'
+  width: 200
+  height: 180
+
+bannerMessage: 'This is a beta version of W-ASAP. Expect occasional modifications to the datastore structure and content.'
+
 loculus_environment: 'local' # Do not change this: this setup uses a "local" environment as the public traffic is proxied through nginx.
 
 runDevelopmentMainDatabase: false
@@ -14,10 +22,6 @@ welcomeMessageHTML: '<div class="space-y-4">
     
     <div>
       <p>This database powers the interactive visualizations and analyses available at <a href="https://wasap.genspectrum.org/" class="underline text-blue-600">wasap.genspectrum.org</a>. Here we share processed alignment files and intermediary files for real-time plotting and analysis of wastewater surveillance data.</p>
-    </div>
-    
-    <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-      <p><strong>⚠️ Beta Version:</strong> This platform is currently in beta. Please expect occasional modifications to the datastore structure and content as we continue to improve the system.</p>
     </div>
     
     <div>
@@ -41,6 +45,8 @@ auth:
 
 seqSets:
   enabled: false
+
+gitHubMainUrl: 'https://github.com/cbg-ethz/WisePulse'
 
 s3:
   enabled: true
