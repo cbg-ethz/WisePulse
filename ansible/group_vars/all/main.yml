@@ -3,6 +3,8 @@ host: 'db.wasap.genspectrum.org'
 
 logo:
   url: 'https://db.wasap.genspectrum.org/static/images/wasap-logo.png'
+  width: 200
+  height: 180
 
 bannerMessage: 'This is a beta version of W-ASAP. Expect occasional modifications to the datastore structure and content.'
 

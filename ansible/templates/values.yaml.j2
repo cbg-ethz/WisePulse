@@ -9,6 +9,12 @@ runDevelopmentS3: {{ runDevelopmentS3 | lower }}
 {% if logo is defined %}
 logo:
   url: '{{ logo.url }}'
+{% if logo.height is defined %}
+  height: {{ logo.height }}
+{% endif %}
+{% if logo.width is defined %}
+  width: {{ logo.width }}
+{% endif %}
 {% endif %}
 
 {% if bannerMessage is defined %}
