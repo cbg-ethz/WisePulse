@@ -14,7 +14,7 @@ TIMESTAMP_FILE = .last_update
 # === FETCH CONFIGURATION ===
 FETCH_START_DATE ?= $(shell date +%Y-%m-%d)
 FETCH_DAYS ?= 90
-FETCH_MAX_READS ?= 125000000
+FETCH_MAX_READS ?= 125000000  # Override: FETCH_MAX_READS=1000000 make ...
 FETCH_OUTPUT_DIR ?= $(INPUT_DIR)
 FETCH_API_BASE_URL ?= https://api.db.wasap.genspectrum.org
 

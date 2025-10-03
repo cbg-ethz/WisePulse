@@ -12,22 +12,9 @@ cleanup_temp_files: true
 # ============================================================================
 # WisePulse Pipeline Configuration
 # ============================================================================
+# All WisePulse settings use defaults from roles/wisepulse_pipeline/defaults/main.yml
+# Only override here if this specific host needs different values
 
-# Deployment settings
-wisepulse_repo_path: /opt/wisepulse
-wisepulse_user: wisepulse
-wisepulse_group: wisepulse
-wisepulse_log_dir: /var/log/wisepulse
-
-# Schedule settings
-wisepulse_timer_oncalendar: "*-*-* 02:00:00"  # Daily at 2 AM
-
-# API settings
-wisepulse_api_base_url: https://api.db.wasap.genspectrum.org
-
-# Data fetching settings
-wisepulse_fetch_days: 90
-wisepulse_fetch_max_reads: 125000000  # 125 million reads
-
-# Optional settings
-wisepulse_lapis_port: 8083
+# Example overrides (commented out - using defaults):
+# wisepulse_fetch_max_reads: 1000000  # Uncomment to override for testing
+# wisepulse_timer_oncalendar: "*-*-* 03:00:00"  # Uncomment to run at 3 AM instead
