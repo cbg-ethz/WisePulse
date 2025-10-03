@@ -1,8 +1,20 @@
 ---
 # Host-specific configuration for localhost
+
+# ============================================================================
+# Loculus Deployment Configuration
+# ============================================================================
 host: 'db.wasap.genspectrum.org'
 kubectl_context: 'k3d-loculusCluster'
 helm_chart_path: '/opt/loculus/loculus/kubernetes/loculus'
-
-# Cleanup temporary files after deployment
 cleanup_temp_files: true
+
+# ============================================================================
+# WisePulse Pipeline Configuration
+# ============================================================================
+# All WisePulse settings use defaults from roles/wisepulse_pipeline/defaults/main.yml
+# Only override here if this specific host needs different values
+
+# Example overrides (commented out - using defaults):
+# wisepulse_fetch_max_reads: 1000000  # Uncomment to override for testing
+# wisepulse_timer_oncalendar: "*-*-* 03:00:00"  # Uncomment to run at 3 AM instead
