@@ -131,3 +131,67 @@ Exit codes:
 - `1`: No new data → Pipeline skips
 - `2`: Error → Pipeline skips and logs error
 
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Systemd Timer                             │
+│  (wisepulse-pipeline.timer)                                     │
+│  Triggers: Daily at 02:00                                      │
+└────────────────────┬────────────────────────────────────────────┘
+                     │ activates
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Systemd Service                              │
+│  (wisepulse-pipeline.service)                                   │
+│  User: wisepulse                                                 │
+│  WorkDir: /opt/wisepulse                                        │
+└────────────────────┬────────────────────────────────────────────┘
+                     │ executes
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  make smart-fetch-and-process                    │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              check_new_data (Rust binary)                        │
+│  • Queries LAPIS API for latest sequence dates                  │
+│  • Compares with .last_update timestamp                         │
+│  • Exit 0 = new data, Exit 1 = no new data                     │
+└────────────────────┬────────────────────────────────────────────┘
+                     │
+         ┌───────────┴───────────┐
+         │                       │
+    Exit 0                  Exit 1
+    (new data)           (no new data)
+         │                       │
+         ▼                       ▼
+┌─────────────────┐    ┌──────────────────┐
+│ make clean-data │    │  Skip & Log      │
+└────────┬────────┘    │  "No new data"   │
+         │             └──────────────────┘
+         ▼
+┌─────────────────┐
+│ make fetch-data │
+│ (fetch_silo_data)│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   make all      │
+│ • split chunks  │
+│ • merge chunks  │
+│ • SILO preproc  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│update_timestamp │
+│(.last_update)   │
+└─────────────────┘
+         │
+         ▼
+    Logs to journald
+```

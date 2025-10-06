@@ -9,6 +9,8 @@ OnCalendar={{ wisepulse_timer_oncalendar }}
 
 # Run immediately if the system was off when the timer should have triggered
 Persistent=true
+# Ensure no randomization: runs at exact time for predictability
+RandomizedDelaySec=0
 
 [Install]
 WantedBy=timers.target
