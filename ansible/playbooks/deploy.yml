@@ -33,6 +33,15 @@
         mode: '0644'
       become: yes
 
+    - name: Copy W-ASAP logo for static serving
+      copy:
+        src: ../files/images/wasap-logo.png
+        dest: /var/www/html/static/images/wasap-logo.png
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      become: yes
+
     - name: Generate values file from template
       template:
         src: ../templates/values.yaml.j2
