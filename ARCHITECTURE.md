@@ -6,7 +6,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Systemd Timer                             │
 │  (wisepulse-pipeline.timer)                                     │
-│  Triggers: Daily at 02:00 + random 0-30min                      │
+│  Triggers: Daily at 02:00                                      │
 └────────────────────┬────────────────────────────────────────────┘
                      │ activates
                      ▼
