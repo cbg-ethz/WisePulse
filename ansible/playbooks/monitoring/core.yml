@@ -1,0 +1,10 @@
+---
+- name: Deploy Core Monitoring (Prometheus + Grafana)
+  hosts: monitoring
+  become: yes
+  roles:
+    - prometheus
+    - grafana
+  tags:
+    - monitoring
+    - core

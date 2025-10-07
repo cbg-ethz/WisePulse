@@ -1,0 +1,21 @@
+---
+# Monitoring specific configuration
+prometheus_version: "2.45.0"
+prometheus_port: 9090
+prometheus_data_dir: /opt/prometheus/data
+prometheus_config_dir: /etc/prometheus
+prometheus_user: prometheus
+
+grafana_version: latest
+grafana_port: 3000
+grafana_data_dir: /var/lib/grafana
+grafana_config_dir: /etc/grafana
+grafana_admin_user: admin
+
+# Node Exporter
+node_exporter_version: "1.6.1"
+node_exporter_port: 9100
+
+# Alertmanager
+alertmanager_enabled: false
+alertmanager_port: 9093

@@ -1,0 +1,8 @@
+---
+grafana_version: latest
+grafana_port: 3000
+grafana_data_dir: /var/lib/grafana
+grafana_config_dir: /etc/grafana
+grafana_log_dir: /var/log/grafana
+grafana_plugins_dir: /var/lib/grafana/plugins
+grafana_provisioning_dir: /etc/grafana/provisioning

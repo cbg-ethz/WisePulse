@@ -1,0 +1,27 @@
+[Unit]
+Description=Prometheus Server
+Documentation=https://prometheus.io/docs/
+After=network-online.target
+
+[Service]
+User={{ prometheus_user }}
+Group={{ prometheus_group }}
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart={{ prometheus_bin_dir }}/prometheus \
+  --config.file={{ prometheus_config_dir }}/prometheus.yml \
+  --storage.tsdb.path={{ prometheus_data_dir }} \
+  --storage.tsdb.retention.time={{ prometheus_retention }} \
+  --web.console.templates={{ prometheus_config_dir }}/consoles \
+  --web.console.libraries={{ prometheus_config_dir }}/console_libraries \
+  --web.listen-address=127.0.0.1:{{ prometheus_port }} \
+  --web.external-url=http://localhost:{{ prometheus_port }}/ \
+  --web.enable-lifecycle
+
+ExecReload=/bin/kill -HUP $MAINPID
+LimitNOFILE=65536
+LimitNPROC=65536
+
+[Install]
+WantedBy=multi-user.target

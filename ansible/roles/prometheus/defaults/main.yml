@@ -1,0 +1,11 @@
+---
+prometheus_version: "2.45.0"
+prometheus_port: 9090
+prometheus_data_dir: /opt/prometheus/data
+prometheus_config_dir: /etc/prometheus
+prometheus_user: prometheus
+prometheus_group: prometheus
+prometheus_bin_dir: /usr/local/bin
+prometheus_retention: "15d"
+node_exporter_port: 9100
+grafana_port: 3000
