@@ -50,6 +50,8 @@ wisepulse_fetch_days: 90
 wisepulse_fetch_max_reads: 125000000  # 125 million reads
 ```
 
+Note: The Docker memory limit for preprocessing should be adjusted according to the value of `wisepulse_fetch_max_reads`.
+
 **To customize permanently**: Edit `host_vars/localhost/main.yml`  
 **To override at runtime**: Use `-e "variable_name=value"`
 
@@ -78,7 +80,14 @@ With inline overrides:
 
 ## Usage
 
-After running the playbook, use these commands to manage the pipeline:
+Run the playbook with
+
+```bash
+# run playbook requires sudo password for config
+ansible-playbook playbooks/setup-pipeline.yml --ask-become-pass
+```
+
+then use these commands to manage the pipeline:
 
 ```bash
 # View timer status

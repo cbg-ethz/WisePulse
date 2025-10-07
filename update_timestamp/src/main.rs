@@ -17,13 +17,16 @@ async fn main() -> Result<()> {
     } else {
         ".last_update"
     };
-    
+
     let now = Utc::now();
     let timestamp = now.timestamp();
-    
+
     fs::write(timestamp_file, timestamp.to_string()).await?;
-    println!("Updated timestamp to: {}", now.format("%Y-%m-%d %H:%M:%S UTC"));
+    println!(
+        "Updated timestamp to: {}",
+        now.format("%Y-%m-%d %H:%M:%S UTC")
+    );
     println!("File: {}", timestamp_file);
-    
+
     Ok(())
 }

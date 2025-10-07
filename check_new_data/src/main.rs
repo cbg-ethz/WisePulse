@@ -21,7 +21,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[command(name = "check_new_data")]
 #[command(about = "Check if new genomic data is available from LAPIS API")]
 struct Args {
-    /// Base URL for the LAPIS API
+    /// Base URL for the Loculus LAPIS API
     #[arg(long, default_value = "https://api.db.wasap.genspectrum.org")]
     api_base_url: String,
 
@@ -38,8 +38,14 @@ struct ApiResponse {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct SampleData {
-    sample_id: String,
+    sample_id: Option<String>,
     submitted_at_timestamp: i64,
+    #[serde(default)]
+    is_revocation: Option<bool>,
+    #[serde(default)]
+    version_status: Option<String>,
+    #[serde(default)]
+    version_comment: Option<String>,
 }
 
 #[tokio::main]
@@ -57,25 +63,25 @@ async fn main() {
             2 // Error
         }
     };
-    
+
     std::process::exit(exit_code);
 }
 
 async fn run() -> Result<bool> {
     let args = Args::parse();
-    
+
     println!("=== Checking for new data ===");
     println!("API: {}", args.api_base_url);
-    
+
     let last_update = read_last_update(&args.timestamp_file).await?;
-    
+
     match last_update {
         Some(last_date) => {
             println!("Last update: {}", last_date.format("%Y-%m-%d %H:%M:%S UTC"));
             println!("Last update timestamp: {}", last_date.timestamp());
-            
+
             let has_new_data = check_for_new_submissions(&args, last_date).await?;
-            
+
             if has_new_data {
                 println!("✓ New data available!");
                 println!("  Pipeline should run to fetch and process new sequences.");
@@ -83,7 +89,7 @@ async fn run() -> Result<bool> {
                 println!("• No new data found.");
                 println!("  Pipeline can skip this run.");
             }
-            
+
             Ok(has_new_data)
         }
         None => {
@@ -96,31 +102,30 @@ async fn run() -> Result<bool> {
 
 async fn read_last_update(path: &str) -> Result<Option<DateTime<Utc>>> {
     let file_path = Path::new(path);
-    
+
     if !file_path.exists() {
         return Ok(None);
     }
-    
+
     let content = fs::read_to_string(file_path).await?;
     let timestamp = content.trim().parse::<i64>()?;
-    let datetime = DateTime::from_timestamp(timestamp, 0)
-        .ok_or("Invalid timestamp in file")?;
-    
+    let datetime = DateTime::from_timestamp(timestamp, 0).ok_or("Invalid timestamp in file")?;
+
     Ok(Some(datetime))
 }
 
 async fn check_for_new_submissions(args: &Args, last_update: DateTime<Utc>) -> Result<bool> {
     let client = Client::new();
     let timestamp = last_update.timestamp();
-    
+
     let url = format!(
         "{}/covid/sample/details?submittedAtTimestampFrom={}&limit=1&dataFormat=JSON&downloadAsFile=false",
         args.api_base_url,
         timestamp
     );
-    
+
     println!("Querying API for submissions after timestamp {}", timestamp);
-    
+
     let response = client
         .get(&url)
         .header("Accept", "application/json")
@@ -132,16 +137,41 @@ async fn check_for_new_submissions(args: &Args, last_update: DateTime<Utc>) -> R
     }
 
     let api_response: ApiResponse = response.json().await?;
-    
+
     if !api_response.data.is_empty() {
         if let Some(sample) = api_response.data.first() {
             let submitted_time = DateTime::from_timestamp(sample.submitted_at_timestamp, 0)
                 .map(|dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string())
                 .unwrap_or_else(|| sample.submitted_at_timestamp.to_string());
-            println!("Found new submission: {} (submitted at: {})", 
-                     sample.sample_id, submitted_time);
+            let sample_id = sample.sample_id.as_deref().unwrap_or("<unknown sample id>");
+            if sample.is_revocation.unwrap_or(false) {
+                let status = sample
+                    .version_status
+                    .as_deref()
+                    .map(|s| format!(" (status: {})", s))
+                    .unwrap_or_default();
+                let comment = sample
+                    .version_comment
+                    .as_deref()
+                    .map(|c| format!(" - {}", c))
+                    .unwrap_or_default();
+                println!(
+                    "Found revocation: {} (submitted at: {}){}{}",
+                    sample_id, submitted_time, status, comment
+                );
+            } else {
+                let status = sample
+                    .version_status
+                    .as_deref()
+                    .map(|s| format!(" (status: {})", s))
+                    .unwrap_or_default();
+                println!(
+                    "Found new submission: {} (submitted at: {}){}",
+                    sample_id, submitted_time, status
+                );
+            }
         }
     }
-    
+
     Ok(!api_response.data.is_empty())
 }
