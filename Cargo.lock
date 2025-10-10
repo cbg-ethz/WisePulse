@@ -1749,7 +1749,6 @@ name = "update_timestamp"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "tokio",
 ]
 
 [[package]]

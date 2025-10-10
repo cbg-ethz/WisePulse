@@ -39,7 +39,6 @@ struct ApiResponse {
 #[serde(rename_all = "camelCase")]
 struct SampleData {
     sample_id: Option<String>,
-    submitted_at_timestamp: i64,
     #[serde(default)]
     is_revocation: Option<bool>,
     #[serde(default)]
@@ -80,7 +79,7 @@ async fn run() -> Result<bool> {
             println!("Last update: {}", last_date.format("%Y-%m-%d %H:%M:%S UTC"));
             println!("Last update timestamp: {}", last_date.timestamp());
 
-            let has_new_data = check_for_new_submissions(&args, last_date).await?;
+            let has_new_data = check_for_data_changes(&args, last_date).await?;
 
             if has_new_data {
                 println!("✓ New data available!");
@@ -114,17 +113,26 @@ async fn read_last_update(path: &str) -> Result<Option<DateTime<Utc>>> {
     Ok(Some(datetime))
 }
 
-async fn check_for_new_submissions(args: &Args, last_update: DateTime<Utc>) -> Result<bool> {
+/// Checks if there are any data changes (new submissions or revocations) after the given timestamp.
+///
+/// Uses `/sample/details` endpoint with `limit=1` for efficiency while providing:
+/// - Detailed logging of which sample triggered the detection
+/// - Proper handling of revocations (which have special fields)
+///
+/// Returns `Ok(true)` if any changes found, `Ok(false)` if no changes.
+async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Result<bool> {
     let client = Client::new();
     let timestamp = last_update.timestamp();
 
+    // Query for any samples submitted at or after the last update timestamp
     let url = format!(
         "{}/covid/sample/details?submittedAtTimestampFrom={}&limit=1&dataFormat=JSON&downloadAsFile=false",
         args.api_base_url,
         timestamp
     );
 
-    println!("Querying API for submissions after timestamp {}", timestamp);
+    println!("Querying API for changes after {}", last_update.format("%Y-%m-%d %H:%M:%S UTC"));
+    println!("  (timestamp: {})", timestamp);
 
     let response = client
         .get(&url)
@@ -138,17 +146,17 @@ async fn check_for_new_submissions(args: &Args, last_update: DateTime<Utc>) -> R
 
     let api_response: ApiResponse = response.json().await?;
 
+    // Log details about what was found (for diagnostics and visibility)
     if !api_response.data.is_empty() {
         if let Some(sample) = api_response.data.first() {
-            let submitted_time = DateTime::from_timestamp(sample.submitted_at_timestamp, 0)
-                .map(|dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string())
-                .unwrap_or_else(|| sample.submitted_at_timestamp.to_string());
             let sample_id = sample.sample_id.as_deref().unwrap_or("<unknown sample id>");
+            
+            // Distinguish between revocations and new submissions for clearer logging
             if sample.is_revocation.unwrap_or(false) {
                 let status = sample
                     .version_status
                     .as_deref()
-                    .map(|s| format!(" (status: {})", s))
+                    .map(|s| format!(" [status: {}]", s))
                     .unwrap_or_default();
                 let comment = sample
                     .version_comment
@@ -156,18 +164,18 @@ async fn check_for_new_submissions(args: &Args, last_update: DateTime<Utc>) -> R
                     .map(|c| format!(" - {}", c))
                     .unwrap_or_default();
                 println!(
-                    "Found revocation: {} (submitted at: {}){}{}",
-                    sample_id, submitted_time, status, comment
+                    "Found revocation: {}{}{}",
+                    sample_id, status, comment
                 );
             } else {
                 let status = sample
                     .version_status
                     .as_deref()
-                    .map(|s| format!(" (status: {})", s))
+                    .map(|s| format!(" [status: {}]", s))
                     .unwrap_or_default();
                 println!(
-                    "Found new submission: {} (submitted at: {}){}",
-                    sample_id, submitted_time, status
+                    "Found new submission: {}{}",
+                    sample_id, status
                 );
             }
         }

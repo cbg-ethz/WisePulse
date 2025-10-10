@@ -47,7 +47,7 @@ wisepulse_api_base_url: https://api.db.wasap.genspectrum.org
 
 # Fetch configuration
 wisepulse_fetch_days: 90
-wisepulse_fetch_max_reads: 125000000  # 125 million reads
+wisepulse_fetch_max_reads: 172500000  # 172.5 million reads
 ```
 
 Note: The Docker memory limit for preprocessing should be adjusted according to the value of `wisepulse_fetch_max_reads`.
@@ -84,7 +84,8 @@ Run the playbook with
 
 ```bash
 # run playbook requires sudo password for config
-ansible-playbook playbooks/setup-pipeline.yml --ask-become-pass
+cd ansible
+sudo ansible-playbook playbooks/setup-pipeline.yml 
 ```
 
 then use these commands to manage the pipeline:
