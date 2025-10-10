@@ -125,18 +125,34 @@ sudo systemctl disable wisepulse-pipeline.timer
 2. **Service Execution**: The timer starts the systemd service
 3. **Data Check**: The service runs `make smart-fetch-and-process` which:
    - Executes `check_new_data` to query the LAPIS API
-   - Uses `submittedAtTimestampFrom` to check for submissions after `.last_update` timestamp
-   - Single API call with `limit=1` for efficiency
+   - Filters by `submittedAtTimestampFrom` (last update) AND `samplingDateFrom` (rolling window)
+   - Writes max `submittedAtTimestamp` to `.next_timestamp` if data found
    - If new data exists: cleans old data, fetches fresh data, processes pipeline
    - If no new data: skips execution and logs
-4. **Timestamp Update**: On successful completion, updates `.last_update` file
+4. **Timestamp Update**: On successful completion, copies `.next_timestamp` to `.last_update`
 5. **Logging**: All output goes to journald for easy monitoring
 
 ## Smart Data Checking
 
-The pipeline uses the `check_new_data` Rust utility to efficiently check if new sequences have been submitted to the LAPIS API using a single API query with the `submittedAtTimestampFrom` parameter.
+The pipeline uses the `check_new_data` Rust utility to efficiently check if new sequences have been submitted to the LAPIS API.
 
-Exit codes:
+**How it works:**
+- Queries API with both `submittedAtTimestampFrom` (last pipeline run) and `samplingDateFrom` (rolling window)
+- Only processes data within the configured time window (default: last 90 days)
+- Tracks the **maximum `submittedAtTimestamp`** from all matching submissions
+- On success, updates `.last_update` with this max timestamp (not current time)
+
+**First run behavior:**
+- When no `.last_update` exists, uses `today - 90 days` as initial timestamp
+- Queries API to find actual data in rolling window
+- Saves the max `submittedAtTimestamp` from results
+
+**Why this approach:**
+- Handles out-of-order submissions correctly (e.g., data submitted on Oct 2 after data from Oct 1 was already processed)
+- Only triggers pipeline for relevant data (within rolling window)
+- Prevents missing retroactively submitted or revised data
+
+**Exit codes:**
 - `0`: New data available → Pipeline runs
 - `1`: No new data → Pipeline skips
 - `2`: Error → Pipeline skips and logs error
@@ -167,8 +183,9 @@ Exit codes:
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │              check_new_data (Rust binary)                        │
-│  • Queries LAPIS API for latest sequence dates                  │
-│  • Compares with .last_update timestamp                         │
+│  • Queries: submittedAtTimestampFrom={last} & samplingDateFrom  │
+│  • Filters by rolling window (default: 90 days)                 │
+│  • Writes max submittedAtTimestamp to .next_timestamp           │
 │  • Exit 0 = new data, Exit 1 = no new data                     │
 └────────────────────┬────────────────────────────────────────────┘
                      │
@@ -197,10 +214,10 @@ Exit codes:
 └────────┬────────┘
          │
          ▼
-┌─────────────────┐
-│update_timestamp │
-│(.last_update)   │
-└─────────────────┘
+┌──────────────────────┐
+│ Update .last_update  │
+│ (from .next_timestamp)│
+└──────────────────────┘
          │
          ▼
     Logs to journald

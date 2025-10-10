@@ -6,5 +6,4 @@ members = [
     "split_into_sorted_chunks",
     "merge_sorted_chunks",
     "fetch_silo_data",
-    "check_new_data",
-    "update_timestamp"]
+    "check_new_data"]

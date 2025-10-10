@@ -5,7 +5,7 @@ TMP_DIR = tmp
 SILO_OUTPUT_DIR = silo_output
 
 # === BUILD ARTIFACTS ===
-RUST_BINARIES = target/release/split_into_sorted_chunks target/release/merge_sorted_chunks target/release/fetch_silo_data target/release/add_offset target/release/check_new_data target/release/update_timestamp
+RUST_BINARIES = target/release/split_into_sorted_chunks target/release/merge_sorted_chunks target/release/fetch_silo_data target/release/add_offset target/release/check_new_data
 SORTED_CHUNKS_FILE = $(SORTED_CHUNKS_DIR)/chunks.list
 SORTED_FILE = sorted.ndjson.zst
 SILO_OUTPUT_FLAG = $(SILO_OUTPUT_DIR)/.processed
@@ -95,23 +95,30 @@ fetch-and-process:
 # Smart pipeline: only fetch and process if new data is available
 smart-fetch-and-process: build
 	@echo "=== WisePulse Smart Pipeline ==="
-	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)"; then \
+	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)" --days-back $(FETCH_DAYS) --output-timestamp-file ".next_timestamp"; then \
 		echo "=== New data detected - running full pipeline ==="; \
 		$(MAKE) clean-data; \
 		$(MAKE) clean; \
 		$(MAKE) fetch-data; \
 		echo "=== Stopping SILO API for preprocessing ==="; \
 		docker compose down || true; \
-		$(MAKE) $(SILO_OUTPUT_FLAG) && \
-		(echo "=== Restarting SILO API ===" && \
-		LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d && \
-		target/release/update_timestamp "$(TIMESTAMP_FILE)" && \
-		echo "✓ Pipeline complete - timestamp updated") || \
-		(echo "✗ Pipeline failed - restarting API anyway" && \
-		LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d && \
-		exit 1); \
+		if $(MAKE) $(SILO_OUTPUT_FLAG); then \
+            echo "=== Restarting SILO API ==="; \
+            docker compose down --remove-orphans || true; \
+            docker network prune -f || true; \
+            LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d; \
+            cp .next_timestamp "$(TIMESTAMP_FILE)"; \
+            rm -f .next_timestamp; \
+            echo "✓ Pipeline complete - timestamp updated"; \
+        else \
+            echo "✗ Pipeline failed - restarting API anyway"; \
+            LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d || true; \
+            rm -f .next_timestamp; \
+            exit 1; \
+        fi; \
 	else \
 		echo "=== No new data - skipping pipeline ==="; \
+		rm -f .next_timestamp; \
 	fi
 
 # Create directories
@@ -150,6 +157,7 @@ $(SORTED_FILE): $(SORTED_CHUNKS_FILE) $(TMP_DIR) build
 $(SILO_OUTPUT_FLAG): $(SORTED_FILE) $(SILO_OUTPUT_DIR)
 	@echo "=== SILO preprocessing ==="
 	@if command -v docker >/dev/null 2>&1; then \
+		echo "Running preprocessing in Docker"; \
 		docker compose -f docker-compose-preprocessing.yml down -v 2>/dev/null || true; \
 		docker compose -f docker-compose-preprocessing.yml up && \
 		echo "✓ SILO preprocessing complete" && \

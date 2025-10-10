@@ -25,9 +25,17 @@ struct Args {
     #[arg(long, default_value = "https://api.db.wasap.genspectrum.org")]
     api_base_url: String,
 
-    /// Path to store last update timestamp
+    /// Path to read last update timestamp from
     #[arg(long, default_value = ".last_update")]
     timestamp_file: String,
+
+    /// Number of days back to check for sampling dates (rolling window)
+    #[arg(long, default_value = "90")]
+    days_back: i64,
+
+    /// Path to write the maximum submittedAtTimestamp found (for pipeline use)
+    #[arg(long, default_value = ".next_timestamp")]
+    output_timestamp_file: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -39,6 +47,7 @@ struct ApiResponse {
 #[serde(rename_all = "camelCase")]
 struct SampleData {
     sample_id: Option<String>,
+    submitted_at_timestamp: i64,
     #[serde(default)]
     is_revocation: Option<bool>,
     #[serde(default)]
@@ -79,9 +88,18 @@ async fn run() -> Result<bool> {
             println!("Last update: {}", last_date.format("%Y-%m-%d %H:%M:%S UTC"));
             println!("Last update timestamp: {}", last_date.timestamp());
 
-            let has_new_data = check_for_data_changes(&args, last_date).await?;
+            let (has_new_data, max_timestamp) = check_for_data_changes(&args, last_date).await?;
 
             if has_new_data {
+                if let Some(max_ts) = max_timestamp {
+                    // Write the max timestamp to file for the pipeline to use
+                    fs::write(&args.output_timestamp_file, max_ts.to_string()).await?;
+                    let max_dt = DateTime::from_timestamp(max_ts, 0)
+                        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string())
+                        .unwrap_or_else(|| max_ts.to_string());
+                    println!("Max submission timestamp: {} ({})", max_ts, max_dt);
+                    println!("Written to: {}", args.output_timestamp_file);
+                }
                 println!("✓ New data available!");
                 println!("  Pipeline should run to fetch and process new sequences.");
             } else {
@@ -92,9 +110,34 @@ async fn run() -> Result<bool> {
             Ok(has_new_data)
         }
         None => {
-            println!("No previous update timestamp found.");
-            println!("✓ First run - pipeline should fetch initial data.");
-            Ok(true)
+            println!("No previous update timestamp found - first run.");
+            println!("Creating initial timestamp from current time...");
+            
+            // For first run, use a timestamp far enough in the past to catch recent data
+            // but query the API to get the actual max timestamp
+            let initial_timestamp = (Utc::now() - chrono::Duration::days(args.days_back)).timestamp();
+            let initial_date = DateTime::from_timestamp(initial_timestamp, 0)
+                .ok_or("Failed to create initial timestamp")?;
+            
+            println!("Querying from: {}", initial_date.format("%Y-%m-%d %H:%M:%S UTC"));
+            
+            let (has_new_data, max_timestamp) = check_for_data_changes(&args, initial_date).await?;
+            
+            if has_new_data {
+                if let Some(max_ts) = max_timestamp {
+                    fs::write(&args.output_timestamp_file, max_ts.to_string()).await?;
+                    let max_dt = DateTime::from_timestamp(max_ts, 0)
+                        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string())
+                        .unwrap_or_else(|| max_ts.to_string());
+                    println!("Max submission timestamp: {} ({})", max_ts, max_dt);
+                    println!("Written to: {}", args.output_timestamp_file);
+                }
+                println!("✓ Data available - pipeline should fetch initial data.");
+            } else {
+                println!("• No data found in rolling window.");
+            }
+            
+            Ok(has_new_data)
         }
     }
 }
@@ -115,24 +158,33 @@ async fn read_last_update(path: &str) -> Result<Option<DateTime<Utc>>> {
 
 /// Checks if there are any data changes (new submissions or revocations) after the given timestamp.
 ///
-/// Uses `/sample/details` endpoint with `limit=1` for efficiency while providing:
-/// - Detailed logging of which sample triggered the detection
-/// - Proper handling of revocations (which have special fields)
+/// Uses `/sample/details` endpoint with both `submittedAtTimestampFrom` and `samplingDateFrom` filters.
+/// Only considers data within the rolling window (last N days).
 ///
-/// Returns `Ok(true)` if any changes found, `Ok(false)` if no changes.
-async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Result<bool> {
+/// Returns `Ok((has_data, max_timestamp))` where:
+/// - has_data: true if any relevant changes found
+/// - max_timestamp: the maximum submittedAtTimestamp from the results (for updating the checkpoint)
+async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Result<(bool, Option<i64>)> {
     let client = Client::new();
     let timestamp = last_update.timestamp();
+    
+    // Calculate the sampling date range (rolling window)
+    let now = Utc::now();
+    let sampling_date_from = (now - chrono::Duration::days(args.days_back))
+        .format("%Y-%m-%d")
+        .to_string();
 
-    // Query for any samples submitted at or after the last update timestamp
+    // Query for samples submitted after last_update AND with sampling dates in the rolling window
     let url = format!(
-        "{}/covid/sample/details?submittedAtTimestampFrom={}&limit=1&dataFormat=JSON&downloadAsFile=false",
+        "{}/covid/sample/details?submittedAtTimestampFrom={}&samplingDateFrom={}&dataFormat=JSON&downloadAsFile=false",
         args.api_base_url,
-        timestamp
+        timestamp,
+        sampling_date_from
     );
 
     println!("Querying API for changes after {}", last_update.format("%Y-%m-%d %H:%M:%S UTC"));
-    println!("  (timestamp: {})", timestamp);
+    println!("  (submittedAtTimestampFrom: {})", timestamp);
+    println!("  Sampling date range: {} to now ({} days)", sampling_date_from, args.days_back);
 
     let response = client
         .get(&url)
@@ -146,10 +198,20 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
 
     let api_response: ApiResponse = response.json().await?;
 
-    // Log details about what was found (for diagnostics and visibility)
-    if !api_response.data.is_empty() {
-        if let Some(sample) = api_response.data.first() {
+    let has_data = !api_response.data.is_empty();
+    let mut max_timestamp: Option<i64> = None;
+
+    // Log details about what was found and track max timestamp
+    if has_data {
+        println!("Found {} sample(s) in rolling window:", api_response.data.len());
+        
+        for (i, sample) in api_response.data.iter().enumerate().take(5) {
             let sample_id = sample.sample_id.as_deref().unwrap_or("<unknown sample id>");
+            
+            // Track the maximum submittedAtTimestamp
+            max_timestamp = Some(max_timestamp.map_or(sample.submitted_at_timestamp, |max| {
+                max.max(sample.submitted_at_timestamp)
+            }));
             
             // Distinguish between revocations and new submissions for clearer logging
             if sample.is_revocation.unwrap_or(false) {
@@ -164,8 +226,8 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
                     .map(|c| format!(" - {}", c))
                     .unwrap_or_default();
                 println!(
-                    "Found revocation: {}{}{}",
-                    sample_id, status, comment
+                    "  [{}] Revocation: {}{}{}",
+                    i + 1, sample_id, status, comment
                 );
             } else {
                 let status = sample
@@ -174,12 +236,22 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
                     .map(|s| format!(" [status: {}]", s))
                     .unwrap_or_default();
                 println!(
-                    "Found new submission: {}{}",
-                    sample_id, status
+                    "  [{}] New submission: {}{}",
+                    i + 1, sample_id, status
                 );
+            }
+        }
+        
+        if api_response.data.len() > 5 {
+            println!("  ... and {} more", api_response.data.len() - 5);
+            // Still track max timestamp for remaining items
+            for sample in api_response.data.iter().skip(5) {
+                max_timestamp = Some(max_timestamp.map_or(sample.submitted_at_timestamp, |max| {
+                    max.max(sample.submitted_at_timestamp)
+                }));
             }
         }
     }
 
-    Ok(!api_response.data.is_empty())
+    Ok((has_data, max_timestamp))
 }
