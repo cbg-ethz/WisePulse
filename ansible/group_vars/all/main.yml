@@ -69,6 +69,7 @@ organisms:
           type: string
           header: Sample details
           displayName: Sample ID
+          initiallyVisible: true
         - name: batchId
           type: string
           definition: "Sequencing batch"
@@ -84,10 +85,12 @@ organisms:
           autocomplete: true
           header: Sample details
           displayName: Location
+          initiallyVisible: true
         - name: samplingDate
           type: date
           header: Sample details
           displayName: Sampling Date
+          initiallyVisible: true
         - name: sr2siloVersion
           type: string
           header: srSILO info

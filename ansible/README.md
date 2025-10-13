@@ -18,10 +18,8 @@ ansible/
 │       └── main.yml              # Host-specific configuration
 ├── templates/
 │   └── values.yaml.j2            # Jinja2 template for Kubernetes values
-├── playbooks/
-│   └── deploy.yml                # Deployment playbook
-└── secrets/                      # Legacy directory (can be removed)
-    └── my-values.yaml            # Original monolithic config
+└── playbooks/
+    └── deploy.yml                # Deployment playbook
 ```
 
 ## Usage

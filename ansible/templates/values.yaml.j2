@@ -105,6 +105,9 @@ organisms:
 {% if metadata_item.autocomplete is defined %}
           autocomplete: {{ metadata_item.autocomplete | lower }}
 {% endif %}
+{% if metadata_item.initiallyVisible is defined %}
+          initiallyVisible: {{ metadata_item.initiallyVisible | lower }}
+{% endif %}
 {% endfor %}
       website:
         tableColumns:
