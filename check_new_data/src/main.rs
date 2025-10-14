@@ -158,8 +158,9 @@ async fn read_last_update(path: &str) -> Result<Option<DateTime<Utc>>> {
 
 /// Checks if there are any data changes (new submissions or revocations) after the given timestamp.
 ///
-/// Uses `/sample/details` endpoint with both `submittedAtTimestampFrom` and `samplingDateFrom` filters.
-/// Only considers data within the rolling window (last N days).
+/// Makes two separate API calls:
+/// 1. New submissions within the rolling window (uses samplingDateFrom filter)  
+/// 2. All revocations since last update (revocations have no sampling date)
 ///
 /// Returns `Ok((has_data, max_timestamp))` where:
 /// - has_data: true if any relevant changes found
@@ -174,84 +175,115 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
         .format("%Y-%m-%d")
         .to_string();
 
-    // Query for samples submitted after last_update AND with sampling dates in the rolling window
-    let url = format!(
-        "{}/covid/sample/details?submittedAtTimestampFrom={}&samplingDateFrom={}&dataFormat=JSON&downloadAsFile=false",
-        args.api_base_url,
-        timestamp,
-        sampling_date_from
-    );
-
     println!("Querying API for changes after {}", last_update.format("%Y-%m-%d %H:%M:%S UTC"));
     println!("  (submittedAtTimestampFrom: {})", timestamp);
-    println!("  Sampling date range: {} to now ({} days)", sampling_date_from, args.days_back);
 
-    let response = client
-        .get(&url)
+    // Call 1: Get new submissions within the rolling window
+    let submissions_url = format!(
+        "{}/covid/sample/details?submittedAtTimestampFrom={}&samplingDateFrom={}&dataFormat=JSON&downloadAsFile=false",
+        args.api_base_url, timestamp, sampling_date_from
+    );
+
+    println!("  Fetching new submissions in rolling window: {} to now ({} days)", sampling_date_from, args.days_back);
+    let submissions_response = client
+        .get(&submissions_url)
         .header("Accept", "application/json")
         .send()
         .await?;
 
-    if !response.status().is_success() {
-        return Err(format!("API request failed: {}", response.status()).into());
+    if !submissions_response.status().is_success() {
+        return Err(format!("New submissions API request failed: {}", submissions_response.status()).into());
     }
 
-    let api_response: ApiResponse = response.json().await?;
+    let submissions_data: ApiResponse = submissions_response.json().await?;
 
-    let has_data = !api_response.data.is_empty();
+    // Call 2: Get all revocations since last update
+    let revocations_url = format!(
+        "{}/covid/sample/details?submittedAtTimestampFrom={}&isRevocation=true&dataFormat=JSON&downloadAsFile=false",
+        args.api_base_url, timestamp
+    );
+
+    println!("  Fetching revocations since last update");
+    let revocations_response = client
+        .get(&revocations_url)
+        .header("Accept", "application/json")
+        .send()
+        .await?;
+
+    if !revocations_response.status().is_success() {
+        return Err(format!("Revocations API request failed: {}", revocations_response.status()).into());
+    }
+
+    let revocations_data: ApiResponse = revocations_response.json().await?;
+
+    // Combine and analyze results
+    let new_submissions_count = submissions_data.data.len();
+    let revocations_count = revocations_data.data.len();
+    let total_changes = new_submissions_count + revocations_count;
+    let has_data = total_changes > 0;
+
+    // Calculate max timestamp from both datasets
     let mut max_timestamp: Option<i64> = None;
+    
+    for sample in submissions_data.data.iter().chain(revocations_data.data.iter()) {
+        max_timestamp = Some(max_timestamp.map_or(sample.submitted_at_timestamp, |max| {
+            max.max(sample.submitted_at_timestamp)
+        }));
+    }
 
-    // Log details about what was found and track max timestamp
+    // Log summary
+    if new_submissions_count > 0 {
+        println!("Found {} new submission(s) in rolling window (samplingDate: {} to now)", new_submissions_count, sampling_date_from);
+    }
+    if revocations_count > 0 {
+        println!("Found {} revocation(s) since last update (submittedAtTimestamp >= {})", revocations_count, timestamp);
+    }
     if has_data {
-        println!("Found {} sample(s) in rolling window:", api_response.data.len());
+        println!("Total: {} changes detected - pipeline should run", total_changes);
         
-        for (i, sample) in api_response.data.iter().enumerate().take(5) {
-            let sample_id = sample.sample_id.as_deref().unwrap_or("<unknown sample id>");
-            
-            // Track the maximum submittedAtTimestamp
-            max_timestamp = Some(max_timestamp.map_or(sample.submitted_at_timestamp, |max| {
-                max.max(sample.submitted_at_timestamp)
-            }));
-            
-            // Distinguish between revocations and new submissions for clearer logging
-            if sample.is_revocation.unwrap_or(false) {
-                let status = sample
-                    .version_status
-                    .as_deref()
-                    .map(|s| format!(" [status: {}]", s))
-                    .unwrap_or_default();
-                let comment = sample
-                    .version_comment
-                    .as_deref()
-                    .map(|c| format!(" - {}", c))
-                    .unwrap_or_default();
-                println!(
-                    "  [{}] Revocation: {}{}{}",
-                    i + 1, sample_id, status, comment
-                );
-            } else {
-                let status = sample
-                    .version_status
-                    .as_deref()
-                    .map(|s| format!(" [status: {}]", s))
-                    .unwrap_or_default();
-                println!(
-                    "  [{}] New submission: {}{}",
-                    i + 1, sample_id, status
-                );
-            }
-        }
-        
-        if api_response.data.len() > 5 {
-            println!("  ... and {} more", api_response.data.len() - 5);
-            // Still track max timestamp for remaining items
-            for sample in api_response.data.iter().skip(5) {
-                max_timestamp = Some(max_timestamp.map_or(sample.submitted_at_timestamp, |max| {
-                    max.max(sample.submitted_at_timestamp)
-                }));
-            }
-        }
+        // Log sample details (first few from each category)
+        log_sample_details(&submissions_data.data, "New submissions", false);
+        log_sample_details(&revocations_data.data, "Revocations", true);
+    } else {
+        println!("No new submissions or revocations found");
     }
 
     Ok((has_data, max_timestamp))
+}
+
+/// Helper function to log sample details in a consistent format
+fn log_sample_details(samples: &[SampleData], category: &str, is_revocation_category: bool) {
+    if samples.is_empty() {
+        return;
+    }
+    
+    println!("  {} details:", category);
+    for (i, sample) in samples.iter().enumerate().take(3) {
+        let sample_id = sample.sample_id.as_deref().unwrap_or("<unknown sample id>");
+        
+        if is_revocation_category {
+            let status = sample
+                .version_status
+                .as_deref()
+                .map(|s| format!(" [status: {}]", s))
+                .unwrap_or_default();
+            let comment = sample
+                .version_comment
+                .as_deref()
+                .map(|c| format!(" - {}", c))
+                .unwrap_or_default();
+            println!("    [{}] {}{}{}", i + 1, sample_id, status, comment);
+        } else {
+            let status = sample
+                .version_status
+                .as_deref()
+                .map(|s| format!(" [status: {}]", s))
+                .unwrap_or_default();
+            println!("    [{}] {}{}", i + 1, sample_id, status);
+        }
+    }
+    
+    if samples.len() > 3 {
+        println!("    ... and {} more", samples.len() - 3);
+    }
 }
