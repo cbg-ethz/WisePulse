@@ -167,7 +167,8 @@ async fn read_last_update(path: &str) -> Result<Option<DateTime<Utc>>> {
 /// - max_timestamp: the maximum submittedAtTimestamp from the results (for updating the checkpoint)
 async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Result<(bool, Option<i64>)> {
     let client = Client::new();
-    let timestamp = last_update.timestamp();
+    // Use strictly greater than logic to avoid infinite loop on identical max timestamp
+    let timestamp = last_update.timestamp() + 1;
     
     // Calculate the sampling date range (rolling window)
     let now = Utc::now();

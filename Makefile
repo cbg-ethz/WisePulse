@@ -28,8 +28,12 @@ LAPIS_PORT ?= 8083
 
 all: $(SILO_OUTPUT_FLAG)
 
-# Build all Rust tools
-build: $(RUST_BINARIES)
+# Build all Rust tools (force rebuild to ensure latest code)
+.PHONY: build
+build:
+	@echo "=== Building Rust tools ==="
+	cargo build --release
+	@echo "✓ Build complete"
 
 # Enhanced clean with options
 clean:
@@ -65,13 +69,6 @@ help:
 	@echo "  FETCH_MAX_READS         - Max reads per batch (default: 125000000)"
 
 # === TARGET IMPLEMENTATIONS ===
-
-# Build individual Rust tools
-$(RUST_BINARIES):
-	@echo "=== Building Rust tools ==="
-	cargo build --release
-	@echo "✓ Build complete"
-	@echo
 
 # Fetch data from LAPIS API
 fetch-data:

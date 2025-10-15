@@ -125,7 +125,7 @@ sudo systemctl disable wisepulse-pipeline.timer
 2. **Service Execution**: The timer starts the systemd service
 3. **Data Check**: The service runs `make smart-fetch-and-process` which:
    - Executes `check_new_data` to query the LAPIS API
-   - Filters by `submittedAtTimestampFrom` (last update) AND `samplingDateFrom` (rolling window)
+   - Checks for new submissions (with rolling window) and revocations (since last update)
    - Writes max `submittedAtTimestamp` to `.next_timestamp` if data found
    - If new data exists: cleans old data, fetches fresh data, processes pipeline
    - If no new data: skips execution and logs
@@ -134,13 +134,17 @@ sudo systemctl disable wisepulse-pipeline.timer
 
 ## Smart Data Checking
 
-The pipeline uses the `check_new_data` Rust utility to efficiently check if new sequences have been submitted to the LAPIS API.
+The pipeline uses the `check_new_data` Rust utility to efficiently check if new sequences or revocations have been submitted to the LAPIS API.
 
 **How it works:**
-- Queries API with both `submittedAtTimestampFrom` (last pipeline run) and `samplingDateFrom` (rolling window)
-- Only processes data within the configured time window (default: last 90 days)
-- Tracks the **maximum `submittedAtTimestamp`** from all matching submissions
-- On success, updates `.last_update` with this max timestamp (not current time)
+
+- Makes two API calls:
+  1. New submissions: uses `submittedAtTimestampFrom` (strictly greater than last update) and `samplingDateFrom` (rolling window)
+  2. Revocations: uses `submittedAtTimestampFrom` (strictly greater than last update) and `isRevocation=true`
+- Only processes new submissions within the configured time window (default: last 90 days)
+- Revocations are checked independently of the rolling window
+- Tracks the maximum `submittedAtTimestamp` from all matching changes
+- On success, updates `.last_update` with this max timestamp
 
 **First run behavior:**
 - When no `.last_update` exists, uses `today - 90 days` as initial timestamp
