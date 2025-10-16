@@ -49,8 +49,6 @@ struct SampleData {
     sample_id: Option<String>,
     submitted_at_timestamp: i64,
     #[serde(default)]
-    is_revocation: Option<bool>,
-    #[serde(default)]
     version_status: Option<String>,
     #[serde(default)]
     version_comment: Option<String>,
