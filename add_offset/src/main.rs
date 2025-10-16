@@ -25,7 +25,7 @@ fn main() -> std::io::Result<()> {
             }
         }
 
-        writeln!(writer, "{}", json_value.to_string())?;
+        writeln!(writer, "{}", json_value)?;
     }
 
     Ok(())
