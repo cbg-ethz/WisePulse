@@ -1,0 +1,4 @@
+---
+# Monitoring coordination tasks
+# This role serves as a meta-role to coordinate monitoring components
+# Individual components are handled by their respective roles

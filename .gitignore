@@ -11,6 +11,12 @@ sorted_chunks/
 # Pipeline automation
 .last_update
 
+# Test/temporary files
+.test_timestamp
+silo_output.file
+sorted_chunks.file
+silo_input_backup/
+
 # Ansible
 .vault_pass
 

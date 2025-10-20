@@ -1,0 +1,8 @@
+---
+node_exporter_version: "1.6.1"
+node_exporter_port: 9100
+node_exporter_listen_address: "127.0.0.1"
+node_exporter_user: node_exporter
+node_exporter_group: node_exporter
+node_exporter_bin_dir: /usr/local/bin
+node_exporter_config_dir: /etc/node_exporter

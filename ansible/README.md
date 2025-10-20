@@ -10,16 +10,30 @@ ansible/
 ├── inventory.ini                   # Inventory definition
 ├── .vault_pass                    # Vault password file (not in git)
 ├── group_vars/
-│   └── all/
-│       ├── main.yml              # Non-sensitive configuration
-│       └── vault.yml             # Encrypted secrets (vault)
+│   ├── all/
+│   │   ├── main.yml              # Non-sensitive configuration
+│   │   └── vault.yml             # Encrypted secrets (vault)
+│   └── monitoring/
+│       ├── main.yml              # Monitoring-specific configuration
+│       └── vault.yml             # Monitoring secrets (Grafana password)
 ├── host_vars/
 │   └── localhost/
 │       └── main.yml              # Host-specific configuration
+├── roles/
+│   ├── wisepulse_pipeline/       # Data pipeline automation
+│   ├── grafana/                  # Grafana visualization
+│   ├── prometheus/               # Prometheus metrics server
+│   ├── node_exporter/            # Node Exporter metrics
+│   └── monitoring/               # Monitoring role meta
 ├── templates/
 │   └── values.yaml.j2            # Jinja2 template for Kubernetes values
 └── playbooks/
-    └── deploy.yml                # Deployment playbook
+    ├── deploy.yml                # Kubernetes deployment playbook
+    ├── setup-pipeline.yml        # Data pipeline setup playbook
+    └── monitoring/
+        ├── full.yml              # Deploy all monitoring (Prometheus + Grafana + Node Exporter)
+        ├── core.yml              # Deploy Prometheus + Grafana only
+        └── exporters.yml         # Deploy Node Exporter only
 ```
 
 ## Usage
@@ -85,6 +99,21 @@ sudo journalctl -u wisepulse-pipeline.service -f
 
 # Run manually
 sudo systemctl start wisepulse-pipeline.service
+```
+
+### Deploy Monitoring Stack: Grafana + Prometheus:
+
+```bash
+# Deploy monitoring stack
+ansible-playbook playbooks/monitoring/full.yml
+
+# Access Grafana (localhost only)
+# http://localhost:3000 (admin password in vault)
+# Access Prometheus (localhost only)
+# http://localhost:9090
+# All services bind to 127.0.0.1 (not publicly exposed)
+# Use SSH tunnel for remote access:
+# ssh -L 3000:localhost:3000 -L 9090:localhost:9090 user@server
 ```
 
 ### Edit Secrets

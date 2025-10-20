@@ -1,0 +1,9 @@
+---
+- name: Deploy Complete Monitoring Stack
+  hosts: monitoring
+  become: yes
+  roles:
+    - monitoring  # Meta-role that includes all monitoring components
+  tags:
+    - monitoring
+    - full

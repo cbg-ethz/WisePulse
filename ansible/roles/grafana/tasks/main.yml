@@ -1,0 +1,132 @@
+---
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - grafana_admin_password is defined
+      - grafana_admin_password | string | length > 0
+    fail_msg: grafana_admin_password must be set in group_vars/*/vault.yml
+
+- name: Install required packages
+  apt:
+    name:
+      - wget
+      - curl
+      - apt-transport-https
+      - software-properties-common
+    state: present
+    update_cache: yes
+  retries: 3
+  delay: 5
+  register: apt_result
+  until: apt_result is succeeded
+  ignore_errors: yes
+
+- name: Ensure required packages are installed (fallback without cache update)
+  apt:
+    name:
+      - wget
+      - curl
+      - apt-transport-https
+      - software-properties-common
+    state: present
+  when: apt_result is failed
+
+- name: Add Grafana GPG key (modern method)
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana.gpg.key
+    mode: '0644'
+  register: gpg_download
+
+- name: Import Grafana GPG key
+  ansible.builtin.command:
+    cmd: gpg --dearmor -o /usr/share/keyrings/grafana.gpg /tmp/grafana.gpg.key
+    creates: /usr/share/keyrings/grafana.gpg
+  when: gpg_download is succeeded
+
+- name: Add Grafana repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    state: present
+    filename: grafana
+    update_cache: no
+
+- name: Update apt cache for Grafana repo only
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  retries: 2
+  delay: 3
+  ignore_errors: yes
+
+- name: Install Grafana
+  apt:
+    name: grafana
+    state: present
+    update_cache: no
+
+- name: Create provisioning directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+  loop:
+    - "{{ grafana_provisioning_dir }}/datasources"
+    - "{{ grafana_provisioning_dir }}/dashboards"
+
+- name: Configure Grafana
+  template:
+    src: grafana.ini.j2
+    dest: "{{ grafana_config_dir }}/grafana.ini"
+    owner: root
+    group: grafana
+    mode: '0640'
+    backup: yes
+  notify: restart grafana
+
+- name: Create Grafana datasource configuration
+  ansible.builtin.template:
+    src: prometheus-datasource.yml.j2
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: grafana
+    group: grafana
+    mode: '0640'
+  notify: restart grafana
+
+- name: Create dashboard provider configuration
+  ansible.builtin.template:
+    src: dashboard-provider.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/dashboards.yml
+    owner: grafana
+    group: grafana
+    mode: '0640'
+  notify: restart grafana
+
+- name: Create dashboards directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+  loop:
+    - /var/lib/grafana/dashboards
+    - /var/lib/grafana/dashboards/grafana
+
+- name: Download Node Exporter dashboard from Grafana.com
+  ansible.builtin.get_url:
+    url: https://grafana.com/api/dashboards/1860/revisions/latest/download
+    dest: /var/lib/grafana/dashboards/grafana/node-exporter-full.json
+    owner: grafana
+    group: grafana
+    mode: '0644'
+    force: no
+  notify: restart grafana
+
+- name: Start and enable Grafana service
+  ansible.builtin.systemd:
+    name: grafana-server
+    state: started
+    enabled: yes

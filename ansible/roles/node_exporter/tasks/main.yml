@@ -1,0 +1,58 @@
+---
+- name: Create node_exporter group
+  group:
+    name: "{{ node_exporter_group }}"
+    system: yes
+
+- name: Create node_exporter user
+  user:
+    name: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_group }}"
+    system: yes
+    shell: /bin/false
+    home: /var/lib/node_exporter
+    createhome: no
+
+- name: Create node_exporter directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_group }}"
+    mode: '0755'
+  loop:
+    - "{{ node_exporter_config_dir }}"
+    - /var/lib/node_exporter
+
+- name: Download and extract Node Exporter
+  unarchive:
+    src: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: yes
+    creates: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64"
+
+- name: Copy Node Exporter binary
+  copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+    dest: "{{ node_exporter_bin_dir }}/node_exporter"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+  notify: restart node_exporter
+
+- name: Create Node Exporter systemd service
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart node_exporter
+
+- name: Start and enable Node Exporter
+  systemd:
+    name: node_exporter
+    state: started
+    enabled: yes
+    daemon_reload: yes

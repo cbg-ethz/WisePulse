@@ -1,0 +1,11 @@
+---
+# Monitoring Meta-Role Dependencies
+dependencies:
+  - role: prometheus
+    tags: ['monitoring', 'metrics', 'prometheus']
+  
+  - role: node_exporter
+    tags: ['monitoring', 'exporters', 'node_exporter']
+  
+  - role: grafana
+    tags: ['monitoring', 'visualization', 'grafana']
