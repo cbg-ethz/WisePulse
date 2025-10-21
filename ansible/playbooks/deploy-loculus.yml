@@ -1,0 +1,7 @@
+---
+- name: Deploy Kubernetes configuration to loculus cluster
+  hosts: loculus
+  gather_facts: true
+  
+  roles:
+    - loculus

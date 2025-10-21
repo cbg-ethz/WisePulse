@@ -1,0 +1,66 @@
+---
+- name: Ensure temp directory exists
+  file:
+    path: "{{ loculus_temp_dir }}"
+    state: directory
+    mode: '0750'
+
+# TODO: Add nginx configuration automation for static file serving in future
+# This should include adding location /static/ block to nginx config
+
+- name: Ensure static images directory exists
+  file:
+    path: /var/www/html/static/images
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  become: yes
+
+- name: Copy COVID virus image for static serving
+  copy:
+    src: images/covid-virus.png
+    dest: /var/www/html/static/images/covid-virus.png
+    owner: www-data
+    group: www-data
+    mode: '0644'
+  become: yes
+
+- name: Copy W-ASAP logo for static serving
+  copy:
+    src: images/wasap-logo.png
+    dest: /var/www/html/static/images/wasap-logo.png
+    owner: www-data
+    group: www-data
+    mode: '0644'
+  become: yes
+
+- name: Generate values file from template
+  template:
+    src: values.yaml.j2
+    dest: "{{ loculus_temp_dir }}/values.yaml"
+    mode: '0640'
+
+- name: Verify kubectl context is available
+  shell: kubectl config get-contexts {{ kubectl_context }}
+  register: kubectl_context_check
+  environment:
+    KUBECONFIG: "{{ loculus_kubeconfig_path }}"
+
+- name: Apply Helm chart with values to loculus cluster
+  shell: |
+    kubectl config use-context {{ kubectl_context }}
+    helm upgrade --install my-loculus {{ helm_chart_path }} -f {{ loculus_temp_dir }}/values.yaml
+  register: helm_output
+  environment:
+    KUBECONFIG: "{{ loculus_kubeconfig_path }}"
+
+- name: Display Helm output
+  debug:
+    var: helm_output.stdout_lines
+
+- name: Clean up temporary files
+  file:
+    path: "{{ loculus_temp_dir }}"
+    state: absent
+  when: loculus_cleanup_temp_files | default(true)

@@ -1,0 +1,14 @@
+---
+# Default variables for loculus role
+# These can be overridden in group_vars, host_vars, or playbook vars
+
+# Temporary directory for deployment files
+loculus_temp_dir: "/tmp/loculus-deployment-{{ ansible_date_time.epoch }}"
+
+# Whether to clean up temporary files after deployment
+loculus_cleanup_temp_files: true
+
+# Kubeconfig path - defaults to the user's home directory
+# This is used to ensure kubectl/helm commands can find the kubeconfig
+# Note: Run playbook without sudo (use --ask-become-pass instead)
+loculus_kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"

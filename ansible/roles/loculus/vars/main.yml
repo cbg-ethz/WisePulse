@@ -1,0 +1,4 @@
+---
+# Role-specific variables for loculus role
+# These have higher precedence than defaults and lower precedence than group_vars/host_vars
+# Currently no role-specific vars needed, but file exists for future use
