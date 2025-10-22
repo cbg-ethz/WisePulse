@@ -16,8 +16,16 @@ fn write_ndjson_lines<W: Write>(writer: &mut W, lines: &[Value]) -> std::io::Res
 
 fn sort_by(mut lines: Vec<Value>, sort_field_path: &String) -> Vec<Value> {
     lines.sort_by(|a, b| {
-        let a_length = a.pointer(sort_field_path).expect(format!("Did not find field {sort_field_path} in object {a}").as_str()).as_i64().unwrap_or(0);
-        let b_length = b.pointer(sort_field_path).expect(format!("Did not find field {sort_field_path} in object {b}").as_str()).as_i64().unwrap_or(0);
+        let a_length = a
+            .pointer(sort_field_path)
+            .unwrap_or_else(|| panic!("Did not find field {sort_field_path} in object {a}"))
+            .as_i64()
+            .unwrap_or(0);
+        let b_length = b
+            .pointer(sort_field_path)
+            .unwrap_or_else(|| panic!("Did not find field {sort_field_path} in object {b}"))
+            .as_i64()
+            .unwrap_or(0);
         a_length.cmp(&b_length)
     });
     lines

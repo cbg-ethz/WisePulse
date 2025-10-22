@@ -77,7 +77,7 @@ fn main() -> std::io::Result<()> {
 
     merge_iteration += 1;
 
-    if input_files.len() == 0 {
+    if input_files.is_empty() {
         panic!("No input files received");
     }
 
@@ -99,7 +99,7 @@ fn main() -> std::io::Result<()> {
 
 fn merge_files_in_batches<I>(
     input_files: I,
-    tmp_dir: &PathBuf,
+    tmp_dir: &Path,
     sort_field_path: &String,
     batch_size: usize,
     merge_iteration: usize,
@@ -132,7 +132,7 @@ where
 
             let file = File::create(file_name.clone()).unwrap();
             let mut encoder = Encoder::new(file, 3)?;
-            merge_files(batch, &mut encoder, &sort_field_path)?;
+            merge_files(batch, &mut encoder, sort_field_path)?;
             encoder.finish()?;
 
             Ok(file_name)
@@ -185,17 +185,13 @@ where
             heap.push(HeapEntry {
                 sort_field: json
                     .pointer(sort_field_path)
-                    .expect(
-                        format!("Did not find field {sort_field_path} in object {json}").as_str(),
-                    )
+                    .unwrap_or_else(|| {
+                        panic!("Did not find field {sort_field_path} in object {json}")
+                    })
                     .as_i64()
-                    .expect(
-                        format!(
-                            "the specified sort_column is not of type i64: {}",
-                            json.to_string()
-                        )
-                        .as_str(),
-                    ),
+                    .unwrap_or_else(|| {
+                        panic!("the specified sort_column is not of type i64: {}", json)
+                    }),
                 value: json,
                 index,
             });
@@ -215,17 +211,13 @@ where
             heap.push(HeapEntry {
                 sort_field: json
                     .pointer(sort_field_path)
-                    .expect(
-                        format!("Did not find field {sort_field_path} in object {json}").as_str(),
-                    )
+                    .unwrap_or_else(|| {
+                        panic!("Did not find field {sort_field_path} in object {json}")
+                    })
                     .as_i64()
-                    .expect(
-                        format!(
-                            "the specified sort_column is not of type i64: {}",
-                            json.to_string()
-                        )
-                        .as_str(),
-                    ),
+                    .unwrap_or_else(|| {
+                        panic!("the specified sort_column is not of type i64: {}", json)
+                    }),
                 value: json,
                 index,
             });

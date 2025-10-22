@@ -110,17 +110,21 @@ async fn run() -> Result<bool> {
         None => {
             println!("No previous update timestamp found - first run.");
             println!("Creating initial timestamp from current time...");
-            
+
             // For first run, use a timestamp far enough in the past to catch recent data
             // but query the API to get the actual max timestamp
-            let initial_timestamp = (Utc::now() - chrono::Duration::days(args.days_back)).timestamp();
+            let initial_timestamp =
+                (Utc::now() - chrono::Duration::days(args.days_back)).timestamp();
             let initial_date = DateTime::from_timestamp(initial_timestamp, 0)
                 .ok_or("Failed to create initial timestamp")?;
-            
-            println!("Querying from: {}", initial_date.format("%Y-%m-%d %H:%M:%S UTC"));
-            
+
+            println!(
+                "Querying from: {}",
+                initial_date.format("%Y-%m-%d %H:%M:%S UTC")
+            );
+
             let (has_new_data, max_timestamp) = check_for_data_changes(&args, initial_date).await?;
-            
+
             if has_new_data {
                 if let Some(max_ts) = max_timestamp {
                     fs::write(&args.output_timestamp_file, max_ts.to_string()).await?;
@@ -134,7 +138,7 @@ async fn run() -> Result<bool> {
             } else {
                 println!("• No data found in rolling window.");
             }
-            
+
             Ok(has_new_data)
         }
     }
@@ -163,18 +167,24 @@ async fn read_last_update(path: &str) -> Result<Option<DateTime<Utc>>> {
 /// Returns `Ok((has_data, max_timestamp))` where:
 /// - has_data: true if any relevant changes found
 /// - max_timestamp: the maximum submittedAtTimestamp from the results (for updating the checkpoint)
-async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Result<(bool, Option<i64>)> {
+async fn check_for_data_changes(
+    args: &Args,
+    last_update: DateTime<Utc>,
+) -> Result<(bool, Option<i64>)> {
     let client = Client::new();
     // Use strictly greater than logic to avoid infinite loop on identical max timestamp
     let timestamp = last_update.timestamp() + 1;
-    
+
     // Calculate the sampling date range (rolling window)
     let now = Utc::now();
     let sampling_date_from = (now - chrono::Duration::days(args.days_back))
         .format("%Y-%m-%d")
         .to_string();
 
-    println!("Querying API for changes after {}", last_update.format("%Y-%m-%d %H:%M:%S UTC"));
+    println!(
+        "Querying API for changes after {}",
+        last_update.format("%Y-%m-%d %H:%M:%S UTC")
+    );
     println!("  (submittedAtTimestampFrom: {})", timestamp);
 
     // Call 1: Get new submissions within the rolling window
@@ -183,7 +193,10 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
         args.api_base_url, timestamp, sampling_date_from
     );
 
-    println!("  Fetching new submissions in rolling window: {} to now ({} days)", sampling_date_from, args.days_back);
+    println!(
+        "  Fetching new submissions in rolling window: {} to now ({} days)",
+        sampling_date_from, args.days_back
+    );
     let submissions_response = client
         .get(&submissions_url)
         .header("Accept", "application/json")
@@ -191,7 +204,11 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
         .await?;
 
     if !submissions_response.status().is_success() {
-        return Err(format!("New submissions API request failed: {}", submissions_response.status()).into());
+        return Err(format!(
+            "New submissions API request failed: {}",
+            submissions_response.status()
+        )
+        .into());
     }
 
     let submissions_data: ApiResponse = submissions_response.json().await?;
@@ -210,7 +227,11 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
         .await?;
 
     if !revocations_response.status().is_success() {
-        return Err(format!("Revocations API request failed: {}", revocations_response.status()).into());
+        return Err(format!(
+            "Revocations API request failed: {}",
+            revocations_response.status()
+        )
+        .into());
     }
 
     let revocations_data: ApiResponse = revocations_response.json().await?;
@@ -223,8 +244,12 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
 
     // Calculate max timestamp from both datasets
     let mut max_timestamp: Option<i64> = None;
-    
-    for sample in submissions_data.data.iter().chain(revocations_data.data.iter()) {
+
+    for sample in submissions_data
+        .data
+        .iter()
+        .chain(revocations_data.data.iter())
+    {
         max_timestamp = Some(max_timestamp.map_or(sample.submitted_at_timestamp, |max| {
             max.max(sample.submitted_at_timestamp)
         }));
@@ -232,14 +257,23 @@ async fn check_for_data_changes(args: &Args, last_update: DateTime<Utc>) -> Resu
 
     // Log summary
     if new_submissions_count > 0 {
-        println!("Found {} new submission(s) in rolling window (samplingDate: {} to now)", new_submissions_count, sampling_date_from);
+        println!(
+            "Found {} new submission(s) in rolling window (samplingDate: {} to now)",
+            new_submissions_count, sampling_date_from
+        );
     }
     if revocations_count > 0 {
-        println!("Found {} revocation(s) since last update (submittedAtTimestamp >= {})", revocations_count, timestamp);
+        println!(
+            "Found {} revocation(s) since last update (submittedAtTimestamp >= {})",
+            revocations_count, timestamp
+        );
     }
     if has_data {
-        println!("Total: {} changes detected - pipeline should run", total_changes);
-        
+        println!(
+            "Total: {} changes detected - pipeline should run",
+            total_changes
+        );
+
         // Log sample details (first few from each category)
         log_sample_details(&submissions_data.data, "New submissions", false);
         log_sample_details(&revocations_data.data, "Revocations", true);
@@ -255,11 +289,11 @@ fn log_sample_details(samples: &[SampleData], category: &str, is_revocation_cate
     if samples.is_empty() {
         return;
     }
-    
+
     println!("  {} details:", category);
     for (i, sample) in samples.iter().enumerate().take(3) {
         let sample_id = sample.sample_id.as_deref().unwrap_or("<unknown sample id>");
-        
+
         if is_revocation_category {
             let status = sample
                 .version_status
@@ -281,7 +315,7 @@ fn log_sample_details(samples: &[SampleData], category: &str, is_revocation_cate
             println!("    [{}] {}{}", i + 1, sample_id, status);
         }
     }
-    
+
     if samples.len() > 3 {
         println!("    ... and {} more", samples.len() - 3);
     }

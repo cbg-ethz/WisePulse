@@ -7,9 +7,11 @@ euler_silo_inputs_1.1.0/
 euler_silo_inputs_1.2.0
 target/
 sorted_chunks/
+tmp/
 
 # Pipeline automation
 .last_update
+.next_timestamp
 
 # Test/temporary files
 .test_timestamp
@@ -20,5 +22,13 @@ silo_input_backup/
 # Ansible
 .vault_pass
 
+# IDEs
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
