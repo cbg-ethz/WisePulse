@@ -28,8 +28,8 @@ RETENTION_DAYS ?= 7
 RETENTION_MIN_KEEP ?= 2
 
 # === MAIN TARGETS ===
-.PHONY: all build fetch-data fetch-and-process smart-fetch-and-process clean clean-all help
 
+.PHONY: all
 all: $(SILO_OUTPUT_FLAG)
 
 # Build all Rust tools (force rebuild to ensure latest code)
@@ -40,6 +40,7 @@ build:
 	@echo "✓ Build complete"
 
 # Enhanced clean with options
+.PHONY: clean
 clean:
 	@echo "=== Cleaning intermediate files ==="
 	-rm -f $(SORTED_CHUNKS_FILE) $(SORTED_FILE) $(SILO_OUTPUT_FLAG)
@@ -48,14 +49,17 @@ clean:
 	@mkdir -p $(SORTED_CHUNKS_DIR) $(TMP_DIR)
 	@echo "✓ Clean complete"
 
+.PHONY: clean-data
 clean-data:
 	rm -rf $(INPUT_DIR)/*.ndjson.zst
 
+.PHONY: clean-all
 clean-all: clean clean-data
 	cargo clean
 	docker compose -f docker-compose-preprocessing.yml down -v
 
 # Help target
+.PHONY: help
 help:
 	@echo "Available targets:"
 	@echo "  build                   - Build all Rust tools"
@@ -87,6 +91,7 @@ cleanup-old-indexes:
 		| xargs --null -I {} sh -c 'echo "Deleting old index: $$(basename {})"; rm -rf {}' || true
 
 # Fetch data from LAPIS API
+.PHONY: fetch-data
 fetch-data:
 	@echo "=== Fetching data from LAPIS API ==="
 	cd fetch_silo_data && cargo run --release -- \
@@ -99,6 +104,7 @@ fetch-data:
 
 # Convenience target to fetch fresh data and run full pipeline
 # Note: This target does NOT manage the API - use smart-fetch-and-process for automated runs
+.PHONY: fetch-and-process
 fetch-and-process:
 	@echo "=== WisePulse Pipeline ==="
 	@$(MAKE) fetch-data
@@ -106,6 +112,7 @@ fetch-and-process:
 	@echo "✓ Pipeline complete"
 
 # Smart pipeline: only fetch and process if new data is available
+.PHONY: smart-fetch-and-process
 smart-fetch-and-process: build
 	@echo "=== WisePulse Smart Pipeline ==="
 	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)" --days-back $(FETCH_DAYS) --output-timestamp-file ".next_timestamp"; then \
