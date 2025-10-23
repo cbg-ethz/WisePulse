@@ -1,140 +1,114 @@
-# Ansible Setup Documentation
+# Ansible Automation
 
-## Directory Structure
+Ansible playbooks for WisePulse automation and deployment.
 
-This Ansible setup follows best practices with proper separation of concerns:
-
-```
-ansible/
-├── ansible.cfg                     # Ansible configuration
-├── inventory.ini                   # Inventory definition
-├── .vault_pass                    # Vault password file (not in git)
-├── group_vars/
-│   ├── all/
-│   │   ├── main.yml              # Non-sensitive configuration
-│   │   └── vault.yml             # Encrypted secrets (vault)
-│   └── monitoring/
-│       ├── main.yml              # Monitoring-specific configuration
-│       └── vault.yml             # Monitoring secrets (Grafana password)
-├── host_vars/
-│   └── localhost/
-│       └── main.yml              # Host-specific configuration
-├── roles/
-│   ├── wisepulse_pipeline/       # Data pipeline automation
-│   ├── grafana/                  # Grafana visualization
-│   ├── prometheus/               # Prometheus metrics server
-│   ├── node_exporter/            # Node Exporter metrics
-│   └── monitoring/               # Monitoring role meta
-├── templates/
-│   └── values.yaml.j2            # Jinja2 template for Kubernetes values
-└── playbooks/
-    ├── deploy.yml                # Kubernetes deployment playbook
-    ├── setup-pipeline.yml        # Data pipeline setup playbook
-    └── monitoring/
-        ├── full.yml              # Deploy all monitoring (Prometheus + Grafana + Node Exporter)
-        ├── core.yml              # Deploy Prometheus + Grafana only
-        └── exporters.yml         # Deploy Node Exporter only
-```
-
-## Usage
-
-### Deploy Loculus to Kubernetes
-```bash
-cd ansible
-ansible-playbook playbooks/deploy.yml
-```
-
-### Setup Automated Data Pipeline
-Configure automated nightly data fetching and processing with systemd timers:
+## Quick Reference
 
 ```bash
-cd ansible
+# Deploy Loculus to Kubernetes
+ansible-playbook playbooks/deploy-loculus.yml --ask-become-pass
 
-# 1. (Optional) Edit configuration
-vim host_vars/localhost/main.yml
+# Setup automated data pipeline
+ansible-playbook playbooks/setup-pipeline.yml
 
-# 2. Run the setup playbook
+# Deploy monitoring stack
+ansible-playbook playbooks/monitoring/full.yml
+```
+
+## Playbooks
+
+### 1. Loculus Kubernetes Deployment
+
+Deploy W-ASAP Loculus to Kubernetes cluster:
+
+```bash
+ansible-playbook playbooks/deploy-loculus.yml --ask-become-pass
+```
+
+**Configuration:**
+- `group_vars/loculus/main.yml` - Loculus settings (organisms, URLs, etc.)
+- `group_vars/loculus/vault.yml` - Encrypted secrets
+- `host_vars/localhost/main.yml` - kubectl context, Helm chart path
+
+**Note:** Run without `sudo`. Use `--ask-become-pass` for privilege escalation when needed.
+
+### 2. Automated Data Pipeline
+
+Setup systemd timer for nightly data processing:
+
+```bash
 ansible-playbook playbooks/setup-pipeline.yml
 ```
 
-This will:
-- Create a `wisepulse` user for running the pipeline
-- Build all Rust utilities
-- Install systemd service and timer for automated runs
-- Schedule nightly checks for new data (default: 2 AM)
-- Only fetch and process data when new sequences are available
+**What it does:**
+- Creates `wisepulse` user for pipeline
+- Builds all Rust utilities
+- Installs systemd service + timer
+- Schedules nightly data checks (default: 2 AM)
+- Only processes when new data available
+- Manages SILO API lifecycle
 
-**Prerequisites** (must be installed manually):
-- Rust/Cargo: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+**Prerequisites:**
+- Rust/Cargo
 - Docker and Docker Compose
 - git
-- Repository cloned to `/opt/wisepulse`
 
-**Configuration**: 
+**Configuration:** Edit `host_vars/localhost/main.yml` to customize schedule, fetch parameters, paths.
 
-All settings are in `host_vars/localhost/main.yml`. Edit this file to customize:
-- Schedule time (`wisepulse_timer_oncalendar`)
-- Fetch parameters (`wisepulse_fetch_days`, `wisepulse_fetch_max_reads`)
-- Repository path (`wisepulse_repo_path`)
-- User/group names
-- API URL
-
-**Runtime overrides** (optional):
+**Monitor:**
 ```bash
-ansible-playbook playbooks/setup-pipeline.yml \
-  -e "wisepulse_timer_oncalendar='*-*-* 03:00:00'" \
-  -e "wisepulse_fetch_days=120"
-```
-
-**Monitoring**:
-```bash
-# View timer status
 sudo systemctl status wisepulse-pipeline.timer
-
-# View next scheduled run
-sudo systemctl list-timers wisepulse-pipeline.timer
-
-# View logs
 sudo journalctl -u wisepulse-pipeline.service -f
-
-# Run manually
-sudo systemctl start wisepulse-pipeline.service
+sudo systemctl start wisepulse-pipeline.service  # Manual run
 ```
 
-### Deploy Monitoring Stack: Grafana + Prometheus:
+### 3. Monitoring Stack
+
+Deploy Prometheus + Grafana + Node Exporter:
 
 ```bash
-# Deploy monitoring stack
-ansible-playbook playbooks/monitoring/full.yml
-
-# Access Grafana (localhost only)
-# http://localhost:3000 (admin password in vault)
-# Access Prometheus (localhost only)
-# http://localhost:9090
-# All services bind to 127.0.0.1 (not publicly exposed)
-# Use SSH tunnel for remote access:
-# ssh -L 3000:localhost:3000 -L 9090:localhost:9090 user@server
+ansible-playbook playbooks/monitoring/full.yml      # Full stack
+ansible-playbook playbooks/monitoring/core.yml      # Prometheus + Grafana only
+ansible-playbook playbooks/monitoring/exporters.yml # Node Exporter only
 ```
 
-### Edit Secrets
+**Access:**
+- Grafana: http://localhost:3000 (admin password in `group_vars/monitoring/vault.yml`)
+- Prometheus: http://localhost:9090
+
+All services bind to localhost. Use SSH tunnel for remote access:
 ```bash
-cd ansible
-ansible-vault edit group_vars/all/vault.yml
+ssh -L 3000:localhost:3000 -L 9090:localhost:9090 user@server
 ```
 
-### View Encrypted Secrets (without editing)
+## Managing Secrets
+
 ```bash
-cd ansible
-ansible-vault view group_vars/all/vault.yml
+# Edit secrets
+ansible-vault edit group_vars/loculus/vault.yml
+ansible-vault edit group_vars/monitoring/vault.yml
+
+# View secrets (read-only)
+ansible-vault view group_vars/loculus/vault.yml
 ```
 
-## Adding New Secrets
+## Directory Structure
 
-1. Edit the vault file:
-   ```bash
-   ansible-vault edit group_vars/all/vault.yml
-   ```
-
-2. Add the secret under the appropriate section (e.g., `vault_secrets.new_service.password`)
-
-3. Reference it in the template: `{{ vault_secrets.new_service.password }}`
+```
+ansible/
+├── playbooks/
+│   ├── deploy-loculus.yml    # Loculus deployment
+│   ├── setup-pipeline.yml    # Pipeline automation
+│   └── monitoring/           # Monitoring playbooks
+├── roles/                    # Ansible roles
+│   ├── loculus/
+│   ├── wisepulse_pipeline/
+│   ├── prometheus/
+│   ├── grafana/
+│   └── node_exporter/
+├── group_vars/
+│   ├── loculus/              # Loculus configuration
+│   └── monitoring/           # Monitoring configuration
+└── host_vars/
+    └── localhost/            # Host-specific settings
+```
