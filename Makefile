@@ -126,7 +126,6 @@ smart-fetch-and-process: build
 		if $(MAKE) $(SILO_OUTPUT_FLAG); then \
 			echo "✓ Preprocessing successful"; \
 			new_index=$$(find $(SILO_OUTPUT_DIR) -maxdepth 1 -type d 2>/dev/null | sort -n | tail -1 | xargs basename 2>/dev/null || echo ""); \
-			echo "$$new_index" > "$(SILO_OUTPUT_DIR)/.last_successful_index"; \
 			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
 			docker compose down --remove-orphans || true; \
 			docker network prune -f || true; \
