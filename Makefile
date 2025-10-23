@@ -23,6 +23,10 @@ FETCH_API_BASE_URL ?= https://api.db.wasap.genspectrum.org
 # Set via environment: LAPIS_PORT=8083 make smart-fetch-and-process
 LAPIS_PORT ?= 8083
 
+# === RETENTION POLICY ===
+RETENTION_DAYS ?= 7
+RETENTION_MIN_KEEP ?= 2
+
 # === MAIN TARGETS ===
 .PHONY: all build fetch-data fetch-and-process smart-fetch-and-process clean clean-all help
 
@@ -59,6 +63,7 @@ help:
 	@echo "  all                     - Process existing data through pipeline"
 	@echo "  fetch-and-process       - Fetch data and run full pipeline (no API mgmt)"
 	@echo "  smart-fetch-and-process - Smart: check for new data, stop API, process, restart API"
+	@echo "  cleanup-old-indexes     - Run retention policy on SILO indexes"
 	@echo "  clean                   - Clean intermediate files"
 	@echo "  clean-data              - Clean downloaded data"
 	@echo "  clean-all               - Clean everything including Docker"
@@ -67,8 +72,19 @@ help:
 	@echo "  LAPIS_PORT              - Port for SILO API (default: 8083)"
 	@echo "  FETCH_DAYS              - Days of data to fetch (default: 90)"
 	@echo "  FETCH_MAX_READS         - Max reads per batch (default: 125000000)"
+	@echo "  RETENTION_DAYS          - Keep indexes newer than N days (default: 7)"
+	@echo "  RETENTION_MIN_KEEP      - Always keep N newest indexes (default: 2)"
 
 # === TARGET IMPLEMENTATIONS ===
+
+# Cleanup old SILO indexes (retention policy)
+.PHONY: cleanup-old-indexes
+cleanup-old-indexes:
+	@echo "Running retention policy (keep $(RETENTION_MIN_KEEP) newest, delete $(RETENTION_DAYS)+ days old)"
+	@find $(SILO_OUTPUT_DIR) -maxdepth 1 -type d -mtime +$(RETENTION_DAYS) -print0 2>/dev/null \
+		| sort -n --zero-terminated \
+		| head -n -$(RETENTION_MIN_KEEP) --zero-terminated \
+		| xargs --null -I {} sh -c 'echo "Deleting old index: $$(basename {})"; rm -rf {}' || true
 
 # Fetch data from LAPIS API
 fetch-data:
@@ -93,28 +109,44 @@ fetch-and-process:
 smart-fetch-and-process: build
 	@echo "=== WisePulse Smart Pipeline ==="
 	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)" --days-back $(FETCH_DAYS) --output-timestamp-file ".next_timestamp"; then \
-		echo "=== New data detected - running full pipeline ==="; \
+		echo "New data detected - running full pipeline"; \
+		$(MAKE) cleanup-old-indexes; \
+		if [ -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress" ]; then \
+			orphan=$$(cat "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"); \
+			echo "Cleaning up orphaned preprocessing: $$orphan"; \
+			rm -rf "$(SILO_OUTPUT_DIR)/$$orphan" 2>/dev/null || true; \
+			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
+		fi; \
 		$(MAKE) clean-data; \
 		$(MAKE) clean; \
 		$(MAKE) fetch-data; \
-		echo "=== Stopping SILO API for preprocessing ==="; \
+		echo "Stopping SILO API for preprocessing"; \
 		docker compose down || true; \
+		date +%s > "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
 		if $(MAKE) $(SILO_OUTPUT_FLAG); then \
-            echo "=== Restarting SILO API ==="; \
-            docker compose down --remove-orphans || true; \
-            docker network prune -f || true; \
-            LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d; \
-            cp .next_timestamp "$(TIMESTAMP_FILE)"; \
-            rm -f .next_timestamp; \
-            echo "✓ Pipeline complete - timestamp updated"; \
-        else \
-            echo "✗ Pipeline failed - restarting API anyway"; \
-            LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d || true; \
-            rm -f .next_timestamp; \
-            exit 1; \
-        fi; \
+			echo "✓ Preprocessing successful"; \
+			new_index=$$(find $(SILO_OUTPUT_DIR) -maxdepth 1 -type d 2>/dev/null | sort -n | tail -1 | xargs basename 2>/dev/null || echo ""); \
+			echo "$$new_index" > "$(SILO_OUTPUT_DIR)/.last_successful_index"; \
+			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
+			docker compose down --remove-orphans || true; \
+			docker network prune -f || true; \
+			echo "Starting API with index: $$new_index"; \
+			LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d; \
+			cp .next_timestamp "$(TIMESTAMP_FILE)"; \
+			rm -f .next_timestamp; \
+			echo "✓ Pipeline complete"; \
+		else \
+			echo "✗ Preprocessing failed"; \
+			# Rollback: delete bad index, restart API with previous good index \
+			failed=$$(cat "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress" 2>/dev/null || echo ""); \
+			[ -n "$$failed" ] && rm -rf "$(SILO_OUTPUT_DIR)/$$failed" 2>/dev/null || true; \
+			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
+			LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d || true; \
+			rm -f .next_timestamp; \
+			exit 1; \
+		fi; \
 	else \
-		echo "=== No new data - skipping pipeline ==="; \
+		echo "No new data - skipping pipeline"; \
 		rm -f .next_timestamp; \
 	fi
 
