@@ -26,6 +26,10 @@ wisepulse_fetch_max_reads: 155000000   # 150 million reads
 # LAPIS port for docker compose (optional, for when starting the API)
 wisepulse_lapis_port: 8083
 
+# Retention policy for SILO indexes
+wisepulse_retention_days: 7          # Delete indexes older than N days (before preprocessing)
+wisepulse_retention_min_keep: 2      # Always keep at least N newest indexes
+
 # NOTE: This role assumes the following are already installed:
 # - Docker and Docker Compose
 # - git
