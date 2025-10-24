@@ -1,0 +1,32 @@
+---
+# .ansible-lint configuration for WisePulse
+# See https://ansible.readthedocs.io/projects/lint/
+
+# Exclude certain paths from linting
+exclude_paths:
+  - .git/
+  - .vault_pass
+  - group_vars/*/vault.yml  # Skip vault-encrypted files
+
+# Skip certain rules that are not applicable or too strict for initial integration
+skip_list:
+  - yaml[new-line-at-end-of-file]  # Allow files without trailing newline
+  - internal-error  # Skip vault password errors in CI
+  - yaml[trailing-spaces]  # Minor formatting issue
+
+# Enable offline mode to skip checking galaxy dependencies
+offline: true
+
+# Allow certain warnings that don't affect functionality
+# These will show as warnings but won't fail the build
+warn_list:
+  - experimental  # Allow experimental features
+  - yaml[truthy]  # Allow yes/no in YAML (common in Ansible)
+  - name[casing]  # Task names casing - warn but don't fail
+  - var-naming[no-role-prefix]  # Variable naming conventions - warn but don't fail
+  - command-instead-of-shell  # Shell usage - warn but don't fail
+  - command-instead-of-module  # Module vs command usage - warn but don't fail
+
+# Use a more lenient profile for existing code
+# Options: min, basic, moderate, safety, shared, production
+profile: min

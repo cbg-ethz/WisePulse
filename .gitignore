@@ -21,6 +21,7 @@ silo_input_backup/
 
 # Ansible
 .vault_pass
+.ansible/
 
 # IDEs
 .vscode/

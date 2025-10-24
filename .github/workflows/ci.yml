@@ -11,6 +11,24 @@ env:
   DOCKER_IMAGE_NAME: ghcr.io/genspectrum/lapis-silo
 
 jobs:
+  ansible-lint:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install ansible-lint
+        run: pip install ansible-lint
+      
+      - name: Run ansible-lint
+        working-directory: ansible
+        run: ansible-lint playbooks/ roles/
+
   rust-checks:
     name: Rust Quality Checks
     runs-on: ubuntu-latest
