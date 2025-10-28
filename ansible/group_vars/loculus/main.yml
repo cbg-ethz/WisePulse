@@ -94,11 +94,15 @@ organisms:
         - name: sr2siloVersion
           type: string
           header: srSILO info
-          definition: "Version of sr2silo transformer"
+          definition: "Version of sr2silo used for preprocessing"
           displayName: sr2silo Version
+          hideOnSequenceDetailsPage: true
+          hideInSearchResultsTable: true
         - name: countSiloReads
           type: string
           header: srSILO info
+          hideOnSequenceDetailsPage: true
+          hideInSearchResultsTable: true
           definition: "Number of reads subsampled srSILO alignments"
           displayName: srSILO Read Count 
       website:
