@@ -18,6 +18,7 @@ services:
 
   silo:
     image: ghcr.io/genspectrum/lapis-silo:0.8.5
+    mem_limit: 350g
     restart: unless-stopped
     ports:
       - 8081:8081
