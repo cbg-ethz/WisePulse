@@ -43,9 +43,9 @@ build:
 .PHONY: clean
 clean:
 	@echo "=== Cleaning intermediate files ==="
-	-rm -f $(SORTED_CHUNKS_FILE) $(SORTED_FILE) $(SILO_OUTPUT_FLAG)
-	-find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete 2>/dev/null || true
-	-find $(TMP_DIR) -mindepth 1 -delete 2>/dev/null || true
+	rm -f $(SORTED_CHUNKS_FILE) $(SORTED_FILE) $(SILO_OUTPUT_FLAG)
+	find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete || sudo find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete
+	find $(TMP_DIR) -mindepth 1 -delete || sudo find $(TMP_DIR) -mindepth 1 -delete
 	@mkdir -p $(SORTED_CHUNKS_DIR) $(TMP_DIR)
 	@echo "✓ Clean complete"
 
@@ -88,7 +88,7 @@ cleanup-old-indexes:
 	@find $(SILO_OUTPUT_DIR) -maxdepth 1 -type d -mtime +$(RETENTION_DAYS) -print0 2>/dev/null \
 		| sort -n --zero-terminated \
 		| head -n -$(RETENTION_MIN_KEEP) --zero-terminated \
-		| xargs --null -I {} sh -c 'echo "Deleting old index: $$(basename {})"; rm -rf {}' || true
+		| xargs --null -I {} sh -c 'echo "Deleting old index: $$(basename {})"; sudo rm -rf {}' || true
 
 # Fetch data from LAPIS API
 .PHONY: fetch-data
@@ -117,6 +117,11 @@ smart-fetch-and-process: build
 	@echo "=== WisePulse Smart Pipeline ==="
 	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)" --days-back $(FETCH_DAYS) --output-timestamp-file ".next_timestamp"; then \
 		echo "New data detected - running full pipeline"; \
+		echo "Validating clean state before processing..."; \
+		if [ -n "$$(find $(SORTED_CHUNKS_DIR) -mindepth 1 -print -quit 2>/dev/null)" ]; then \
+			echo "✗ Error: $(SORTED_CHUNKS_DIR) is not empty - cleanup failed"; \
+			exit 1; \
+		fi; \
 		$(MAKE) cleanup-old-indexes; \
 		if [ -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress" ]; then \
 			orphan=$$(cat "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"); \

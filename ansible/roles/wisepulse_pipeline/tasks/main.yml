@@ -97,6 +97,26 @@
   register: build_result
   changed_when: build_result.rc == 0
 
+- name: Get wisepulse user ID
+  command: id -u {{ wisepulse_user }}
+  register: wisepulse_uid
+  changed_when: false
+
+- name: Get wisepulse group ID
+  command: id -g {{ wisepulse_user }}
+  register: wisepulse_gid
+  changed_when: false
+
+- name: Deploy sudoers file for SILO cleanup
+  copy:
+    src: wisepulse-sudoers
+    dest: /etc/sudoers.d/wisepulse
+    owner: root
+    group: root
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  become: yes
+
 - name: Deploy systemd service file
   template:
     src: wisepulse-pipeline.service.j2
