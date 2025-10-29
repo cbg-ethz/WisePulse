@@ -1,0 +1,16 @@
+[Unit]
+Description=WisePulse Data Pipeline Timer
+Documentation=https://github.com/cbg-ethz/WisePulse
+Requires=wisepulse-pipeline.service
+
+[Timer]
+# When to run (e.g., "*-*-* 02:00:00" = daily at 2 AM)
+OnCalendar={{ wisepulse_timer_oncalendar }}
+
+# Run immediately if the system was off when the timer should have triggered
+Persistent=true
+# Ensure no randomization: runs at exact time for predictability
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target
