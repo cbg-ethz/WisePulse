@@ -43,9 +43,9 @@ build:
 .PHONY: clean
 clean:
 	@echo "=== Cleaning intermediate files ==="
-	-rm -f $(SORTED_CHUNKS_FILE) $(SORTED_FILE) $(SILO_OUTPUT_FLAG)
-	-find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete 2>/dev/null || true
-	-find $(TMP_DIR) -mindepth 1 -delete 2>/dev/null || true
+	rm -f $(SORTED_CHUNKS_FILE) $(SORTED_FILE) $(SILO_OUTPUT_FLAG)
+	find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete || sudo find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete
+	find $(TMP_DIR) -mindepth 1 -delete || sudo find $(TMP_DIR) -mindepth 1 -delete
 	@mkdir -p $(SORTED_CHUNKS_DIR) $(TMP_DIR)
 	@echo "✓ Clean complete"
 
@@ -88,7 +88,7 @@ cleanup-old-indexes:
 	@find $(SILO_OUTPUT_DIR) -maxdepth 1 -type d -mtime +$(RETENTION_DAYS) -print0 2>/dev/null \
 		| sort -n --zero-terminated \
 		| head -n -$(RETENTION_MIN_KEEP) --zero-terminated \
-		| xargs --null -I {} sh -c 'echo "Deleting old index: $$(basename {})"; rm -rf {}' || true
+		| xargs --null -I {} sh -c 'echo "Deleting old index: $$(basename {})"; sudo rm -rf {}' || true
 
 # Fetch data from LAPIS API
 .PHONY: fetch-data
@@ -129,24 +129,28 @@ smart-fetch-and-process: build
 		$(MAKE) fetch-data; \
 		echo "Stopping SILO API for preprocessing"; \
 		docker compose down || true; \
-		date +%s > "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
+		expected_index=$$(date +%s); \
+		echo "Expected new index: $$expected_index"; \
 		if $(MAKE) $(SILO_OUTPUT_FLAG); then \
-			echo "✓ Preprocessing successful"; \
-			new_index=$$(find $(SILO_OUTPUT_DIR) -maxdepth 1 -type d 2>/dev/null | sort -n | tail -1 | xargs basename 2>/dev/null || echo ""); \
-			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
-			docker compose down --remove-orphans || true; \
-			docker network prune -f || true; \
-			echo "Starting API with index: $$new_index"; \
-			LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d; \
-			cp .next_timestamp "$(TIMESTAMP_FILE)"; \
-			rm -f .next_timestamp; \
-			echo "✓ Pipeline complete"; \
+			if [ -d "$(SILO_OUTPUT_DIR)/$$expected_index" ]; then \
+				echo "✓ Preprocessing successful - new index $$expected_index created"; \
+				docker compose down --remove-orphans || true; \
+				docker network prune -f || true; \
+				echo "Starting API with new index: $$expected_index"; \
+				LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d; \
+				cp .next_timestamp "$(TIMESTAMP_FILE)"; \
+				rm -f .next_timestamp; \
+				echo "✓ Pipeline complete"; \
+			else \
+				echo "✗ Preprocessing failed - expected index $$expected_index not found"; \
+				echo "Available indexes:"; \
+				ls -1 $(SILO_OUTPUT_DIR) | grep -E '^[0-9]+$$' || echo "  (none)"; \
+				LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d || true; \
+				rm -f .next_timestamp; \
+				exit 1; \
+			fi; \
 		else \
-			echo "✗ Preprocessing failed"; \
-			# Rollback: delete bad index, restart API with previous good index \
-			failed=$$(cat "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress" 2>/dev/null || echo ""); \
-			[ -n "$$failed" ] && rm -rf "$(SILO_OUTPUT_DIR)/$$failed" 2>/dev/null || true; \
-			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
+			echo "✗ Preprocessing Docker container failed"; \
 			LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d || true; \
 			rm -f .next_timestamp; \
 			exit 1; \
@@ -169,6 +173,8 @@ $(SILO_OUTPUT_DIR):
 # Processing pipeline
 $(SORTED_CHUNKS_FILE): $(SORTED_CHUNKS_DIR) build
 	@echo "=== Splitting into sorted chunks ==="
+	@echo "Ensuring sorted_chunks is clean..."
+	@find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete 2>/dev/null || sudo find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete 2>/dev/null || true
 	@file_count=$$(find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f | wc -l); \
 	echo "Processing $$file_count files..."; \
 	> $@; \
@@ -182,6 +188,8 @@ $(SORTED_CHUNKS_FILE): $(SORTED_CHUNKS_DIR) build
 
 $(SORTED_FILE): $(SORTED_CHUNKS_FILE) $(TMP_DIR) build
 	@echo "=== Merging sorted chunks ==="
+	@echo "Ensuring tmp is clean..."
+	@find $(TMP_DIR) -mindepth 1 -delete 2>/dev/null || sudo find $(TMP_DIR) -mindepth 1 -delete 2>/dev/null || true
 	@chunk_count=$$(wc -l < $(SORTED_CHUNKS_FILE) 2>/dev/null || echo 0); \
 	echo "Merging $$chunk_count chunks..."; \
 	cat $(SORTED_CHUNKS_FILE) | target/release/merge_sorted_chunks --tmp-directory $(TMP_DIR) --sort-field-path /main/offset | zstd > $@; \

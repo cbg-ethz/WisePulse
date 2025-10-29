@@ -78,6 +78,15 @@
     recurse: yes
   become: yes
 
+- name: Ensure SILO logs directory exists and is owned by wisepulse
+  file:
+    path: "{{ wisepulse_repo_path }}/logs"
+    state: directory
+    owner: "{{ wisepulse_user }}"
+    group: "{{ wisepulse_group }}"
+    mode: '0775'
+  become: yes
+
 - name: Install Rust for wisepulse user
   shell: |
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -96,6 +105,26 @@
     PATH: "/home/{{ wisepulse_user }}/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
   register: build_result
   changed_when: build_result.rc == 0
+
+- name: Get wisepulse user ID
+  command: id -u {{ wisepulse_user }}
+  register: wisepulse_uid
+  changed_when: false
+
+- name: Get wisepulse group ID
+  command: id -g {{ wisepulse_user }}
+  register: wisepulse_gid
+  changed_when: false
+
+- name: Deploy sudoers file for SILO cleanup
+  copy:
+    src: wisepulse-sudoers
+    dest: /etc/sudoers.d/wisepulse
+    owner: root
+    group: root
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  become: yes
 
 - name: Deploy systemd service file
   template:

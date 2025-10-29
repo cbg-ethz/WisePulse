@@ -1,0 +1,5 @@
+# Allow wisepulse user to clean up Docker-created SILO indexes and intermediate files
+# This is needed because Docker containers run as root and create root-owned files
+wisepulse ALL=(ALL) NOPASSWD: /usr/bin/rm -rf /opt/WisePulse/silo_output/*
+wisepulse ALL=(ALL) NOPASSWD: /usr/bin/find /opt/WisePulse/sorted_chunks -mindepth 1 -delete
+wisepulse ALL=(ALL) NOPASSWD: /usr/bin/find /opt/WisePulse/tmp -mindepth 1 -delete

@@ -2,6 +2,7 @@ services:
   siloPreprocessing:
     image: ghcr.io/genspectrum/lapis-silo:0.8.5
     command: preprocessing
+    user: "${WISEPULSE_UID:-1006}:${WISEPULSE_GID:-1006}"
     mem_limit: 350g
     volumes:
       - type: bind
