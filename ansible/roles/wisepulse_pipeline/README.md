@@ -109,14 +109,41 @@ sudo journalctl -u wisepulse-pipeline.service --since "2025-10-03 00:00" --until
 # Inspect the currently deployed config
 cat /etc/systemd/system/wisepulse-pipeline.service
 
-# Run pipeline manually (for testing)
-sudo systemctl start wisepulse-pipeline.service
+# Run pipeline manually (for testing - WARNING: see below)
+# sudo systemctl start wisepulse-pipeline.service
 
 # Stop the timer
 sudo systemctl stop wisepulse-pipeline.timer
 
 # Disable automatic execution
 sudo systemctl disable wisepulse-pipeline.timer
+```
+
+## ⚠️ Important: Manual Pipeline Execution
+
+**DO NOT manually run the pipeline** with `sudo systemctl start wisepulse-pipeline.service` unless you understand the consequences:
+
+- The service runs `make smart-fetch-and-process` which includes the data check
+- However, if data files exist in `silo_input/` from a previous run, it will process them
+- This can create an empty or duplicate SILO index
+- The automated timer is designed to handle this correctly
+
+**To safely test the pipeline:**
+1. Check logs: `sudo journalctl -u wisepulse-pipeline.service -f`
+2. Monitor the timer: `sudo systemctl list-timers wisepulse-pipeline.timer`
+3. Let the timer trigger it automatically at the scheduled time
+
+**If you need to force a run:**
+```bash
+# First, ensure silo_input is clean
+cd /opt/WisePulse
+make clean-data
+
+# Then verify no data will be reprocessed
+ls silo_input/
+
+# Only if empty, you can safely run
+sudo systemctl start wisepulse-pipeline.service
 ```
 
 ## How It Works

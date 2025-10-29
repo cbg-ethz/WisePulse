@@ -117,11 +117,6 @@ smart-fetch-and-process: build
 	@echo "=== WisePulse Smart Pipeline ==="
 	@if target/release/check_new_data --api-base-url "$(FETCH_API_BASE_URL)" --timestamp-file "$(TIMESTAMP_FILE)" --days-back $(FETCH_DAYS) --output-timestamp-file ".next_timestamp"; then \
 		echo "New data detected - running full pipeline"; \
-		echo "Validating clean state before processing..."; \
-		if [ -n "$$(find $(SORTED_CHUNKS_DIR) -mindepth 1 -print -quit 2>/dev/null)" ]; then \
-			echo "✗ Error: $(SORTED_CHUNKS_DIR) is not empty - cleanup failed"; \
-			exit 1; \
-		fi; \
 		$(MAKE) cleanup-old-indexes; \
 		if [ -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress" ]; then \
 			orphan=$$(cat "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"); \
@@ -174,6 +169,8 @@ $(SILO_OUTPUT_DIR):
 # Processing pipeline
 $(SORTED_CHUNKS_FILE): $(SORTED_CHUNKS_DIR) build
 	@echo "=== Splitting into sorted chunks ==="
+	@echo "Ensuring sorted_chunks is clean..."
+	@find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete 2>/dev/null || sudo find $(SORTED_CHUNKS_DIR) -mindepth 1 -delete 2>/dev/null || true
 	@file_count=$$(find "$(INPUT_DIR)" -name '*.ndjson.zst' -type f | wc -l); \
 	echo "Processing $$file_count files..."; \
 	> $@; \
@@ -187,6 +184,8 @@ $(SORTED_CHUNKS_FILE): $(SORTED_CHUNKS_DIR) build
 
 $(SORTED_FILE): $(SORTED_CHUNKS_FILE) $(TMP_DIR) build
 	@echo "=== Merging sorted chunks ==="
+	@echo "Ensuring tmp is clean..."
+	@find $(TMP_DIR) -mindepth 1 -delete 2>/dev/null || sudo find $(TMP_DIR) -mindepth 1 -delete 2>/dev/null || true
 	@chunk_count=$$(wc -l < $(SORTED_CHUNKS_FILE) 2>/dev/null || echo 0); \
 	echo "Merging $$chunk_count chunks..."; \
 	cat $(SORTED_CHUNKS_FILE) | target/release/merge_sorted_chunks --tmp-directory $(TMP_DIR) --sort-field-path /main/offset | zstd > $@; \
