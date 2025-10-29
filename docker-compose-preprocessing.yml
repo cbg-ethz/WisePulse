@@ -17,8 +17,4 @@ services:
         source: ./
         target: /preprocessing/input
         read_only: false
-      - type: bind
-        source: ./logs
-        target: /app/logs
-        read_only: false
     stop_grace_period: 5s

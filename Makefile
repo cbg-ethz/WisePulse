@@ -129,24 +129,28 @@ smart-fetch-and-process: build
 		$(MAKE) fetch-data; \
 		echo "Stopping SILO API for preprocessing"; \
 		docker compose down || true; \
-		date +%s > "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
+		expected_index=$$(date +%s); \
+		echo "Expected new index: $$expected_index"; \
 		if $(MAKE) $(SILO_OUTPUT_FLAG); then \
-			echo "✓ Preprocessing successful"; \
-			new_index=$$(find $(SILO_OUTPUT_DIR) -maxdepth 1 -type d 2>/dev/null | sort -n | tail -1 | xargs basename 2>/dev/null || echo ""); \
-			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
-			docker compose down --remove-orphans || true; \
-			docker network prune -f || true; \
-			echo "Starting API with index: $$new_index"; \
-			LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d; \
-			cp .next_timestamp "$(TIMESTAMP_FILE)"; \
-			rm -f .next_timestamp; \
-			echo "✓ Pipeline complete"; \
+			if [ -d "$(SILO_OUTPUT_DIR)/$$expected_index" ]; then \
+				echo "✓ Preprocessing successful - new index $$expected_index created"; \
+				docker compose down --remove-orphans || true; \
+				docker network prune -f || true; \
+				echo "Starting API with new index: $$expected_index"; \
+				LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d; \
+				cp .next_timestamp "$(TIMESTAMP_FILE)"; \
+				rm -f .next_timestamp; \
+				echo "✓ Pipeline complete"; \
+			else \
+				echo "✗ Preprocessing failed - expected index $$expected_index not found"; \
+				echo "Available indexes:"; \
+				ls -1 $(SILO_OUTPUT_DIR) | grep -E '^[0-9]+$$' || echo "  (none)"; \
+				LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d || true; \
+				rm -f .next_timestamp; \
+				exit 1; \
+			fi; \
 		else \
-			echo "✗ Preprocessing failed"; \
-			# Rollback: delete bad index, restart API with previous good index \
-			failed=$$(cat "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress" 2>/dev/null || echo ""); \
-			[ -n "$$failed" ] && rm -rf "$(SILO_OUTPUT_DIR)/$$failed" 2>/dev/null || true; \
-			rm -f "$(SILO_OUTPUT_DIR)/.preprocessing_in_progress"; \
+			echo "✗ Preprocessing Docker container failed"; \
 			LAPIS_PORT=$${LAPIS_PORT:-8083} docker compose up -d || true; \
 			rm -f .next_timestamp; \
 			exit 1; \
