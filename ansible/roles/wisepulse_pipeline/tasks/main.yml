@@ -78,6 +78,15 @@
     recurse: yes
   become: yes
 
+- name: Ensure SILO logs directory exists and is owned by wisepulse
+  file:
+    path: "{{ wisepulse_repo_path }}/logs"
+    state: directory
+    owner: "{{ wisepulse_user }}"
+    group: "{{ wisepulse_group }}"
+    mode: '0775'
+  become: yes
+
 - name: Install Rust for wisepulse user
   shell: |
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
