@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "src/add_offset",
+    "src/split_into_sorted_chunks",
+    "src/merge_sorted_chunks",
+    "src/fetch_silo_data",
+    "src/check_new_data"]
