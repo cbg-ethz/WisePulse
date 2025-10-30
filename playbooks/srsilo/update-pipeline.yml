@@ -5,16 +5,31 @@
   hosts: srsilo
   gather_facts: yes
   
+  pre_tasks:
+    - name: Log pipeline start to journal
+      shell: |
+        systemd-cat -t srsilo-pipeline -p info <<EOF
+        Pipeline started
+        User: $(whoami)
+        Fetch days: {{ srsilo_fetch_days }}
+        Retention days: {{ srsilo_retention_days }}
+        EOF
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+  
   tasks:
     - name: Display pipeline configuration
       debug:
         msg:
           - "=== srSILO Update Pipeline ==="
-          - "Iteration: 2 (Phases 1-2-4)"
+          - "Iteration: 4b (Phases 1-2-3-4-5-6)"
           - "Base path: {{ srsilo_base_path }}"
           - "API: {{ srsilo_api_base_url }}"
           - "Fetch days: {{ srsilo_fetch_days }}"
           - "Fetch max reads: {{ srsilo_fetch_max_reads }}"
+          - "Retention days: {{ srsilo_retention_days }}"
+          - "Retention min keep: {{ srsilo_retention_min_keep }}"
     
     # ========================================================================
     # PHASE 1: Pre-flight Checks
@@ -65,13 +80,125 @@
         msg:
           - "=== New Data Detected ==="
           - "✓ Phase 2 complete - New data available"
+          - "Proceeding to Phase 3: Cleanup old indexes"
+      when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 3: Pre-processing Cleanup
+    # ========================================================================
+    
+    - name: "PHASE 3: Run retention policy (cleanup old indexes)"
+      include_role:
+        name: srsilo
+        tasks_from: cleanup_indexes
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Check for orphaned preprocessing indexes"
+      block:
+        - name: Check if preprocessing_in_progress marker exists
+          stat:
+            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+          register: preprocessing_marker
+        
+        - name: Read orphaned index timestamp
+          slurp:
+            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+          register: orphaned_timestamp
+          when: preprocessing_marker.stat.exists
+        
+        - name: Delete orphaned preprocessing index
+          file:
+            path: "{{ srsilo_data_output }}/{{ orphaned_timestamp.content | b64decode | trim }}"
+            state: absent
+          become: yes
+          when: 
+            - preprocessing_marker.stat.exists
+            - orphaned_timestamp.content is defined
+          register: orphan_deletion
+        
+        - name: Remove preprocessing marker
+          file:
+            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            state: absent
+          become: yes
+          when: preprocessing_marker.stat.exists
+        
+        - name: Display orphan cleanup result
+          debug:
+            msg: "✓ Cleaned up orphaned preprocessing from previous failed run"
+          when: preprocessing_marker.stat.exists
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Clean old downloaded data"
+      block:
+        - name: Find old input files
+          find:
+            path: "{{ srsilo_data_input }}"
+            patterns: "*.ndjson.zst"
+            age: "1d"
+          register: old_input_files
+        
+        - name: Remove old input files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ old_input_files.files }}"
+          become: yes
+          when: old_input_files.matched > 0
+        
+        - name: Display input cleanup result
+          debug:
+            msg: "✓ Removed {{ old_input_files.matched }} old input file(s)"
+          when: old_input_files.matched > 0
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Reset working directories"
+      block:
+        - name: Clean sorted chunks directory
+          file:
+            path: "{{ srsilo_data_sorted_chunks }}"
+            state: absent
+          become: yes
+        
+        - name: Recreate sorted chunks directory
+          file:
+            path: "{{ srsilo_data_sorted_chunks }}"
+            state: directory
+            owner: "{{ srsilo_user }}"
+            group: "{{ srsilo_group }}"
+            mode: '0755'
+          become: yes
+        
+        - name: Clean tmp directory
+          file:
+            path: "{{ srsilo_data_tmp }}"
+            state: absent
+          become: yes
+        
+        - name: Recreate tmp directory
+          file:
+            path: "{{ srsilo_data_tmp }}"
+            state: directory
+            owner: "{{ srsilo_user }}"
+            group: "{{ srsilo_group }}"
+            mode: '0755'
+          become: yes
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Cleanup complete"
+      debug:
+        msg:
+          - "✓ Phase 3 complete - Cleanup finished"
           - "Proceeding to Phase 4: Fetch data"
       when: srsilo_has_new_data
     
     # ========================================================================
     # PHASE 4: Fetch Data
     # ========================================================================
-    # Note: Phase 3 (cleanup) will be added in Iteration 3
     
     - name: "PHASE 4: Fetch data from LAPIS API"
       include_role:
@@ -87,10 +214,118 @@
         msg:
           - "=== Phase 4 Complete ==="
           - "✓ Data fetched successfully"
-          - ""
-          - "Next phases (TODO in future iterations):"
-          - "  - Phase 3: Pre-processing cleanup"
-          - "  - Phase 5: Prepare for processing"
-          - "  - Phase 6: Process data"
-          - "  - Phase 7: Start API"
+          - "Proceeding to Phase 5: Prepare for processing"
       when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 5: Prepare for Processing
+    # ========================================================================
+    
+    - name: "PHASE 5: Create preprocessing marker"
+      block:
+        - name: Get current timestamp
+          set_fact:
+            preprocessing_timestamp: "{{ ansible_date_time.epoch }}"
+        
+        - name: Create preprocessing_in_progress marker
+          copy:
+            content: "{{ preprocessing_timestamp }}"
+            dest: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            owner: "{{ srsilo_user }}"
+            group: "{{ srsilo_group }}"
+            mode: '0644'
+          become: yes
+        
+        - name: Display marker created
+          debug:
+            msg: "✓ Created preprocessing marker: {{ preprocessing_timestamp }}"
+      tags: [phase5, prepare]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 5: Stop SILO API to free resources"
+      include_role:
+        name: srsilo
+        tasks_from: manage_api
+      vars:
+        api_action: stop
+      tags: [phase5, prepare, api]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 5: Preparation complete"
+      debug:
+        msg:
+          - "✓ Phase 5 complete - Ready for processing"
+          - "API stopped, resources freed"
+          - "Preprocessing marker created"
+          - "Proceeding to Phase 6: Process data"
+      when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 6: Process Data (CRITICAL SECTION)
+    # ========================================================================
+    
+    - name: "PHASE 6: Sort and merge reads"
+      include_role:
+        name: srsilo
+        tasks_from: sort_and_merge
+      tags: [phase6, process]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 6: Run SILO preprocessing"
+      include_role:
+        name: srsilo
+        tasks_from: silo_preprocessing
+      tags: [phase6, process, silo]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 6: Processing complete"
+      debug:
+        msg:
+          - "=== Phase 6 Complete ==="
+          - "✓ Data processed successfully"
+          - "✓ Sorted and merged reads"
+          - "✓ SILO preprocessing finished"
+      when: srsilo_has_new_data
+
+    # ========================================================================
+    # PHASE 7: Finalize Processing (Success/Failure Paths)
+    # ========================================================================
+    
+    - name: "PHASE 7: Finalize processing and start API"
+      include_role:
+        name: srsilo
+        tasks_from: finalize_processing
+      tags: [phase7, finalize]
+      when: srsilo_has_new_data
+
+    - name: "PHASE 7: Pipeline complete"
+      debug:
+        msg:
+          - "=== Full Pipeline Complete ==="
+          - "✓ All phases executed successfully"
+          - "✓ API running with latest index"
+          - "✓ Ready for queries"
+      when: srsilo_has_new_data
+  
+  post_tasks:
+    - name: Log pipeline completion to journal (success)
+      shell: echo "Pipeline completed successfully" | systemd-cat -t srsilo-pipeline -p info
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+      when: srsilo_has_new_data is defined and srsilo_has_new_data
+    
+    - name: Log pipeline completion to journal (no new data)
+      shell: echo "Pipeline completed - no new data" | systemd-cat -t srsilo-pipeline -p info
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+      when: srsilo_has_new_data is defined and not srsilo_has_new_data
+    
+    - name: Log pipeline failure to journal
+      shell: 'echo "Pipeline FAILED: {{ ansible_failed_result.msg | default(\"Unknown error\") }}" | systemd-cat -t srsilo-pipeline -p err'
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+      when: ansible_failed_result is defined
+      ignore_errors: yes

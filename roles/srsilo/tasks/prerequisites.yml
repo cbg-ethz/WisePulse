@@ -1,6 +1,24 @@
 ---
 # Prerequisites: Create user, directories, and set permissions
 
+- name: Ensure Docker is installed
+  apt:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+  become: yes
+  register: docker_install
+  failed_when: false
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+  when: docker_install is succeeded
+
 - name: Ensure srsilo group exists
   group:
     name: "{{ srsilo_group }}"
@@ -14,6 +32,8 @@
     shell: /bin/bash
     create_home: yes
     comment: "srSILO Pipeline User"
+    groups: docker
+    append: yes
   become: yes
 
 - name: Ensure base directory exists
@@ -38,14 +58,15 @@
     - "{{ srsilo_data_output }}"
     - "{{ srsilo_data_sorted_chunks }}"
     - "{{ srsilo_data_tmp }}"
+    - "{{ srsilo_tools_path }}/logs"
 
-- name: Ensure log directory exists
+- name: Ensure Ansible log directory exists
   file:
-    path: "{{ srsilo_log_dir }}"
+    path: /var/log/ansible
     state: directory
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0755'
+    owner: root
+    group: adm
+    mode: '0750'
   become: yes
 
 - name: Copy tools directory from repository to base path
@@ -64,6 +85,18 @@
     recurse: yes
   become: yes
 
+- name: Template docker-compose files with absolute paths
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ srsilo_tools_path }}/{{ item.dest }}"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+  become: yes
+  loop:
+    - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
+    - { src: 'docker-compose-preprocessing.yml.j2', dest: 'docker-compose-preprocessing.yml' }
+
 - name: Display prerequisites complete message
   debug:
     msg:
@@ -71,3 +104,4 @@
       - "  User/Group: {{ srsilo_user }}:{{ srsilo_group }}"
       - "  Base path: {{ srsilo_base_path }}"
       - "  Tools path: {{ srsilo_tools_path }}"
+      - "  Docker compose files rendered with absolute paths"

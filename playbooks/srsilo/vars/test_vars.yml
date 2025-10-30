@@ -13,6 +13,12 @@ srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 srsilo_retention_days: 3          # More aggressive cleanup for testing
 srsilo_retention_min_keep: 2
 
+# Processing configuration
+srsilo_chunk_size: 30000          # Reduced for 6GB RAM test environment
+
+# Docker memory limits for 6GB RAM test environment
+srsilo_docker_memory_limit: 6g    # Limit Docker to 5GB (leave ~1GB for system)
+
 # Optional: Override start date for testing
 # Uncomment and adjust if you want to test a specific date range
 # fetch_start_date: "2025-10-23"

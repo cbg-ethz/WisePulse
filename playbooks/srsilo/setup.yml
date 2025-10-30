@@ -33,13 +33,21 @@
         tasks_from: deploy_configs
       tags: [config]
     
+    - name: Deploy logrotate configuration
+      include_role:
+        name: srsilo
+        tasks_from: deploy_logrotate
+      tags: [logging]
+    
     - name: Display setup complete message
       debug:
         msg:
           - "=== srSILO Setup Complete ==="
           - "Binaries: {{ srsilo_tools_path }}/target/release/"
           - "Data will be stored in: {{ srsilo_base_path }}"
+          - "Logs: Use 'sudo journalctl -t srsilo-pipeline' to view logs"
+          - "Ansible logs: /var/log/ansible/ansible.log"
           - ""
           - "Next steps:"
-          - "  - Run playbooks/srsilo/smart-pipeline.yml to process data"
+          - "  - Run playbooks/srsilo/update-pipeline.yml to process data"
           - "  - Setup systemd timer for automated runs"

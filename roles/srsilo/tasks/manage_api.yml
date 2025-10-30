@@ -1,1 +1,81 @@
-# TODO: Create task: manage_api.yml (start/stop SILO API)
+---
+# Manage SILO API container lifecycle
+# Operations: stop, start, restart, cleanup
+
+- name: Display API management action
+  debug:
+    msg:
+      - "=== Managing SILO API ==="
+      - "Action: {{ api_action }}"
+      - "Port: {{ srsilo_lapis_port }}"
+      - "{{ 'Index: ' + (api_index | default('latest')) if api_action == 'start' else '' }}"
+  when: api_action is defined
+
+- name: Stop SILO API
+  shell: docker-compose down || true
+  args:
+    chdir: "{{ srsilo_tools_path }}"
+  become: yes
+  when: api_action == 'stop'
+  register: api_stop_result
+  changed_when: "'Removed' in api_stop_result.stdout or 'Stopped' in api_stop_result.stdout"
+
+- name: Start SILO API
+  shell: LAPIS_PORT={{ srsilo_lapis_port }} docker-compose up -d
+  args:
+    chdir: "{{ srsilo_tools_path }}"
+  become: yes
+  when: api_action == 'start'
+  register: api_start_result
+  changed_when: "'Started' in api_start_result.stdout or 'Created' in api_start_result.stdout"
+
+- name: Wait for API to be ready
+  uri:
+    url: "http://localhost:{{ srsilo_lapis_port }}/sample/info"
+    method: GET
+    status_code: 200
+    timeout: 10
+  register: api_health
+  retries: 12
+  delay: 5
+  until: api_health.status == 200
+  when: 
+    - api_action == 'start'
+    - api_start_result is changed
+  ignore_errors: yes
+
+- name: Clean up Docker resources
+  block:
+    - name: Stop containers
+      shell: docker-compose down --remove-orphans || true
+      args:
+        chdir: "{{ srsilo_tools_path }}"
+      become: yes
+    
+    - name: Prune unused networks
+      shell: docker network prune -f || true
+      become: yes
+    
+    - name: Prune unused volumes (if specified)
+      shell: docker volume prune -f || true
+      become: yes
+      when: cleanup_volumes | default(false)
+  when: api_action == 'cleanup'
+
+- name: Check API health
+  uri:
+    url: "http://localhost:{{ srsilo_lapis_port }}/health"
+    method: GET
+    status_code: 200
+    timeout: 5
+  register: health_check
+  retries: 5
+  delay: 2
+  until: health_check.status == 200
+  when: api_action == 'health_check'
+  ignore_errors: yes
+
+- name: Display API management result
+  debug:
+    msg: "✓ API {{ api_action }} complete"
+  when: api_action is defined

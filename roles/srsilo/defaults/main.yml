@@ -27,8 +27,19 @@ srsilo_lapis_port: 8083
 srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
-# Logging
-srsilo_log_dir: /var/log/srsilo
+# Processing configuration
+# Chunk size for splitting reads - adjust based on available RAM
+# Default: 100000 (works with ~8GB RAM)
+# For 4GB RAM: use 50000
+# For 16GB+ RAM: can use 500000 or more
+srsilo_chunk_size: 100000
+
+# Docker memory limits
+# SILO preprocessing and API memory limits
+# Production: 350g (for large datasets)
+# Test/Dev (4-8GB RAM): 3g
+# Adjust based on available system RAM
+srsilo_docker_memory_limit: 350g
 
 # Repository path (for development/deployment)
 # This can be overridden in host_vars if the repo is cloned elsewhere
