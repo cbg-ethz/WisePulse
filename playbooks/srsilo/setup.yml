@@ -1,0 +1,45 @@
+---
+- name: srSILO Setup - Initial Setup and Configuration
+  hosts: srsilo
+  gather_facts: yes
+  
+  tasks:
+    - name: Display configuration
+      debug:
+        msg:
+          - "=== srSILO Setup Configuration ==="
+          - "User: {{ srsilo_user }}"
+          - "Group: {{ srsilo_group }}"
+          - "Base path: {{ srsilo_base_path }}"
+          - "Tools path: {{ srsilo_tools_path }}"
+          - "API: {{ srsilo_api_base_url }}"
+          - "Fetch days: {{ srsilo_fetch_days }}"
+    
+    - name: Setup prerequisites (user, directories, permissions)
+      include_role:
+        name: srsilo
+        tasks_from: prerequisites
+      tags: [prerequisites]
+    
+    - name: Build Rust tools
+      include_role:
+        name: srsilo
+        tasks_from: build_tools
+      tags: [build]
+    
+    - name: Deploy configuration files
+      include_role:
+        name: srsilo
+        tasks_from: deploy_configs
+      tags: [config]
+    
+    - name: Display setup complete message
+      debug:
+        msg:
+          - "=== srSILO Setup Complete ==="
+          - "Binaries: {{ srsilo_tools_path }}/target/release/"
+          - "Data will be stored in: {{ srsilo_base_path }}"
+          - ""
+          - "Next steps:"
+          - "  - Run playbooks/srsilo/smart-pipeline.yml to process data"
+          - "  - Setup systemd timer for automated runs"

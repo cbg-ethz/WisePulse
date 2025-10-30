@@ -1,0 +1,96 @@
+
+
+---
+- name: srSILO Update Pipeline - Full Automation
+  hosts: srsilo
+  gather_facts: yes
+  
+  tasks:
+    - name: Display pipeline configuration
+      debug:
+        msg:
+          - "=== srSILO Update Pipeline ==="
+          - "Iteration: 2 (Phases 1-2-4)"
+          - "Base path: {{ srsilo_base_path }}"
+          - "API: {{ srsilo_api_base_url }}"
+          - "Fetch days: {{ srsilo_fetch_days }}"
+          - "Fetch max reads: {{ srsilo_fetch_max_reads }}"
+    
+    # ========================================================================
+    # PHASE 1: Pre-flight Checks
+    # ========================================================================
+    
+    - name: "PHASE 1: Setup prerequisites (user, directories, permissions)"
+      include_role:
+        name: srsilo
+        tasks_from: prerequisites
+      tags: [phase1, prerequisites]
+    
+    - name: "PHASE 1: Build Rust tools"
+      include_role:
+        name: srsilo
+        tasks_from: build_tools
+      tags: [phase1, build]
+    
+    - name: "PHASE 1: Pre-flight checks complete"
+      debug:
+        msg: "✓ Phase 1 complete - Prerequisites verified and tools built"
+    
+    # ========================================================================
+    # PHASE 2: Check for New Data
+    # ========================================================================
+    
+    - name: "PHASE 2: Check for new data from LAPIS API"
+      include_role:
+        name: srsilo
+        tasks_from: check_new_data
+      tags: [phase2, check]
+    
+    # Exit gracefully if no new data
+    - name: "PHASE 2: Exit if no new data found"
+      block:
+        - name: Display no new data message
+          debug:
+            msg:
+              - "=== Pipeline Complete ==="
+              - "No new data available - skipping remaining phases"
+              - "This is normal and saves resources"
+        
+        - name: End playbook execution
+          meta: end_play
+      when: not srsilo_has_new_data
+    
+    - name: "PHASE 2: New data detected - pipeline will continue"
+      debug:
+        msg:
+          - "=== New Data Detected ==="
+          - "✓ Phase 2 complete - New data available"
+          - "Proceeding to Phase 4: Fetch data"
+      when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 4: Fetch Data
+    # ========================================================================
+    # Note: Phase 3 (cleanup) will be added in Iteration 3
+    
+    - name: "PHASE 4: Fetch data from LAPIS API"
+      include_role:
+        name: srsilo
+        tasks_from: fetch_data
+      vars:
+        fetch_start_date: "{{ ansible_date_time.date }}"
+      tags: [phase4, fetch]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 4: Fetch complete"
+      debug:
+        msg:
+          - "=== Phase 4 Complete ==="
+          - "✓ Data fetched successfully"
+          - ""
+          - "Next phases (TODO in future iterations):"
+          - "  - Phase 3: Pre-processing cleanup"
+          - "  - Phase 5: Prepare for processing"
+          - "  - Phase 6: Process data"
+          - "  - Phase 7: Start API"
+      when: srsilo_has_new_data
