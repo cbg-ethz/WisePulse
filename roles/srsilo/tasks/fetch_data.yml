@@ -1,1 +1,74 @@
-# Create task: fetch_data.yml (replaces make fetch-data)
+---
+# Fetch genomic data from LAPIS API
+# This task is equivalent to running 'make fetch-data'
+# Downloads NDJSON files compressed with ZStandard
+
+- name: Ensure input directory exists
+  file:
+    path: "{{ srsilo_data_input }}"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Validate required variables
+  assert:
+    that:
+      - fetch_start_date is defined and fetch_start_date | length > 0
+      - srsilo_fetch_days is defined and srsilo_fetch_days > 0
+      - srsilo_fetch_max_reads is defined and srsilo_fetch_max_reads > 0
+    fail_msg: "Required variables not defined: fetch_start_date, srsilo_fetch_days, srsilo_fetch_max_reads"
+
+- name: Display fetch configuration
+  debug:
+    msg:
+      - "=== Fetching data from LAPIS API ==="
+      - "API: {{ srsilo_api_base_url }}"
+      - "Start date: {{ fetch_start_date }}"
+      - "Days: {{ srsilo_fetch_days }}"
+      - "Max reads per batch: {{ srsilo_fetch_max_reads }}"
+      - "Output directory: {{ srsilo_data_input }}"
+
+- name: Fetch data from LAPIS API
+  command: >
+    {{ srsilo_tools_path }}/target/release/fetch_silo_data
+    --start-date "{{ fetch_start_date }}"
+    --days {{ srsilo_fetch_days }}
+    --max-reads {{ srsilo_fetch_max_reads }}
+    --output-dir "{{ srsilo_data_input }}"
+    --api-base-url "{{ srsilo_api_base_url }}"
+  args:
+    chdir: "{{ srsilo_base_path }}"
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  register: fetch_result
+  changed_when: "'Downloading' in fetch_result.stdout"
+  failed_when: fetch_result.rc != 0
+
+- name: Display fetch result
+  debug:
+    msg:
+      - "=== Data Fetch Complete ==="
+      - "{{ fetch_result.stdout_lines }}"
+  when: fetch_result.stdout_lines | length > 0
+
+- name: Verify downloaded files exist
+  find:
+    path: "{{ srsilo_data_input }}"
+    patterns: "*.ndjson.zst"
+    file_type: file
+  register: fetched_files
+
+- name: Display download summary
+  debug:
+    msg:
+      - "✓ Fetch successful"
+      - "Downloaded {{ fetched_files.matched }} file(s)"
+      - "Total size: {{ (fetched_files.files | map(attribute='size') | sum) | int / 1024 / 1024 / 1024 | round(2) }} GB"
+  when: fetched_files.matched > 0
+
+- name: Report - No files downloaded
+  fail:
+    msg: "No files downloaded from API. Check API connectivity and parameters."
+  when: fetched_files.matched == 0
