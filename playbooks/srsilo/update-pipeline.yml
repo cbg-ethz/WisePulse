@@ -10,7 +10,7 @@
       debug:
         msg:
           - "=== srSILO Update Pipeline ==="
-          - "Iteration: 4a (Phases 1-2-3-4-5)"
+          - "Iteration: 4b (Phases 1-2-3-4-5-6)"
           - "Base path: {{ srsilo_base_path }}"
           - "API: {{ srsilo_api_base_url }}"
           - "Fetch days: {{ srsilo_fetch_days }}"
@@ -244,8 +244,35 @@
           - "✓ Phase 5 complete - Ready for processing"
           - "API stopped, resources freed"
           - "Preprocessing marker created"
+          - "Proceeding to Phase 6: Process data"
+      when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 6: Process Data (CRITICAL SECTION)
+    # ========================================================================
+    
+    - name: "PHASE 6: Sort and merge reads"
+      include_role:
+        name: srsilo
+        tasks_from: sort_and_merge
+      tags: [phase6, process]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 6: Run SILO preprocessing"
+      include_role:
+        name: srsilo
+        tasks_from: silo_preprocessing
+      tags: [phase6, process, silo]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 6: Processing complete"
+      debug:
+        msg:
+          - "=== Phase 6 Complete ==="
+          - "✓ Data processed successfully"
+          - "✓ Sorted and merged reads"
+          - "✓ SILO preprocessing finished"
           - ""
           - "Next phases (TODO in future iterations):"
-          - "  - Phase 6: Process data"
-          - "  - Phase 7: Start API"
+          - "  - Phase 7: Start API with new index"
       when: srsilo_has_new_data

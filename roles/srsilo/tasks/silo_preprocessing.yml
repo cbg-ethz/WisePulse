@@ -1,1 +1,79 @@
-TODO: Create task: silo_preprocessing.yml (SILO Docker preprocessing)
+---
+# Run SILO preprocessing via Docker
+# This task processes the sorted NDJSON file and creates SILO indexes
+# Equivalent to Makefile: docker-compose -f docker-compose-preprocessing.yml up
+
+- name: Display SILO preprocessing configuration
+  debug:
+    msg:
+      - "=== SILO Preprocessing ==="
+      - "Input: {{ srsilo_base_path }}/sorted.ndjson.zst"
+      - "Output: {{ srsilo_data_output }}/<timestamp>/"
+      - "Tools: {{ srsilo_tools_path }}"
+
+- name: Verify sorted file exists
+  stat:
+    path: "{{ srsilo_base_path }}/sorted.ndjson.zst"
+  register: sorted_file_check
+
+- name: Fail if sorted file missing
+  fail:
+    msg: "Sorted file not found: {{ srsilo_base_path }}/sorted.ndjson.zst"
+  when: not sorted_file_check.stat.exists
+
+- name: Check if Docker is available
+  shell: command -v docker
+  register: docker_check
+  failed_when: false
+  changed_when: false
+
+- name: Run SILO preprocessing (with Docker)
+  block:
+    - name: Clean up any previous preprocessing containers
+      shell: docker compose -f docker-compose-preprocessing.yml down -v || true
+      args:
+        chdir: "{{ srsilo_tools_path }}"
+      become: yes
+      changed_when: false
+    
+    - name: Run preprocessing container
+      shell: docker compose -f docker-compose-preprocessing.yml up
+      args:
+        chdir: "{{ srsilo_tools_path }}"
+      become: yes
+      register: preprocessing_result
+    
+    - name: Display preprocessing result
+      debug:
+        msg: "✓ SILO preprocessing complete"
+  when: docker_check.rc == 0
+
+- name: Skip preprocessing (Docker not available)
+  debug:
+    msg: "⚠ Docker not found - skipping SILO preprocessing (development mode)"
+  when: docker_check.rc != 0
+
+- name: Find created index directory
+  find:
+    path: "{{ srsilo_data_output }}"
+    file_type: directory
+    recurse: no
+  register: output_indexes
+  when: docker_check.rc == 0
+
+- name: Get newest index directory
+  set_fact:
+    new_index_dir: "{{ output_indexes.files | sort(attribute='mtime', reverse=true) | first | default({}) }}"
+  when: 
+    - docker_check.rc == 0
+    - output_indexes.matched > 0
+
+- name: Display created index
+  debug:
+    msg:
+      - "✓ New index created"
+      - "Location: {{ new_index_dir.path | default('N/A') }}"
+  when:
+    - docker_check.rc == 0
+    - new_index_dir is defined
+    - new_index_dir.path is defined
