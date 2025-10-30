@@ -10,7 +10,7 @@
       debug:
         msg:
           - "=== srSILO Update Pipeline ==="
-          - "Iteration: 1 (Phases 1-2)"
+          - "Iteration: 2 (Phases 1-2-4)"
           - "Base path: {{ srsilo_base_path }}"
           - "API: {{ srsilo_api_base_url }}"
           - "Fetch days: {{ srsilo_fetch_days }}"
@@ -65,11 +65,31 @@
         msg:
           - "=== New Data Detected ==="
           - "✓ Phase 2 complete - New data available"
-          - "Pipeline will continue in future iterations..."
+          - "Proceeding to Phase 4: Fetch data"
+      when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 4: Fetch Data
+    # ========================================================================
+    # Note: Phase 3 (cleanup) will be added in Iteration 3
+    
+    - name: "PHASE 4: Fetch data from LAPIS API"
+      include_role:
+        name: srsilo
+        tasks_from: fetch_data
+      vars:
+        fetch_start_date: "{{ ansible_date_time.date }}"
+      tags: [phase4, fetch]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 4: Fetch complete"
+      debug:
+        msg:
+          - "=== Phase 4 Complete ==="
+          - "✓ Data fetched successfully"
           - ""
           - "Next phases (TODO in future iterations):"
           - "  - Phase 3: Pre-processing cleanup"
-          - "  - Phase 4: Fetch data"
           - "  - Phase 5: Prepare for processing"
           - "  - Phase 6: Process data"
           - "  - Phase 7: Start API"
