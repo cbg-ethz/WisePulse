@@ -25,6 +25,7 @@
     creates: "/home/{{ srsilo_user }}/.cargo/bin/cargo"
   become: yes
   become_user: "{{ srsilo_user }}"
+  become_method: sudo
   when: not cargo_bin.stat.exists
 
 - name: Ensure tools directory exists
@@ -42,6 +43,7 @@
     chdir: "{{ srsilo_tools_path }}"
   become: yes
   become_user: "{{ srsilo_user }}"
+  become_method: sudo
   environment:
     PATH: "/home/{{ srsilo_user }}/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
     CARGO_HOME: "/home/{{ srsilo_user }}/.cargo"
