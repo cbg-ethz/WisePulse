@@ -10,7 +10,7 @@
       debug:
         msg:
           - "=== srSILO Update Pipeline ==="
-          - "Iteration: 3 (Phases 1-2-3-4)"
+          - "Iteration: 4a (Phases 1-2-3-4-5)"
           - "Base path: {{ srsilo_base_path }}"
           - "API: {{ srsilo_api_base_url }}"
           - "Fetch days: {{ srsilo_fetch_days }}"
@@ -201,9 +201,51 @@
         msg:
           - "=== Phase 4 Complete ==="
           - "✓ Data fetched successfully"
+          - "Proceeding to Phase 5: Prepare for processing"
+      when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 5: Prepare for Processing
+    # ========================================================================
+    
+    - name: "PHASE 5: Create preprocessing marker"
+      block:
+        - name: Get current timestamp
+          set_fact:
+            preprocessing_timestamp: "{{ ansible_date_time.epoch }}"
+        
+        - name: Create preprocessing_in_progress marker
+          copy:
+            content: "{{ preprocessing_timestamp }}"
+            dest: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            owner: "{{ srsilo_user }}"
+            group: "{{ srsilo_group }}"
+            mode: '0644'
+          become: yes
+        
+        - name: Display marker created
+          debug:
+            msg: "✓ Created preprocessing marker: {{ preprocessing_timestamp }}"
+      tags: [phase5, prepare]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 5: Stop SILO API to free resources"
+      include_role:
+        name: srsilo
+        tasks_from: manage_api
+      vars:
+        api_action: stop
+      tags: [phase5, prepare, api]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 5: Preparation complete"
+      debug:
+        msg:
+          - "✓ Phase 5 complete - Ready for processing"
+          - "API stopped, resources freed"
+          - "Preprocessing marker created"
           - ""
           - "Next phases (TODO in future iterations):"
-          - "  - Phase 5: Prepare for processing"
           - "  - Phase 6: Process data"
           - "  - Phase 7: Start API"
       when: srsilo_has_new_data
