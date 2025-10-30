@@ -21,7 +21,7 @@ wisepulse_api_base_url: https://api.db.wasap.genspectrum.org
 
 # Fetch configuration (passed to Make)
 wisepulse_fetch_days: 90              # Days of historical data to fetch
-wisepulse_fetch_max_reads: 155000000   # 150 million reads 
+wisepulse_fetch_max_reads: 172500000   # 172.5 million reads
 
 # LAPIS port for docker compose (optional, for when starting the API)
 wisepulse_lapis_port: 8083
