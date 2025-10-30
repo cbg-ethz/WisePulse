@@ -3,6 +3,15 @@
 # This task is equivalent to running 'make build' from the Makefile
 # which executes: cargo build --release
 
+- name: Ensure build dependencies are installed
+  apt:
+    name:
+      - build-essential
+      - pkg-config
+      - libssl-dev
+    state: present
+  become: yes
+
 - name: Check if Rust/Cargo is installed for srsilo user
   stat:
     path: "/home/{{ srsilo_user }}/.cargo/bin/cargo"
@@ -27,7 +36,7 @@
     mode: '0755'
   become: yes
 
-- name: Build Rust utilities (equivalent to 'make build')
+- name: Build Rust utilities
   command: cargo build --release
   args:
     chdir: "{{ srsilo_tools_path }}"
