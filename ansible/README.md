@@ -112,3 +112,31 @@ ansible/
 └── host_vars/
     └── localhost/            # Host-specific settings
 ```
+
+## Development
+
+### Linting Ansible Code
+
+The project uses [ansible-lint](https://ansible.readthedocs.io/projects/lint/) to ensure code quality and best practices for Ansible playbooks and roles. Linting is automatically run in the CI pipeline.
+
+**Install ansible-lint:**
+```bash
+pip install ansible-lint
+```
+
+**Run ansible-lint locally:**
+```bash
+cd ansible
+ansible-lint playbooks/ roles/
+```
+
+**Configuration:**
+- `.ansible-lint` - Configuration file with project-specific rules
+- Linting is configured to be permissive for existing code while still catching serious issues
+- The CI pipeline runs ansible-lint on all pull requests and commits to main
+
+**Common issues:**
+- Ensure YAML files are properly formatted
+- Use FQCN (Fully Qualified Collection Names) for built-in modules when possible
+- Follow Ansible best practices for task naming and variable naming
+
