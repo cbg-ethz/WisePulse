@@ -3,7 +3,7 @@
 # These override the defaults for safe testing with reduced resource usage
 
 # Reduce fetch parameters for testing
-srsilo_fetch_days: 7              # Fetch only 7 days instead of 90
+srsilo_fetch_days: 30              # Fetch only 7 days instead of 90
 srsilo_fetch_max_reads: 5000000   # Limit to 5M reads instead of 125M
 
 # Keep API configuration same
