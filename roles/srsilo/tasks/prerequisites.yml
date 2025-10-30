@@ -1,0 +1,73 @@
+---
+# Prerequisites: Create user, directories, and set permissions
+
+- name: Ensure srsilo group exists
+  group:
+    name: "{{ srsilo_group }}"
+    state: present
+  become: yes
+
+- name: Ensure srsilo user exists
+  user:
+    name: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    shell: /bin/bash
+    create_home: yes
+    comment: "srSILO Pipeline User"
+  become: yes
+
+- name: Ensure base directory exists
+  file:
+    path: "{{ srsilo_base_path }}"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Ensure data directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ srsilo_data_input }}"
+    - "{{ srsilo_data_output }}"
+    - "{{ srsilo_data_sorted_chunks }}"
+    - "{{ srsilo_data_tmp }}"
+
+- name: Ensure log directory exists
+  file:
+    path: "{{ srsilo_log_dir }}"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Copy tools directory from repository to base path
+  synchronize:
+    src: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools/"
+    dest: "{{ srsilo_tools_path }}/"
+    recursive: yes
+  become: yes
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: Set ownership of tools directory
+  file:
+    path: "{{ srsilo_tools_path }}"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    recurse: yes
+  become: yes
+
+- name: Display prerequisites complete message
+  debug:
+    msg:
+      - "✓ Prerequisites setup complete"
+      - "  User/Group: {{ srsilo_user }}:{{ srsilo_group }}"
+      - "  Base path: {{ srsilo_base_path }}"
+      - "  Tools path: {{ srsilo_tools_path }}"

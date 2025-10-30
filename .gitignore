@@ -1,23 +1,6 @@
-sorted.ndjson.zst
-*.ndjson.zst
-silo_output/*
-silo_input/*
-logs
-euler_silo_inputs_1.1.0/
-euler_silo_inputs_1.2.0
-target/
-sorted_chunks/
-tmp/
-
 # Pipeline automation
 .last_update
 .next_timestamp
-
-# Test/temporary files
-.test_timestamp
-silo_output.file
-sorted_chunks.file
-silo_input_backup/
 
 # Ansible
 .vault_pass

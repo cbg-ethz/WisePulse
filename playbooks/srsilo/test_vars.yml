@@ -1,0 +1,18 @@
+---
+# Test variables for srSILO update pipeline
+# These override the defaults for safe testing with reduced resource usage
+
+# Reduce fetch parameters for testing
+srsilo_fetch_days: 30              # Fetch only 7 days instead of 90
+srsilo_fetch_max_reads: 5000000   # Limit to 5M reads instead of 125M
+
+# Keep API configuration same
+srsilo_api_base_url: https://api.db.wasap.genspectrum.org
+
+# Retention policy (for future iterations)
+srsilo_retention_days: 3          # More aggressive cleanup for testing
+srsilo_retention_min_keep: 2
+
+# Optional: Override start date for testing
+# Uncomment and adjust if you want to test a specific date range
+# fetch_start_date: "2025-10-23"
