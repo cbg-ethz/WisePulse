@@ -1,1 +1,64 @@
-# TODO: Create task: build_tools.yml (replaces make build)
+---
+# Build Rust utilities for srSILO pipeline
+# This task is equivalent to running 'make build' from the Makefile
+# which executes: cargo build --release
+
+- name: Check if Rust/Cargo is installed for wisepulse user
+  stat:
+    path: "/home/{{ wisepulse_user }}/.cargo/bin/cargo"
+  register: cargo_bin
+  become: yes
+
+- name: Install Rust for wisepulse user if not present
+  shell: |
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  args:
+    creates: "/home/{{ wisepulse_user }}/.cargo/bin/cargo"
+  become: yes
+  become_user: "{{ wisepulse_user }}"
+  when: not cargo_bin.stat.exists
+
+- name: Ensure tools directory exists
+  file:
+    path: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools"
+    state: directory
+    owner: "{{ wisepulse_user }}"
+    group: "{{ wisepulse_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Build Rust utilities (equivalent to 'make build')
+  command: cargo build --release
+  args:
+    chdir: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools"
+  become: yes
+  become_user: "{{ wisepulse_user }}"
+  environment:
+    PATH: "/home/{{ wisepulse_user }}/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+    CARGO_HOME: "/home/{{ wisepulse_user }}/.cargo"
+    RUSTUP_HOME: "/home/{{ wisepulse_user }}/.rustup"
+  register: build_result
+  changed_when: "'Compiling' in build_result.stderr or 'Finished' in build_result.stderr"
+
+- name: Display build result
+  debug:
+    msg: "Rust tools built successfully. Binaries available in target/release/"
+  when: build_result.rc == 0
+
+- name: Verify built binaries exist
+  stat:
+    path: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools/target/release/{{ item }}"
+  register: binary_checks
+  loop:
+    - split_into_sorted_chunks
+    - merge_sorted_chunks
+    - fetch_silo_data
+    - add_offset
+    - check_new_data
+  become: yes
+
+- name: Report missing binaries
+  fail:
+    msg: "Binary {{ item.item }} was not built successfully"
+  loop: "{{ binary_checks.results }}"
+  when: not item.stat.exists
