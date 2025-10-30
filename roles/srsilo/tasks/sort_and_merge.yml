@@ -30,7 +30,7 @@
     zstdcat "{{ item.path }}" | \
     {{ srsilo_tools_path }}/target/release/split_into_sorted_chunks \
       --output-path "{{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')" \
-      --chunk-size 1000000 \
+      --chunk-size {{ srsilo_chunk_size }} \
       --sort-field-path /main/offset >> {{ srsilo_data_sorted_chunks }}/chunks.list
   args:
     chdir: "{{ srsilo_base_path }}"
