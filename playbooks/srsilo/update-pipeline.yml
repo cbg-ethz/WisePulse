@@ -10,11 +10,13 @@
       debug:
         msg:
           - "=== srSILO Update Pipeline ==="
-          - "Iteration: 2 (Phases 1-2-4)"
+          - "Iteration: 3 (Phases 1-2-3-4)"
           - "Base path: {{ srsilo_base_path }}"
           - "API: {{ srsilo_api_base_url }}"
           - "Fetch days: {{ srsilo_fetch_days }}"
           - "Fetch max reads: {{ srsilo_fetch_max_reads }}"
+          - "Retention days: {{ srsilo_retention_days }}"
+          - "Retention min keep: {{ srsilo_retention_min_keep }}"
     
     # ========================================================================
     # PHASE 1: Pre-flight Checks
@@ -65,13 +67,125 @@
         msg:
           - "=== New Data Detected ==="
           - "✓ Phase 2 complete - New data available"
+          - "Proceeding to Phase 3: Cleanup old indexes"
+      when: srsilo_has_new_data
+    
+    # ========================================================================
+    # PHASE 3: Pre-processing Cleanup
+    # ========================================================================
+    
+    - name: "PHASE 3: Run retention policy (cleanup old indexes)"
+      include_role:
+        name: srsilo
+        tasks_from: cleanup_indexes
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Check for orphaned preprocessing indexes"
+      block:
+        - name: Check if preprocessing_in_progress marker exists
+          stat:
+            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+          register: preprocessing_marker
+        
+        - name: Read orphaned index timestamp
+          slurp:
+            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+          register: orphaned_timestamp
+          when: preprocessing_marker.stat.exists
+        
+        - name: Delete orphaned preprocessing index
+          file:
+            path: "{{ srsilo_data_output }}/{{ orphaned_timestamp.content | b64decode | trim }}"
+            state: absent
+          become: yes
+          when: 
+            - preprocessing_marker.stat.exists
+            - orphaned_timestamp.content is defined
+          register: orphan_deletion
+        
+        - name: Remove preprocessing marker
+          file:
+            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            state: absent
+          become: yes
+          when: preprocessing_marker.stat.exists
+        
+        - name: Display orphan cleanup result
+          debug:
+            msg: "✓ Cleaned up orphaned preprocessing from previous failed run"
+          when: preprocessing_marker.stat.exists
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Clean old downloaded data"
+      block:
+        - name: Find old input files
+          find:
+            path: "{{ srsilo_data_input }}"
+            patterns: "*.ndjson.zst"
+            age: "1d"
+          register: old_input_files
+        
+        - name: Remove old input files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ old_input_files.files }}"
+          become: yes
+          when: old_input_files.matched > 0
+        
+        - name: Display input cleanup result
+          debug:
+            msg: "✓ Removed {{ old_input_files.matched }} old input file(s)"
+          when: old_input_files.matched > 0
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Reset working directories"
+      block:
+        - name: Clean sorted chunks directory
+          file:
+            path: "{{ srsilo_data_sorted_chunks }}"
+            state: absent
+          become: yes
+        
+        - name: Recreate sorted chunks directory
+          file:
+            path: "{{ srsilo_data_sorted_chunks }}"
+            state: directory
+            owner: "{{ srsilo_user }}"
+            group: "{{ srsilo_group }}"
+            mode: '0755'
+          become: yes
+        
+        - name: Clean tmp directory
+          file:
+            path: "{{ srsilo_data_tmp }}"
+            state: absent
+          become: yes
+        
+        - name: Recreate tmp directory
+          file:
+            path: "{{ srsilo_data_tmp }}"
+            state: directory
+            owner: "{{ srsilo_user }}"
+            group: "{{ srsilo_group }}"
+            mode: '0755'
+          become: yes
+      tags: [phase3, cleanup]
+      when: srsilo_has_new_data
+    
+    - name: "PHASE 3: Cleanup complete"
+      debug:
+        msg:
+          - "✓ Phase 3 complete - Cleanup finished"
           - "Proceeding to Phase 4: Fetch data"
       when: srsilo_has_new_data
     
     # ========================================================================
     # PHASE 4: Fetch Data
     # ========================================================================
-    # Note: Phase 3 (cleanup) will be added in Iteration 3
     
     - name: "PHASE 4: Fetch data from LAPIS API"
       include_role:
@@ -89,7 +203,6 @@
           - "✓ Data fetched successfully"
           - ""
           - "Next phases (TODO in future iterations):"
-          - "  - Phase 3: Pre-processing cleanup"
           - "  - Phase 5: Prepare for processing"
           - "  - Phase 6: Process data"
           - "  - Phase 7: Start API"
