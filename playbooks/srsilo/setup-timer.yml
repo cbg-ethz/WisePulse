@@ -1,0 +1,90 @@
+---
+# Setup systemd timer for automated srSILO pipeline runs
+# This playbook deploys and enables the daily update timer
+
+- name: Setup srSILO Systemd Timer
+  hosts: srsilo
+  become: yes
+  
+  tasks:
+    - name: Ensure systemd directory exists
+      file:
+        path: /etc/systemd/system
+        state: directory
+        mode: '0755'
+      tags: [timer]
+
+    - name: Deploy systemd service file
+      template:
+        src: "{{ role_path }}/templates/srsilo-update.service.j2"
+        dest: /etc/systemd/system/srsilo-update.service
+        owner: root
+        group: root
+        mode: '0644'
+      vars:
+        role_path: "{{ wisepulse_repo_path }}/roles/srsilo"
+      notify: reload systemd
+      tags: [timer]
+
+    - name: Deploy systemd timer file
+      template:
+        src: "{{ role_path }}/templates/srsilo-update.timer.j2"
+        dest: /etc/systemd/system/srsilo-update.timer
+        owner: root
+        group: root
+        mode: '0644'
+      vars:
+        role_path: "{{ wisepulse_repo_path }}/roles/srsilo"
+      notify: reload systemd
+      tags: [timer]
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+      tags: [timer]
+
+    - name: Enable srsilo-update service
+      systemd:
+        name: srsilo-update.service
+        enabled: yes
+      tags: [timer]
+
+    - name: Enable and start srsilo-update timer
+      systemd:
+        name: srsilo-update.timer
+        enabled: yes
+        state: started
+      tags: [timer]
+
+    - name: Display timer status
+      command: systemctl status srsilo-update.timer --no-pager
+      register: timer_status
+      changed_when: false
+      tags: [timer]
+
+    - name: Show timer information
+      debug:
+        msg: |
+          ========================================
+          srSILO Update Timer Status
+          ========================================
+          {{ timer_status.stdout }}
+          
+          Next scheduled run:
+      tags: [timer]
+
+    - name: Display next scheduled runs
+      command: systemctl list-timers srsilo-update.timer --no-pager
+      register: timer_schedule
+      changed_when: false
+      tags: [timer]
+
+    - name: Show schedule
+      debug:
+        msg: "{{ timer_schedule.stdout }}"
+      tags: [timer]
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes

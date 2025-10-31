@@ -42,17 +42,35 @@ ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini
 # Run automated update pipeline (7 phases)
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
 
+# Setup daily automated timer (runs at 2 AM)
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+
+# Check for new data only (Phase 2)
+ansible-playbook playbooks/srsilo/update-pipeline.yml \
+  -i inventory.ini \
+  --tags phase2
+
+# Run pipeline up to (but NOT including) preprocessing
+# Phases 1-5: Prerequisites, Check, Cleanup, Fetch, Prepare
+ansible-playbook playbooks/srsilo/update-pipeline.yml \
+  -i inventory.ini \
+  --tags phase1,phase2,phase3,phase4,phase5
+
+# Run complete pipeline including preprocessing
+# All phases 1-7
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
+
 # Custom configuration
 ansible-playbook playbooks/srsilo/update-pipeline.yml \
   -i inventory.ini \
   -e "srsilo_retention_days=14" \
   -e "srsilo_fetch_days=30"
-
-# Test specific phase
-ansible-playbook playbooks/srsilo/update-pipeline.yml \
-  -i inventory.ini \
-  --tags phase2  # Check for new data only
 ```
+
+**Common Use Cases:**
+- **Check for updates**: `--tags phase2` (exits immediately if no new data)
+- **Dry run to preprocessing**: `--tags phase1,phase2,phase3,phase4,phase5` (downloads data, stops before SILO indexing)
+- **Full update**: No tags (runs all 7 phases)
 
 ### 7-Phase Pipeline
 
@@ -64,11 +82,45 @@ ansible-playbook playbooks/srsilo/update-pipeline.yml \
 6. **Process** - Split → Merge → SILO preprocessing (with rollback on failure)
 7. **Finalize** - Start API with new index, update timestamps
 
+### Automated Daily Updates
+
+Setup systemd timer for automatic daily runs at 2 AM:
+
+```bash
+# Deploy and enable timer
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+
+# Check timer status
+sudo systemctl status srsilo-update.timer
+sudo systemctl list-timers srsilo-update.timer
+
+# View timer logs
+sudo journalctl -u srsilo-update.service --since today
+
+# Manually trigger (for testing)
+sudo systemctl start srsilo-update.service
+
+# Disable timer (if needed)
+sudo systemctl stop srsilo-update.timer
+sudo systemctl disable srsilo-update.timer
+```
+
 ### Monitoring
 
 ```bash
 # Check API status
 curl http://localhost:8083/sample/info
+
+# View logs (journald)
+sudo journalctl -t srsilo-pipeline --since today
+sudo journalctl -t srsilo-phase2 --since "1 hour ago"
+
+# Check specific phase logs
+sudo journalctl -t srsilo-check-data -n 50    # Phase 2: Check for new data
+sudo journalctl -t srsilo-fetch -n 100        # Phase 4: Fetch data
+sudo journalctl -t srsilo-preprocessing       # Phase 6: SILO preprocessing
+
+# See LOGGING.md for complete journalctl usage guide
 
 # List indexes
 ls -lt /opt/srsilo/output/
@@ -80,6 +132,64 @@ docker logs srsilo-lapis-1
 cat /opt/srsilo/.last_update
 cat /opt/srsilo/.next_timestamp
 ```
+
+### Available Tags
+
+Use `--tags` to run specific phases:
+
+| Tag | Description | Use Case |
+|-----|-------------|----------|
+| `phase1` | Prerequisites & build | First-time setup |
+| `phase2` | Check for new data | Quick check if update needed |
+| `phase3` | Cleanup old indexes | Maintenance only |
+| `phase4` | Fetch data from API | Download without processing |
+| `phase5` | Prepare (stop API) | Pre-processing setup |
+| `phase6` | Process data (split/merge/SILO) | Heavy computation |
+| `phase7` | Finalize (start API) | Post-processing |
+| `check` | Same as phase2 | Alias for checking |
+| `fetch` | Same as phase4 | Alias for fetching |
+| `process` | Same as phase6 | Alias for processing |
+| `silo` | SILO preprocessing only | Within phase6 |
+
+**Examples:**
+```bash
+# Everything up to preprocessing
+--tags phase1,phase2,phase3,phase4,phase5
+
+# Just preprocessing and finalization
+--tags phase6,phase7
+
+# Skip preprocessing, just fetch
+--tags phase1,phase2,phase3,phase4
+```
+
+### Manual Recovery from Bad Index
+
+SILO automatically uses the **newest index** in `/opt/srsilo/output/`. If something goes wrong:
+
+```bash
+# 1. List all indexes
+ls -lth /opt/srsilo/output/
+
+# 2. Identify and delete the problematic index(es)
+sudo rm -rf /opt/srsilo/output/1234567890
+
+# 3. Update the .last_update marker to match the newest remaining index
+echo "1234567890" | sudo tee /opt/srsilo/.last_update
+
+# 4. Restart the API (it will automatically pick up the newest remaining index)
+cd /opt/WisePulse
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini \
+  --tags silo -e api_action=start
+
+# 5. Verify the API is serving the correct index
+curl http://localhost:8083/sample/info | jq .dataVersion
+```
+
+**When to use manual recovery:**
+- After a failed preprocessing run that created a corrupted index
+- To remove damaged or incomplete indexes
+- Emergency recovery when automated pipeline fails
 
 ## Loculus Deployment
 
@@ -177,11 +287,11 @@ srsilo_retention_min_keep: 2           # Always keep at least 2 indexes
 # Fetch configuration
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 srsilo_fetch_days: 90                  # Fetch last 90 days of data
-srsilo_fetch_max_reads: 125000000      # Max reads per batch
+srsilo_fetch_max_reads: 172500000      # 172.5M reads for production
 
-# Processing
-srsilo_chunk_size: 100000              # Reads per chunk (adjust for RAM)
-srsilo_docker_memory_limit: 350g       # Docker memory limit
+# Processing (Production: 377GB RAM)
+srsilo_chunk_size: 1000000             # Large chunks for 377GB RAM
+srsilo_docker_memory_limit: 340g       # 90% of 377GB RAM
 
 # API
 srsilo_lapis_port: 8083

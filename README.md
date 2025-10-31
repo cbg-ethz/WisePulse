@@ -41,6 +41,9 @@ ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini
 # Run automated update pipeline (checks for new data, processes, updates API)
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
 
+# Setup daily automated runs at 2 AM
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+
 # Check API status
 curl http://localhost:8083/sample/info
 ```
@@ -104,9 +107,16 @@ Key configuration in `group_vars/srsilo/main.yml`:
 srsilo_retention_days: 7               # Delete indexes older than 7 days
 srsilo_retention_min_keep: 2           # Always keep at least 2 indexes
 
-# Fetch configuration
+# Fetch configuration  
 srsilo_fetch_days: 90                  # Fetch last 90 days of data
-srsilo_fetch_max_reads: 125000000      # Max reads per batch
+srsilo_fetch_max_reads: 172500000      # 172.5M reads for production
+
+# Processing (Production: 377GB RAM server)
+srsilo_chunk_size: 1000000             # Large chunks for high-memory environment
+srsilo_docker_memory_limit: 340g       # 90% of 377GB RAM
+
+# For testing with constrained resources (8GB RAM):
+# Use: -e "@playbooks/srsilo/vars/test_vars.yml"
 ```
 
 See [`docs/srsilo/ARCHITECTURE.md`](docs/srsilo/ARCHITECTURE.md) for complete configuration reference.

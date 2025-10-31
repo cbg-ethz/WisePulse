@@ -1,23 +1,22 @@
 ---
 # Test variables for srSILO update pipeline
-# These override the defaults for safe testing with reduced resource usage
+# These override group_vars/srsilo/main.yml for safe testing with reduced resources
+# Usage: ansible-playbook update-pipeline.yml -i inventory.ini -e "@playbooks/srsilo/vars/test_vars.yml"
 
-# Reduce fetch parameters for testing
-srsilo_fetch_days: 30              # Fetch only 7 days instead of 90
-srsilo_fetch_max_reads: 5000000   # Limit to 5M reads instead of 125M
+# Processing configuration - Test environment (8GB RAM)
+srsilo_chunk_size: 30000            # Reduced for 8GB RAM test environment
+srsilo_docker_memory_limit: 7g      # 90% of 8GB RAM
 
-# Keep API configuration same
+# Fetch configuration - Constrained for testing
+srsilo_fetch_days: 30               # Fetch only 30 days instead of 90
+srsilo_fetch_max_reads: 5000000     # Limit to 5M reads instead of 172.5M
+
+# API configuration (same as production)
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 
-# Retention policy (for future iterations)
-srsilo_retention_days: 3          # More aggressive cleanup for testing
+# Retention policy - More aggressive for testing
+srsilo_retention_days: 3            # More aggressive cleanup for testing
 srsilo_retention_min_keep: 2
-
-# Processing configuration
-srsilo_chunk_size: 30000          # Reduced for 6GB RAM test environment
-
-# Docker memory limits for 6GB RAM test environment
-srsilo_docker_memory_limit: 6g    # Limit Docker to 5GB (leave ~1GB for system)
 
 # Optional: Override start date for testing
 # Uncomment and adjust if you want to test a specific date range

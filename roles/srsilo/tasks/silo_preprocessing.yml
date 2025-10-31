@@ -12,7 +12,7 @@
       - "Tools: {{ srsilo_tools_path }}"
 
 - name: Log phase start to journal
-  shell: echo "PHASE 6: SILO preprocessing - START" | systemd-cat -t srsilo-phase6 -p info
+  shell: 'echo "PHASE 6: SILO preprocessing - START" | systemd-cat -t srsilo-phase6 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false
@@ -47,12 +47,6 @@
   become: yes
   register: preprocessing_result
 
-- name: Log phase complete to journal
-  shell: 'echo "PHASE 6: SILO preprocessing - COMPLETE (index: {{ new_index_dir.path | basename | default("unknown") }})" | systemd-cat -t srsilo-phase6 -p info'
-  become: yes
-  become_user: "{{ srsilo_user }}"
-  changed_when: false
-
 - name: Display preprocessing result
   debug:
     msg: "✓ SILO preprocessing complete"
@@ -68,6 +62,12 @@
   set_fact:
     new_index_dir: "{{ output_indexes.files | sort(attribute='mtime', reverse=true) | first | default({}) }}"
   when: output_indexes.matched > 0
+
+- name: Log phase complete to journal
+  shell: 'echo "PHASE 6: SILO preprocessing - COMPLETE (index: {{ new_index_dir.path | basename | default("unknown") }})" | systemd-cat -t srsilo-phase6 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
 
 - name: Display created index
   debug:
