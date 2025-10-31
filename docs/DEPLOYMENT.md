@@ -137,6 +137,34 @@ Use `--tags` to run specific phases:
 --tags phase1,phase2,phase3,phase4
 ```
 
+### Manual Recovery from Bad Index
+
+SILO automatically uses the **newest index** in `/opt/srsilo/output/`. If something goes wrong:
+
+```bash
+# 1. List all indexes
+ls -lth /opt/srsilo/output/
+
+# 2. Identify and delete the problematic index(es)
+sudo rm -rf /opt/srsilo/output/1234567890
+
+# 3. Update the .last_update marker to match the newest remaining index
+echo "1234567890" | sudo tee /opt/srsilo/.last_update
+
+# 4. Restart the API (it will automatically pick up the newest remaining index)
+cd /opt/WisePulse
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini \
+  --tags silo -e api_action=start
+
+# 5. Verify the API is serving the correct index
+curl http://localhost:8083/sample/info | jq .dataVersion
+```
+
+**When to use manual recovery:**
+- After a failed preprocessing run that created a corrupted index
+- To remove damaged or incomplete indexes
+- Emergency recovery when automated pipeline fails
+
 ## Loculus Deployment
 
 ### Setup
