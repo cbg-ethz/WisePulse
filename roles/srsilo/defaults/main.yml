@@ -32,14 +32,16 @@ srsilo_retention_min_keep: 2
 # Default: 100000 (works with ~8GB RAM)
 # For 4GB RAM: use 50000
 # For 16GB+ RAM: can use 500000 or more
-srsilo_chunk_size: 100000
+# MUST be set in group_vars/srsilo/main.yml
+# srsilo_chunk_size: REQUIRED
 
 # Docker memory limits
 # SILO preprocessing and API memory limits
-# Production: 350g (for large datasets)
-# Test/Dev (4-8GB RAM): 3g
-# Adjust based on available system RAM
-srsilo_docker_memory_limit: 350g
+# MUST be set in group_vars/srsilo/main.yml based on available RAM
+# Production (377GB RAM): 340g
+# Test (8GB RAM): 7g
+# Use test_vars.yml to override for constrained testing
+# srsilo_docker_memory_limit: REQUIRED
 
 # Repository path (for development/deployment)
 # This can be overridden in host_vars if the repo is cloned elsewhere

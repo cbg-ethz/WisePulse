@@ -261,11 +261,11 @@ srsilo_retention_min_keep: 2           # Always keep at least 2 indexes
 # Fetch configuration
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 srsilo_fetch_days: 90                  # Fetch last 90 days of data
-srsilo_fetch_max_reads: 125000000      # Max reads per batch
+srsilo_fetch_max_reads: 172500000      # 172.5M reads for production
 
-# Processing
-srsilo_chunk_size: 100000              # Reads per chunk (adjust for RAM)
-srsilo_docker_memory_limit: 350g       # Docker memory limit
+# Processing (Production: 377GB RAM)
+srsilo_chunk_size: 1000000             # Large chunks for 377GB RAM
+srsilo_docker_memory_limit: 340g       # 90% of 377GB RAM
 
 # API
 srsilo_lapis_port: 8083
