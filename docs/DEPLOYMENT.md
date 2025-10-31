@@ -42,17 +42,32 @@ ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini
 # Run automated update pipeline (7 phases)
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
 
+# Check for new data only (Phase 2)
+ansible-playbook playbooks/srsilo/update-pipeline.yml \
+  -i inventory.ini \
+  --tags phase2
+
+# Run pipeline up to (but NOT including) preprocessing
+# Phases 1-5: Prerequisites, Check, Cleanup, Fetch, Prepare
+ansible-playbook playbooks/srsilo/update-pipeline.yml \
+  -i inventory.ini \
+  --tags phase1,phase2,phase3,phase4,phase5
+
+# Run complete pipeline including preprocessing
+# All phases 1-7
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
+
 # Custom configuration
 ansible-playbook playbooks/srsilo/update-pipeline.yml \
   -i inventory.ini \
   -e "srsilo_retention_days=14" \
   -e "srsilo_fetch_days=30"
-
-# Test specific phase
-ansible-playbook playbooks/srsilo/update-pipeline.yml \
-  -i inventory.ini \
-  --tags phase2  # Check for new data only
 ```
+
+**Common Use Cases:**
+- **Check for updates**: `--tags phase2` (exits immediately if no new data)
+- **Dry run to preprocessing**: `--tags phase1,phase2,phase3,phase4,phase5` (downloads data, stops before SILO indexing)
+- **Full update**: No tags (runs all 7 phases)
 
 ### 7-Phase Pipeline
 
@@ -70,6 +85,17 @@ ansible-playbook playbooks/srsilo/update-pipeline.yml \
 # Check API status
 curl http://localhost:8083/sample/info
 
+# View logs (journald)
+sudo journalctl -t srsilo-pipeline --since today
+sudo journalctl -t srsilo-phase2 --since "1 hour ago"
+
+# Check specific phase logs
+sudo journalctl -t srsilo-check-data -n 50    # Phase 2: Check for new data
+sudo journalctl -t srsilo-fetch -n 100        # Phase 4: Fetch data
+sudo journalctl -t srsilo-preprocessing       # Phase 6: SILO preprocessing
+
+# See LOGGING.md for complete journalctl usage guide
+
 # List indexes
 ls -lt /opt/srsilo/output/
 
@@ -79,6 +105,36 @@ docker logs srsilo-lapis-1
 # Check processing status
 cat /opt/srsilo/.last_update
 cat /opt/srsilo/.next_timestamp
+```
+
+### Available Tags
+
+Use `--tags` to run specific phases:
+
+| Tag | Description | Use Case |
+|-----|-------------|----------|
+| `phase1` | Prerequisites & build | First-time setup |
+| `phase2` | Check for new data | Quick check if update needed |
+| `phase3` | Cleanup old indexes | Maintenance only |
+| `phase4` | Fetch data from API | Download without processing |
+| `phase5` | Prepare (stop API) | Pre-processing setup |
+| `phase6` | Process data (split/merge/SILO) | Heavy computation |
+| `phase7` | Finalize (start API) | Post-processing |
+| `check` | Same as phase2 | Alias for checking |
+| `fetch` | Same as phase4 | Alias for fetching |
+| `process` | Same as phase6 | Alias for processing |
+| `silo` | SILO preprocessing only | Within phase6 |
+
+**Examples:**
+```bash
+# Everything up to preprocessing
+--tags phase1,phase2,phase3,phase4,phase5
+
+# Just preprocessing and finalization
+--tags phase6,phase7
+
+# Skip preprocessing, just fetch
+--tags phase1,phase2,phase3,phase4
 ```
 
 ## Loculus Deployment
