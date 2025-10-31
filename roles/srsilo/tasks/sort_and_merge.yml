@@ -11,6 +11,12 @@
       - "Chunks: {{ srsilo_data_sorted_chunks }}"
       - "Output: {{ srsilo_base_path }}/sorted.ndjson.zst"
 
+- name: Log phase start to journal
+  shell: 'echo "PHASE 6: Sort and merge reads - START" | systemd-cat -t srsilo-phase6 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
 - name: Find input files to process
   find:
     path: "{{ srsilo_data_input }}"
@@ -31,7 +37,8 @@
     {{ srsilo_tools_path }}/target/release/split_into_sorted_chunks \
       --output-path "{{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')" \
       --chunk-size {{ srsilo_chunk_size }} \
-      --sort-field-path /main/offset >> {{ srsilo_data_sorted_chunks }}/chunks.list
+      --sort-field-path /main/offset 2>&1 | systemd-cat -t srsilo-split -p info
+    cat {{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')_*.ndjson.zst >> {{ srsilo_data_sorted_chunks }}/chunks.list
   args:
     chdir: "{{ srsilo_base_path }}"
   loop: "{{ input_files.files }}"
@@ -48,7 +55,7 @@
   debug:
     msg:
       - "✓ Split complete"
-      - "Created {{ chunk_count.stdout | trim }} chunk(s)"
+      - "Created {{ chunk_count.stdout | trim }} chunks"
 
 - name: Merge sorted chunks
   shell: |
@@ -56,7 +63,7 @@
     {{ srsilo_tools_path }}/target/release/merge_sorted_chunks \
       --tmp-directory {{ srsilo_data_tmp }} \
       --sort-field-path /main/offset | \
-    zstd > {{ srsilo_base_path }}/sorted.ndjson.zst
+    zstd > {{ srsilo_base_path }}/sorted.ndjson.zst 2>&1 | systemd-cat -t srsilo-merge -p info
   args:
     chdir: "{{ srsilo_base_path }}"
   become: yes
@@ -67,6 +74,12 @@
   stat:
     path: "{{ srsilo_base_path }}/sorted.ndjson.zst"
   register: sorted_file
+
+- name: Log phase complete to journal
+  shell: 'echo "PHASE 6: Sort and merge - COMPLETE ({{ chunk_count.stdout | trim }} chunks, {{ (sorted_file.stat.size / 1024 / 1024) | round(2) }} MB)" | systemd-cat -t srsilo-phase6 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
 
 - name: Display merge result
   debug:

@@ -11,6 +11,12 @@
       - "Output: {{ srsilo_data_output }}/<timestamp>/"
       - "Tools: {{ srsilo_tools_path }}"
 
+- name: Log phase start to journal
+  shell: echo "PHASE 6: SILO preprocessing - START" | systemd-cat -t srsilo-phase6 -p info
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
 - name: Verify sorted file exists
   stat:
     path: "{{ srsilo_base_path }}/sorted.ndjson.zst"
@@ -35,11 +41,17 @@
   changed_when: false
 
 - name: Run preprocessing container
-  shell: docker-compose -f docker-compose-preprocessing.yml up
+  shell: docker-compose -f docker-compose-preprocessing.yml up 2>&1 | systemd-cat -t srsilo-preprocessing -p info
   args:
     chdir: "{{ srsilo_tools_path }}"
   become: yes
   register: preprocessing_result
+
+- name: Log phase complete to journal
+  shell: 'echo "PHASE 6: SILO preprocessing - COMPLETE (index: {{ new_index_dir.path | basename | default("unknown") }})" | systemd-cat -t srsilo-phase6 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
 
 - name: Display preprocessing result
   debug:

@@ -3,6 +3,12 @@
 # This task is equivalent to running 'make cleanup-old-indexes'
 # Retention policy: Keep N newest indexes, delete those older than M days
 
+- name: Log phase start to journal
+  shell: 'echo "PHASE 3: Cleanup old indexes - START" | systemd-cat -t srsilo-phase3 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
 - name: Display cleanup configuration
   debug:
     msg:
@@ -75,3 +81,9 @@
   debug:
     msg: "✓ No indexes to delete (retention policy satisfied)"
   when: indexes_to_delete is not defined or indexes_to_delete | length == 0
+
+- name: Log phase complete to journal
+  shell: 'echo "PHASE 3: Cleanup - COMPLETE (deleted {{ deletion_result.results | default([]) | length }} indexes)" | systemd-cat -t srsilo-phase3 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false

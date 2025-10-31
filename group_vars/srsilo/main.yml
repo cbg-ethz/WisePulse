@@ -28,8 +28,5 @@ srsilo_lapis_port: 8083
 srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
-# Logging
-srsilo_log_dir: /var/log/srsilo
-
 # Repository path (for development/deployment)
 wisepulse_repo_path: /opt/WisePulse

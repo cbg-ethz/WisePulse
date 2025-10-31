@@ -12,13 +12,20 @@
     mode: '0755'
   become: yes
 
+- name: Log phase start to journal
+  shell: 'echo "PHASE 2: Check new data - START" | systemd-cat -t srsilo-phase2 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
 - name: Check for new data using check_new_data binary
-  command: >
-    {{ srsilo_tools_path }}/target/release/check_new_data
-    --api-base-url "{{ srsilo_api_base_url }}"
-    --timestamp-file "{{ srsilo_base_path }}/.last_update"
-    --days-back {{ srsilo_fetch_days }}
-    --output-timestamp-file "{{ srsilo_base_path }}/.next_timestamp"
+  shell: |
+    {{ srsilo_tools_path }}/target/release/check_new_data \
+      --api-base-url "{{ srsilo_api_base_url }}" \
+      --timestamp-file "{{ srsilo_base_path }}/.last_update" \
+      --days-back {{ srsilo_fetch_days }} \
+      --output-timestamp-file "{{ srsilo_base_path }}/.next_timestamp" \
+      2>&1 | systemd-cat -t srsilo-check-data -p info
   args:
     chdir: "{{ srsilo_base_path }}"
   register: check_new_data_result
@@ -26,6 +33,12 @@
   changed_when: check_new_data_result.rc == 0  # Changed when new data found (rc=0)
   become: yes
   become_user: "{{ srsilo_user }}"
+
+- name: Log phase result to journal
+  shell: 'echo "PHASE 2: Check new data - {{ "NEW DATA FOUND" if check_new_data_result.rc == 0 else "NO NEW DATA" if check_new_data_result.rc == 1 else "ERROR" }}" | systemd-cat -t srsilo-phase2 -p {{ "info" if check_new_data_result.rc != 2 else "err" }}'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
 
 - name: Set fact for whether new data is available
   set_fact:

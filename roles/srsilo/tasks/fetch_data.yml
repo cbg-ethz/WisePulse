@@ -30,14 +30,21 @@
       - "Max reads per batch: {{ srsilo_fetch_max_reads }}"
       - "Output directory: {{ srsilo_data_input }}"
 
+- name: Log phase start to journal
+  shell: 'echo "PHASE 4: Fetch data from API - START" | systemd-cat -t srsilo-phase4 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
 - name: Fetch data from LAPIS API
-  command: >
-    {{ srsilo_tools_path }}/target/release/fetch_silo_data
-    --start-date "{{ fetch_start_date }}"
-    --days {{ srsilo_fetch_days }}
-    --max-reads {{ srsilo_fetch_max_reads }}
-    --output-dir "{{ srsilo_data_input }}"
-    --api-base-url "{{ srsilo_api_base_url }}"
+  shell: |
+    {{ srsilo_tools_path }}/target/release/fetch_silo_data \
+      --start-date "{{ fetch_start_date }}" \
+      --days {{ srsilo_fetch_days }} \
+      --max-reads {{ srsilo_fetch_max_reads }} \
+      --output-dir "{{ srsilo_data_input }}" \
+      --api-base-url "{{ srsilo_api_base_url }}" \
+      2>&1 | systemd-cat -t srsilo-fetch -p info
   args:
     chdir: "{{ srsilo_base_path }}"
   become: yes
@@ -59,6 +66,12 @@
     patterns: "*.ndjson.zst"
     file_type: file
   register: fetched_files
+
+- name: Log phase complete to journal
+  shell: 'echo "PHASE 4: Fetch data - COMPLETE ({{ fetched_files.matched }} files)" | systemd-cat -t srsilo-phase4 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
 
 - name: Display download summary
   debug:

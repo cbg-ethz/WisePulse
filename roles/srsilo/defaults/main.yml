@@ -41,9 +41,6 @@ srsilo_chunk_size: 100000
 # Adjust based on available system RAM
 srsilo_docker_memory_limit: 350g
 
-# Logging
-srsilo_log_dir: /var/log/srsilo
-
 # Repository path (for development/deployment)
 # This can be overridden in host_vars if the repo is cloned elsewhere
 wisepulse_repo_path: /opt/WisePulse
