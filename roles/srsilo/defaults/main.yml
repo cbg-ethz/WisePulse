@@ -34,6 +34,13 @@ srsilo_retention_min_keep: 2
 # For 16GB+ RAM: can use 500000 or more
 srsilo_chunk_size: 100000
 
+# Docker memory limits
+# SILO preprocessing and API memory limits
+# Production: 350g (for large datasets)
+# Test/Dev (4-8GB RAM): 3g
+# Adjust based on available system RAM
+srsilo_docker_memory_limit: 350g
+
 # Logging
 srsilo_log_dir: /var/log/srsilo
 

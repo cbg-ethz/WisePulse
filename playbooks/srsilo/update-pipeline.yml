@@ -272,7 +272,24 @@
           - "✓ Data processed successfully"
           - "✓ Sorted and merged reads"
           - "✓ SILO preprocessing finished"
-          - ""
-          - "Next phases (TODO in future iterations):"
-          - "  - Phase 7: Start API with new index"
+      when: srsilo_has_new_data
+
+    # ========================================================================
+    # PHASE 7: Finalize Processing (Success/Failure Paths)
+    # ========================================================================
+    
+    - name: "PHASE 7: Finalize processing and start API"
+      include_role:
+        name: srsilo
+        tasks_from: finalize_processing
+      tags: [phase7, finalize]
+      when: srsilo_has_new_data
+
+    - name: "PHASE 7: Pipeline complete"
+      debug:
+        msg:
+          - "=== Full Pipeline Complete ==="
+          - "✓ All phases executed successfully"
+          - "✓ API running with latest index"
+          - "✓ Ready for queries"
       when: srsilo_has_new_data

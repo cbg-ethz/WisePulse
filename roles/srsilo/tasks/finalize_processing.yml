@@ -1,0 +1,237 @@
+---
+# ============================================================================
+# finalize_processing.yml - Phase 7: Finalize Processing (Success/Failure)
+# ============================================================================
+# This task handles the completion of preprocessing with proper error handling:
+# - Success path: Start API with new index, update timestamps
+# - Failure path: Rollback, cleanup, restart with previous index
+#
+# Prerequisites:
+#   - SILO preprocessing has been attempted
+#   - preprocessing_in_progress marker exists
+#
+# Outputs:
+#   - API running with latest valid index
+#   - Timestamps updated on success
+#   - Clean state even on failure
+# ============================================================================
+
+- name: Display finalization configuration
+  debug:
+    msg:
+      - "=== Finalizing Processing ==="
+      - "Output directory: {{ srsilo_data_output }}"
+      - "Marker: {{ srsilo_data_output }}/.preprocessing_in_progress"
+      - "Timestamp: {{ srsilo_base_path }}/.last_update"
+  tags: [finalize]
+
+- name: Check if Docker is available
+  shell: command -v docker
+  register: docker_check
+  failed_when: false
+  changed_when: false
+  tags: [finalize]
+
+# ============================================================================
+# PHASE 7a: Detect and Verify New Index
+# ============================================================================
+
+- name: Find all index directories
+  find:
+    paths: "{{ srsilo_data_output }}"
+    file_type: directory
+    recurse: no
+  register: all_indexes
+  tags: [finalize, detect]
+
+- name: Get newest index directory
+  set_fact:
+    srsilo_newest_index: "{{ all_indexes.files | sort(attribute='mtime') | last | default({}) }}"
+  when: all_indexes.files | length > 0
+  tags: [finalize, detect]
+
+- name: Display newest index
+  debug:
+    msg:
+      - "Newest index: {{ srsilo_newest_index.path | default('None found') | basename }}"
+      - "Modified: {{ srsilo_newest_index.mtime | default(0) | int }}"
+  when: all_indexes.files | length > 0
+  tags: [finalize, detect]
+
+# ============================================================================
+# PHASE 7b: Success/Failure Path with Error Handling
+# ============================================================================
+
+- name: Finalize preprocessing with error handling
+  block:
+    # --- Verify new index was created ---
+    - name: Check if new index was created
+      stat:
+        path: "{{ srsilo_newest_index.path }}"
+      register: new_index_stat
+      when: srsilo_newest_index is defined
+
+    - name: Verify index has content
+      find:
+        paths: "{{ srsilo_newest_index.path }}"
+        file_type: file
+      register: index_files
+      when: 
+        - srsilo_newest_index is defined
+        - new_index_stat.stat.exists | default(false)
+
+    - name: Fail if index is empty
+      fail:
+        msg: "New index {{ srsilo_newest_index.path | basename }} is empty or invalid"
+      when:
+        - srsilo_newest_index is defined
+        - new_index_stat.stat.exists | default(false)
+        - (index_files.files | length) == 0
+
+    # --- Success Path: New index is valid ---
+    - name: Remove preprocessing marker
+      file:
+        path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+        state: absent
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      tags: [finalize, success]
+
+    - name: Cleanup Docker resources before restart
+      shell: |
+        docker-compose down --remove-orphans || true
+        docker network prune -f || true
+      args:
+        chdir: "{{ srsilo_tools_path }}"
+      when: docker_check.rc == 0
+      tags: [finalize, success, docker]
+
+    - name: Start API with new index
+      include_role:
+        name: srsilo
+        tasks_from: manage_api
+      vars:
+        api_action: start
+        api_index: "{{ srsilo_newest_index.path | basename }}"
+      when: 
+        - docker_check.rc == 0
+        - srsilo_newest_index is defined
+      tags: [finalize, success, api]
+
+    - name: Update timestamp file on success
+      copy:
+        src: "{{ srsilo_base_path }}/.next_timestamp"
+        dest: "{{ srsilo_base_path }}/.last_update"
+        remote_src: yes
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      when: srsilo_newest_index is defined
+      tags: [finalize, success]
+
+    - name: Cleanup next timestamp file
+      file:
+        path: "{{ srsilo_base_path }}/.next_timestamp"
+        state: absent
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      tags: [finalize, success]
+
+    - name: Display success summary
+      debug:
+        msg:
+          - "=== Processing Finalized Successfully ==="
+          - "✓ New index: {{ srsilo_newest_index.path | basename }}"
+          - "✓ API started with new index"
+          - "✓ Timestamp updated"
+          - "✓ All cleanup complete"
+      when: srsilo_newest_index is defined
+      tags: [finalize, success]
+
+  rescue:
+    # --- Failure Path: Rollback and cleanup ---
+    - name: Read preprocessing marker
+      slurp:
+        path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      register: marker_content
+      ignore_errors: yes
+      tags: [finalize, failure, rollback]
+
+    - name: Get failed index timestamp
+      set_fact:
+        failed_index_ts: "{{ marker_content.content | b64decode | trim }}"
+      when: marker_content is succeeded
+      tags: [finalize, failure, rollback]
+
+    - name: Delete failed/partial index
+      file:
+        path: "{{ srsilo_data_output }}/{{ failed_index_ts }}"
+        state: absent
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      when: 
+        - marker_content is succeeded
+        - failed_index_ts is defined
+      tags: [finalize, failure, rollback]
+
+    - name: Remove preprocessing marker after failure
+      file:
+        path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+        state: absent
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      tags: [finalize, failure, rollback]
+
+    - name: Cleanup next timestamp file on failure
+      file:
+        path: "{{ srsilo_base_path }}/.next_timestamp"
+        state: absent
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      tags: [finalize, failure, rollback]
+
+    - name: Find previous valid index for rollback
+      find:
+        paths: "{{ srsilo_data_output }}"
+        file_type: directory
+        recurse: no
+      register: remaining_indexes
+      tags: [finalize, failure, rollback]
+
+    - name: Get previous good index
+      set_fact:
+        previous_index: "{{ remaining_indexes.files | sort(attribute='mtime') | last | default({}) }}"
+      when: remaining_indexes.files | length > 0
+      tags: [finalize, failure, rollback]
+
+    - name: Restart API with previous good index
+      include_role:
+        name: srsilo
+        tasks_from: manage_api
+      vars:
+        api_action: start
+        api_index: "{{ previous_index.path | basename }}"
+      when:
+        - docker_check.rc == 0
+        - previous_index is defined
+        - previous_index.path is defined
+      ignore_errors: yes
+      tags: [finalize, failure, rollback]
+
+    - name: Display failure summary
+      debug:
+        msg:
+          - "=== Processing Failed - Rollback Complete ==="
+          - "✗ Failed index deleted: {{ failed_index_ts | default('unknown') }}"
+          - "✓ Preprocessing marker removed"
+          - "✓ Next timestamp cleaned up"
+          - "{{ '✓ API restarted with previous index: ' + (previous_index.path | basename) if previous_index is defined and previous_index.path is defined else '⚠ No previous index available' }}"
+          - ""
+          - "Error: {{ ansible_failed_result.msg | default('Unknown error during preprocessing') }}"
+      tags: [finalize, failure]
+
+    - name: Fail with error message
+      fail:
+        msg: "Preprocessing failed. Rollback complete. Check logs for details."
+      tags: [finalize, failure]

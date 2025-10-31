@@ -30,14 +30,14 @@
 - name: Run SILO preprocessing (with Docker)
   block:
     - name: Clean up any previous preprocessing containers
-      shell: docker compose -f docker-compose-preprocessing.yml down -v || true
+      shell: docker-compose -f docker-compose-preprocessing.yml down -v || true
       args:
         chdir: "{{ srsilo_tools_path }}"
       become: yes
       changed_when: false
     
     - name: Run preprocessing container
-      shell: docker compose -f docker-compose-preprocessing.yml up
+      shell: docker-compose -f docker-compose-preprocessing.yml up
       args:
         chdir: "{{ srsilo_tools_path }}"
       become: yes
