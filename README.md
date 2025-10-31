@@ -41,6 +41,9 @@ ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini
 # Run automated update pipeline (checks for new data, processes, updates API)
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
 
+# Setup daily automated runs at 2 AM
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+
 # Check API status
 curl http://localhost:8083/sample/info
 ```

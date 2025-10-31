@@ -42,6 +42,9 @@ ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini
 # Run automated update pipeline (7 phases)
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
 
+# Setup daily automated timer (runs at 2 AM)
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+
 # Check for new data only (Phase 2)
 ansible-playbook playbooks/srsilo/update-pipeline.yml \
   -i inventory.ini \
@@ -78,6 +81,29 @@ ansible-playbook playbooks/srsilo/update-pipeline.yml \
 5. **Prepare** - Stop API, create processing marker
 6. **Process** - Split → Merge → SILO preprocessing (with rollback on failure)
 7. **Finalize** - Start API with new index, update timestamps
+
+### Automated Daily Updates
+
+Setup systemd timer for automatic daily runs at 2 AM:
+
+```bash
+# Deploy and enable timer
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+
+# Check timer status
+sudo systemctl status srsilo-update.timer
+sudo systemctl list-timers srsilo-update.timer
+
+# View timer logs
+sudo journalctl -u srsilo-update.service --since today
+
+# Manually trigger (for testing)
+sudo systemctl start srsilo-update.service
+
+# Disable timer (if needed)
+sudo systemctl stop srsilo-update.timer
+sudo systemctl disable srsilo-update.timer
+```
 
 ### Monitoring
 

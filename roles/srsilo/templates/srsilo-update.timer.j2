@@ -1,0 +1,17 @@
+[Unit]
+Description=srSILO Update Pipeline Timer - Daily at 2 AM
+Documentation=https://github.com/cbg-ethz/WisePulse/blob/main/docs/srsilo/ARCHITECTURE.md
+Requires=srsilo-update.service
+
+[Timer]
+# Run daily at 2:00 AM local time
+OnCalendar=*-*-* 02:00:00
+
+# Persistent: if system was off during scheduled time, run on next boot
+Persistent=true
+
+# Don't run if the last run is still in progress
+Unit=srsilo-update.service
+
+[Install]
+WantedBy=timers.target
