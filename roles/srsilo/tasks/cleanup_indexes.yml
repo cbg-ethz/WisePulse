@@ -38,12 +38,12 @@
     - old_indexes is defined
     - old_indexes.matched > 0
 
-- name: Calculate how many indexes to delete (keep min_keep newest)
+- name: Calculate how many indexes to delete (keep min_keep newest overall)
   set_fact:
-    indexes_to_delete: "{{ sorted_old_indexes[:(sorted_old_indexes | length - srsilo_retention_min_keep) | int] }}"
+    indexes_to_delete: "{{ sorted_old_indexes[:((all_indexes.matched - srsilo_retention_min_keep) | int)] }}"
   when:
     - sorted_old_indexes is defined
-    - sorted_old_indexes | length > srsilo_retention_min_keep
+    - all_indexes.matched > srsilo_retention_min_keep
 
 - name: Display deletion plan
   debug:
