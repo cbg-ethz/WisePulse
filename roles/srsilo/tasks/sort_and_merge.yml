@@ -38,7 +38,7 @@
       --output-path "{{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')" \
       --chunk-size {{ srsilo_chunk_size }} \
       --sort-field-path /main/offset 2>&1 | systemd-cat -t srsilo-split -p info
-    cat {{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')_*.ndjson.zst >> {{ srsilo_data_sorted_chunks }}/chunks.list
+    cat {{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')/chunk_*.ndjson.zst >> {{ srsilo_data_sorted_chunks }}/chunks.list
   args:
     chdir: "{{ srsilo_base_path }}"
   loop: "{{ input_files.files }}"
