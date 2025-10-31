@@ -5,6 +5,19 @@
   hosts: srsilo
   gather_facts: yes
   
+  pre_tasks:
+    - name: Log pipeline start
+      shell: |
+        echo "========================================" >> /var/log/srsilo/update-pipeline.log
+        echo "Pipeline started: $(date -Iseconds)" >> /var/log/srsilo/update-pipeline.log
+        echo "User: $(whoami)" >> /var/log/srsilo/update-pipeline.log
+        echo "Fetch days: {{ srsilo_fetch_days }}" >> /var/log/srsilo/update-pipeline.log
+        echo "Retention days: {{ srsilo_retention_days }}" >> /var/log/srsilo/update-pipeline.log
+        echo "========================================" >> /var/log/srsilo/update-pipeline.log
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+  
   tasks:
     - name: Display pipeline configuration
       debug:
@@ -293,3 +306,36 @@
           - "✓ API running with latest index"
           - "✓ Ready for queries"
       when: srsilo_has_new_data
+  
+  post_tasks:
+    - name: Log pipeline completion (success)
+      shell: |
+        echo "Pipeline completed successfully: $(date -Iseconds)" >> /var/log/srsilo/update-pipeline.log
+        echo "========================================" >> /var/log/srsilo/update-pipeline.log
+        echo "" >> /var/log/srsilo/update-pipeline.log
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+      when: srsilo_has_new_data is defined and srsilo_has_new_data
+    
+    - name: Log pipeline completion (no new data)
+      shell: |
+        echo "Pipeline completed - no new data: $(date -Iseconds)" >> /var/log/srsilo/update-pipeline.log
+        echo "========================================" >> /var/log/srsilo/update-pipeline.log
+        echo "" >> /var/log/srsilo/update-pipeline.log
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+      when: srsilo_has_new_data is defined and not srsilo_has_new_data
+    
+    - name: Log pipeline failure
+      shell: |
+        echo "Pipeline FAILED: $(date -Iseconds)" >> /var/log/srsilo/update-pipeline.log
+        echo "Error: {{ ansible_failed_result.msg | default('Unknown error') }}" >> /var/log/srsilo/update-pipeline.log
+        echo "========================================" >> /var/log/srsilo/update-pipeline.log
+        echo "" >> /var/log/srsilo/update-pipeline.log
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+      when: ansible_failed_result is defined
+      ignore_errors: yes

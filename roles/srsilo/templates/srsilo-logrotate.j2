@@ -1,0 +1,23 @@
+# Logrotate configuration for srSILO pipeline logs
+/var/log/srsilo/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    missingok
+    create 0640 {{ srsilo_user }} adm
+    sharedscripts
+}
+
+# Ansible logs
+/var/log/ansible/*.log {
+    weekly
+    rotate 12
+    compress
+    delaycompress
+    notifempty
+    missingok
+    create 0640 root adm
+    sharedscripts
+}

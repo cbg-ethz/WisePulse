@@ -69,6 +69,24 @@
     mode: '0755'
   become: yes
 
+- name: Ensure Ansible log directory exists
+  file:
+    path: /var/log/ansible
+    state: directory
+    owner: root
+    group: adm
+    mode: '0750'
+  become: yes
+
+- name: Ensure srSILO pipeline log directory exists
+  file:
+    path: /var/log/srsilo
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: adm
+    mode: '0750'
+  become: yes
+
 - name: Copy tools directory from repository to base path
   synchronize:
     src: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools/"

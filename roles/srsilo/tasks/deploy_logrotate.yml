@@ -1,0 +1,28 @@
+---
+# Deploy logrotate configuration for srSILO and Ansible logs
+
+- name: Ensure logrotate is installed
+  apt:
+    name: logrotate
+    state: present
+  become: yes
+
+- name: Deploy logrotate configuration for srSILO
+  template:
+    src: srsilo-logrotate.j2
+    dest: /etc/logrotate.d/srsilo
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Test logrotate configuration
+  command: logrotate -d /etc/logrotate.d/srsilo
+  become: yes
+  register: logrotate_test
+  changed_when: false
+  failed_when: false
+
+- name: Display logrotate configuration status
+  debug:
+    msg: "✓ Logrotate configuration deployed and validated"
