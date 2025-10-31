@@ -15,6 +15,7 @@
   shell: docker-compose down || true
   args:
     chdir: "{{ srsilo_tools_path }}"
+  become: yes
   when: api_action == 'stop'
   register: api_stop_result
   changed_when: "'Removed' in api_stop_result.stdout or 'Stopped' in api_stop_result.stdout"
@@ -23,6 +24,7 @@
   shell: LAPIS_PORT={{ srsilo_lapis_port }} docker-compose up -d
   args:
     chdir: "{{ srsilo_tools_path }}"
+  become: yes
   when: api_action == 'start'
   register: api_start_result
   changed_when: "'Started' in api_start_result.stdout or 'Created' in api_start_result.stdout"
