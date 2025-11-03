@@ -12,7 +12,7 @@
   when: api_action is defined
 
 - name: Stop SILO API
-  shell: docker-compose down || true
+  shell: docker compose down || true
   args:
     chdir: "{{ srsilo_tools_path }}"
   become: yes
@@ -21,7 +21,7 @@
   changed_when: "'Removed' in api_stop_result.stdout or 'Stopped' in api_stop_result.stdout"
 
 - name: Start SILO API
-  shell: LAPIS_PORT={{ srsilo_lapis_port }} docker-compose up -d
+  shell: LAPIS_PORT={{ srsilo_lapis_port }} docker compose up -d
   args:
     chdir: "{{ srsilo_tools_path }}"
   become: yes
@@ -47,7 +47,7 @@
 - name: Clean up Docker resources
   block:
     - name: Stop containers
-      shell: docker-compose down --remove-orphans || true
+      shell: docker compose down --remove-orphans || true
       args:
         chdir: "{{ srsilo_tools_path }}"
       become: yes

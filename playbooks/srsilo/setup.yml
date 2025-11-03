@@ -33,12 +33,6 @@
         tasks_from: deploy_configs
       tags: [config]
     
-    - name: Deploy logrotate configuration
-      include_role:
-        name: srsilo
-        tasks_from: deploy_logrotate
-      tags: [logging]
-    
     - name: Display setup complete message
       debug:
         msg:

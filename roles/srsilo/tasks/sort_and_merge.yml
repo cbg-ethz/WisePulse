@@ -33,12 +33,12 @@
 
 - name: Split input files into sorted chunks
   shell: |
-    zstdcat "{{ item.path }}" | \
+    (zstdcat "{{ item.path }}" | \
     {{ srsilo_tools_path }}/target/release/split_into_sorted_chunks \
       --output-path "{{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')" \
       --chunk-size {{ srsilo_chunk_size }} \
-      --sort-field-path /main/offset 2>&1 | systemd-cat -t srsilo-split -p info
-    cat {{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')/chunk_*.ndjson.zst >> {{ srsilo_data_sorted_chunks }}/chunks.list
+      --sort-field-path /main/offset) 2>&1 | systemd-cat -t srsilo-split -p info
+    ls {{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')/chunk_*.ndjson.zst >> {{ srsilo_data_sorted_chunks }}/chunks.list
   args:
     chdir: "{{ srsilo_base_path }}"
   loop: "{{ input_files.files }}"
@@ -59,11 +59,11 @@
 
 - name: Merge sorted chunks
   shell: |
-    cat {{ srsilo_data_sorted_chunks }}/chunks.list | \
+    (cat {{ srsilo_data_sorted_chunks }}/chunks.list | \
     {{ srsilo_tools_path }}/target/release/merge_sorted_chunks \
       --tmp-directory {{ srsilo_data_tmp }} \
       --sort-field-path /main/offset | \
-    zstd > {{ srsilo_base_path }}/sorted.ndjson.zst 2>&1 | systemd-cat -t srsilo-merge -p info
+    zstd > {{ srsilo_base_path }}/sorted.ndjson.zst) 2>&1 | systemd-cat -t srsilo-merge -p info
   args:
     chdir: "{{ srsilo_base_path }}"
   become: yes

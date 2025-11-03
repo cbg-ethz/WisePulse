@@ -47,9 +47,15 @@
         tasks_from: build_tools
       tags: [phase1, build]
     
+    - name: "PHASE 1: Deploy configuration files"
+      include_role:
+        name: srsilo
+        tasks_from: deploy_configs
+      tags: [phase1, config]
+    
     - name: "PHASE 1: Pre-flight checks complete"
       debug:
-        msg: "✓ Phase 1 complete - Prerequisites verified and tools built"
+        msg: "✓ Phase 1 complete - Prerequisites verified, tools built, and configs deployed"
     
     # ========================================================================
     # PHASE 2: Check for New Data
@@ -261,50 +267,70 @@
       when: srsilo_has_new_data
     
     # ========================================================================
-    # PHASE 6: Process Data (CRITICAL SECTION)
+    # PHASE 6 & 7: Process Data and Finalize (with Error Handling)
     # ========================================================================
     
-    - name: "PHASE 6: Sort and merge reads"
-      include_role:
-        name: srsilo
-        tasks_from: sort_and_merge
-      tags: [phase6, process]
-      when: srsilo_has_new_data
-    
-    - name: "PHASE 6: Run SILO preprocessing"
-      include_role:
-        name: srsilo
-        tasks_from: silo_preprocessing
-      tags: [phase6, process, silo]
-      when: srsilo_has_new_data
-    
-    - name: "PHASE 6: Processing complete"
-      debug:
-        msg:
-          - "=== Phase 6 Complete ==="
-          - "✓ Data processed successfully"
-          - "✓ Sorted and merged reads"
-          - "✓ SILO preprocessing finished"
-      when: srsilo_has_new_data
-
-    # ========================================================================
-    # PHASE 7: Finalize Processing (Success/Failure Paths)
-    # ========================================================================
-    
-    - name: "PHASE 7: Finalize processing and start API"
-      include_role:
-        name: srsilo
-        tasks_from: finalize_processing
-      tags: [phase7, finalize]
-      when: srsilo_has_new_data
-
-    - name: "PHASE 7: Pipeline complete"
-      debug:
-        msg:
-          - "=== Full Pipeline Complete ==="
-          - "✓ All phases executed successfully"
-          - "✓ API running with latest index"
-          - "✓ Ready for queries"
+    - name: "PHASES 6-7: Process data with automatic rollback on failure"
+      block:
+        - name: "PHASE 6: Sort and merge reads"
+          include_role:
+            name: srsilo
+            tasks_from: sort_and_merge
+          tags: [phase6, process]
+        
+        - name: "PHASE 6: Run SILO preprocessing"
+          include_role:
+            name: srsilo
+            tasks_from: silo_preprocessing
+          tags: [phase6, process, silo]
+        
+        - name: "PHASE 6: Processing complete"
+          debug:
+            msg:
+              - "=== Phase 6 Complete ==="
+              - "✓ Data processed successfully"
+              - "✓ Sorted and merged reads"
+              - "✓ SILO preprocessing finished"
+        
+        - name: "PHASE 7: Finalize processing and start API"
+          include_role:
+            name: srsilo
+            tasks_from: finalize_processing
+          tags: [phase7, finalize]
+        
+        - name: "PHASE 7: Pipeline complete"
+          debug:
+            msg:
+              - "=== Full Pipeline Complete ==="
+              - "✓ All phases executed successfully"
+              - "✓ API running with latest index"
+              - "✓ Ready for queries"
+      
+      rescue:
+        - name: "RESCUE: Handle processing failure"
+          debug:
+            msg:
+              - "=== Processing Failed - Initiating Rollback ==="
+              - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
+        
+        - name: "RESCUE: Run cleanup and rollback"
+          include_role:
+            name: srsilo
+            tasks_from: finalize_processing
+          vars:
+            force_rollback: true
+          tags: [rescue, rollback]
+        
+        - name: "RESCUE: Log failure to journal"
+          shell: 'echo "Pipeline FAILED during processing - rollback complete" | systemd-cat -t srsilo-pipeline -p err'
+          become: yes
+          become_user: "{{ srsilo_user }}"
+          changed_when: false
+        
+        - name: "RESCUE: Fail with error message"
+          fail:
+            msg: "Pipeline failed during processing. Rollback completed. Check logs for details."
+      
       when: srsilo_has_new_data
   
   post_tasks:

@@ -36,10 +36,12 @@ Upstream data processing is handled separately:
 
 ```bash
 # One-time setup (user, directories, build tools)
-ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini
+ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become  --ask-become-pass
 
 # Run automated update pipeline (checks for new data, processes, updates API)
-ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini \
+  --become --ask-become-pass \
+  -e "@playbooks/srsilo/vars/test_vars.yml"
 
 # Setup daily automated runs at 2 AM
 ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini

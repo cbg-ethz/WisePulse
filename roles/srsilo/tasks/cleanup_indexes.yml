@@ -42,6 +42,7 @@
     sorted_old_indexes: "{{ old_indexes.files | sort(attribute='mtime') | map(attribute='path') | list }}"
   when: 
     - old_indexes is defined
+    - old_indexes.matched is defined
     - old_indexes.matched > 0
 
 - name: Calculate how many indexes to delete (keep min_keep newest overall)

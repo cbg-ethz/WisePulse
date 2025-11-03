@@ -34,18 +34,19 @@
   changed_when: false
 
 - name: Clean up any previous preprocessing containers
-  shell: docker-compose -f docker-compose-preprocessing.yml down -v || true
+  shell: docker compose -f docker-compose-preprocessing.yml down -v || true
   args:
     chdir: "{{ srsilo_tools_path }}"
   become: yes
   changed_when: false
 
 - name: Run preprocessing container
-  shell: docker-compose -f docker-compose-preprocessing.yml up 2>&1 | systemd-cat -t srsilo-preprocessing -p info
+  shell: docker compose -f docker-compose-preprocessing.yml up --exit-code-from siloPreprocessing
   args:
     chdir: "{{ srsilo_tools_path }}"
   become: yes
   register: preprocessing_result
+  failed_when: preprocessing_result.rc != 0
 
 - name: Display preprocessing result
   debug:
@@ -60,11 +61,15 @@
 
 - name: Get newest index directory
   set_fact:
-    new_index_dir: "{{ output_indexes.files | sort(attribute='mtime', reverse=true) | first | default({}) }}"
+    new_index_dir: "{{ output_indexes.files | sort(attribute='mtime', reverse=true) | first }}"
   when: output_indexes.matched > 0
 
+- name: Set index name for logging
+  set_fact:
+    index_name: "{{ new_index_dir.path | basename if new_index_dir is defined and new_index_dir.path is defined else 'unknown' }}"
+
 - name: Log phase complete to journal
-  shell: 'echo "PHASE 6: SILO preprocessing - COMPLETE (index: {{ new_index_dir.path | basename | default("unknown") }})" | systemd-cat -t srsilo-phase6 -p info'
+  shell: 'echo "PHASE 6: SILO preprocessing - COMPLETE (index: {{ index_name }})" | systemd-cat -t srsilo-phase6 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false

@@ -1,0 +1,23 @@
+---
+# Deploy application configuration files
+
+- name: Deploy SILO configuration files
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ srsilo_tools_path }}/{{ item.dest }}"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+  become: yes
+  loop:
+    - { src: 'database_config.yaml', dest: 'database_config.yaml' }
+    - { src: 'preprocessing_config.yaml', dest: 'preprocessing_config.yaml' }
+    - { src: 'reference_genomes.json', dest: 'reference_genomes.json' }
+
+- name: Display config deployment complete message
+  debug:
+    msg:
+      - "✓ Configuration files deployed"
+      - "  database_config.yaml"
+      - "  preprocessing_config.yaml"
+      - "  reference_genomes.json"

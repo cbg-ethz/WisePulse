@@ -18,17 +18,18 @@ cp inventory.ini.example inventory.ini
 vim group_vars/srsilo/main.yml
 
 # One-time setup (creates user, builds tools, deploys configs)
-ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini
+ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become  --ask-become-pass
 ```
 
 ### Operations
 
 ```bash
 # Manual run (7-phase pipeline)
-ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini  --become --ask-become-pass 
 
 # Test mode (8GB RAM, 5M reads, 30k chunks)
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini \
+  --become --ask-become-pass \
   -e "@playbooks/srsilo/vars/test_vars.yml"
 
 # Enable daily automation (2 AM systemd timer)
