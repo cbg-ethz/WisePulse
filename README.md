@@ -55,10 +55,10 @@ API available at: http://localhost:8083/swagger-ui/index.html
 ### srSILO Pipeline
 
 The srSILO pipeline is now **fully managed by Ansible** with:
-- ✅ **Zero-downtime updates** (API managed automatically)
-- ✅ **Self-healing** (automatic rollback on failures)
-- ✅ **Smart execution** (exits early if no new data)
-- ✅ **Retention policy** (automatic cleanup of old indexes)
+-  **Low Downtime** (API managed automatically)
+-  **Self-healing** (automatic rollback on failures)
+-  **Smart execution** (exits early if no new data)
+-  **Retention policy** (automatic cleanup of old indexes)
 
 **Full documentation**: See [`docs/srsilo/ARCHITECTURE.md`](docs/srsilo/ARCHITECTURE.md)
 
