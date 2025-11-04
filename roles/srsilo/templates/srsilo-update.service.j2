@@ -1,0 +1,33 @@
+[Unit]
+Description=srSILO Update Pipeline - Automated Genomic Data Processing
+Documentation=https://github.com/cbg-ethz/WisePulse/blob/main/docs/srsilo/ARCHITECTURE.md
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory={{ wisepulse_repo_path }}
+
+# Run the update pipeline with production configuration
+ExecStart=/usr/bin/ansible-playbook \
+    {{ wisepulse_repo_path }}/playbooks/srsilo/update-pipeline.yml \
+    -i {{ wisepulse_repo_path }}/inventory.ini
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=srsilo-update
+
+# Restart policy: never (one-shot task)
+Restart=no
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths={{ srsilo_base_path }}
+
+[Install]
+WantedBy=multi-user.target

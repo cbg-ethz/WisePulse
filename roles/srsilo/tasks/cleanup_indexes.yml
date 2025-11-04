@@ -1,0 +1,90 @@
+---
+# Cleanup old SILO indexes based on retention policy
+# This task is equivalent to running 'make cleanup-old-indexes'
+# Retention policy: Keep N newest indexes, delete those older than M days
+
+- name: Log phase start to journal
+  shell: 'echo "PHASE 3: Cleanup old indexes - START" | systemd-cat -t srsilo-phase3 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
+- name: Display cleanup configuration
+  debug:
+    msg:
+      - "=== Cleanup Old Indexes ==="
+      - "Output directory: {{ srsilo_data_output }}"
+      - "Retention days: {{ srsilo_retention_days }}"
+      - "Min keep: {{ srsilo_retention_min_keep }}"
+
+- name: Find all index directories
+  find:
+    path: "{{ srsilo_data_output }}"
+    file_type: directory
+    recurse: no
+  register: all_indexes
+
+- name: Display found indexes
+  debug:
+    msg: "Found {{ all_indexes.matched }} index director(ies)"
+
+- name: Find indexes older than retention period
+  find:
+    path: "{{ srsilo_data_output }}"
+    file_type: directory
+    age: "{{ srsilo_retention_days }}d"
+    recurse: no
+  register: old_indexes
+  when: all_indexes.matched > 0
+
+- name: Sort old indexes by modification time (oldest first)
+  set_fact:
+    sorted_old_indexes: "{{ old_indexes.files | sort(attribute='mtime') | map(attribute='path') | list }}"
+  when: 
+    - old_indexes is defined
+    - old_indexes.matched is defined
+    - old_indexes.matched > 0
+
+- name: Calculate how many indexes to delete (keep min_keep newest overall)
+  set_fact:
+    indexes_to_delete: "{{ sorted_old_indexes[:((all_indexes.matched - srsilo_retention_min_keep) | int)] }}"
+  when:
+    - sorted_old_indexes is defined
+    - all_indexes.matched > srsilo_retention_min_keep
+
+- name: Display deletion plan
+  debug:
+    msg:
+      - "Deletion plan:"
+      - "  Total indexes: {{ all_indexes.matched }}"
+      - "  Old indexes (>{{ srsilo_retention_days }} days): {{ old_indexes.matched | default(0) }}"
+      - "  Will delete: {{ indexes_to_delete | default([]) | length }}"
+      - "  Will keep: {{ all_indexes.matched - (indexes_to_delete | default([]) | length) }}"
+  when: all_indexes.matched > 0
+
+- name: Delete old indexes
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ indexes_to_delete | default([]) }}"
+  become: yes
+  when: indexes_to_delete is defined and indexes_to_delete | length > 0
+  register: deletion_result
+
+- name: Display deletion summary
+  debug:
+    msg:
+      - "✓ Cleanup complete"
+      - "Deleted {{ deletion_result.results | default([]) | length }} old index(es)"
+  when: deletion_result is defined and deletion_result.results | default([]) | length > 0
+
+- name: Display no deletion message
+  debug:
+    msg: "✓ No indexes to delete (retention policy satisfied)"
+  when: indexes_to_delete is not defined or indexes_to_delete | length == 0
+
+- name: Log phase complete to journal
+  shell: 'echo "PHASE 3: Cleanup - COMPLETE (deleted {{ deletion_result.results | default([]) | length }} indexes)" | systemd-cat -t srsilo-phase3 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false

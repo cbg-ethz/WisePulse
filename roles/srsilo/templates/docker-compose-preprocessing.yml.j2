@@ -1,0 +1,27 @@
+services:
+  siloPreprocessing:
+    image: ghcr.io/genspectrum/lapis-silo:0.8.5
+    command: preprocessing
+    mem_limit: {{ srsilo_docker_memory_limit }}
+    volumes:
+      - type: bind
+        source: {{ srsilo_data_output }}
+        target: /preprocessing/output
+        read_only: false
+      - type: bind
+        source: {{ srsilo_tools_path }}/preprocessing_config.yaml
+        target: /app/preprocessing_config.yaml
+        read_only: true
+      - type: bind
+        source: {{ srsilo_tools_path }}/database_config.yaml
+        target: /preprocessing/input/database_config.yaml
+        read_only: true
+      - type: bind
+        source: {{ srsilo_tools_path }}/reference_genomes.json
+        target: /preprocessing/input/reference_genomes.json
+        read_only: true
+      - type: bind
+        source: {{ srsilo_base_path }}/sorted.ndjson.zst
+        target: /preprocessing/input/sorted.ndjson.zst
+        read_only: true
+    stop_grace_period: 5s

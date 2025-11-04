@@ -35,40 +35,90 @@ Upstream data processing is handled separately:
 ## Quick Start
 
 ```bash
-# Build tools
-make build
+# One-time setup (user, directories, build tools)
+ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become  --ask-become-pass
 
-# Fetch data and run pipeline
-make fetch-and-process
+# Run automated update pipeline (checks for new data, processes, updates API)
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini \
+  --become --ask-become-pass \
+  -e "@playbooks/srsilo/vars/test_vars.yml"
 
-# Start API
-LAPIS_PORT=8083 docker compose up -d
+# Setup daily automated runs at 2 AM
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+
+# Check API status
+curl http://localhost:8083/sample/info
 ```
 
 API available at: http://localhost:8083/swagger-ui/index.html
 
-### Prerequisites
-- Rust/Cargo
-- Docker Compose
-- Linux platform
+## Architecture
 
-## Automated Pipeline & Deployment
+### srSILO Pipeline
 
-Use Ansible for:
-- **Automated data pipeline**: Nightly data fetching and processing
-- **Loculus deployment**: Deploy W-ASAP to Kubernetes
-- **Monitoring**: Prometheus + Grafana metrics
+The srSILO pipeline is now **fully managed by Ansible** with:
+-  **Low Downtime** (API managed automatically)
+-  **Self-healing** (automatic rollback on failures)
+-  **Smart execution** (exits early if no new data)
+-  **Retention policy** (automatic cleanup of old indexes)
 
-See `ansible/README.md` for complete documentation.
+**Full documentation**: See [`docs/srsilo/ARCHITECTURE.md`](docs/srsilo/ARCHITECTURE.md)
 
-## Manual Pipeline Usage
+**Playbooks**:
+- `playbooks/srsilo/setup.yml` - One-time server setup
+- `playbooks/srsilo/update-pipeline.yml` - Full automated update (7 phases)
+- Future: `playbooks/srsilo/rollback.yml` - Manual rollback to previous index
 
-See `make help` for all available commands.
-
-**Key commands:**
+**Example Usage**:
 ```bash
-make build                    # Build all Rust tools
-make fetch-and-process        # Fetch data and run full pipeline
-make smart-fetch-and-process  # Smart run with API lifecycle management
-make clean-all                # Clean everything including Docker
+# Full automated update (recommended)
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
+
+# With custom configuration
+ansible-playbook playbooks/srsilo/update-pipeline.yml \
+  -i inventory.ini \
+  -e "srsilo_retention_days=7" \
+  -e "srsilo_fetch_days=30"
+
+# Test specific phase (e.g., check for new data only)
+ansible-playbook playbooks/srsilo/update-pipeline.yml \
+  -i inventory.ini \
+  --tags phase2
 ```
+
+### Loculus Deployment
+
+Deploy W-ASAP Loculus to Kubernetes:
+```bash
+ansible-playbook playbooks/loculus/deploy-loculus.yml --ask-become-pass
+```
+
+### Monitoring Stack
+
+Deploy Prometheus + Grafana:
+```bash
+ansible-playbook playbooks/monitoring/full.yml
+```
+
+## Configuration
+
+Key configuration in `group_vars/srsilo/main.yml`:
+
+```yaml
+# Data retention
+srsilo_retention_days: 7               # Delete indexes older than 7 days
+srsilo_retention_min_keep: 2           # Always keep at least 2 indexes
+
+# Fetch configuration  
+srsilo_fetch_days: 90                  # Fetch last 90 days of data
+srsilo_fetch_max_reads: 172500000      # 172.5M reads for production
+
+# Processing (Production: 377GB RAM server)
+srsilo_chunk_size: 1000000             # Large chunks for high-memory environment
+srsilo_docker_memory_limit: 340g       # 90% of 377GB RAM
+
+# For testing with constrained resources (8GB RAM):
+# Use: -e "@playbooks/srsilo/vars/test_vars.yml"
+```
+
+See [`docs/srsilo/ARCHITECTURE.md`](docs/srsilo/ARCHITECTURE.md) for complete configuration reference.

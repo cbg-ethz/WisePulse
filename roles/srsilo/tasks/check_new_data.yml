@@ -1,0 +1,69 @@
+---
+# Check if new data is available from LAPIS API
+# This task is equivalent to running the check_new_data binary
+# Exit codes: 0=new data, 1=no new data, 2=error
+
+- name: Ensure timestamp file location exists
+  file:
+    path: "{{ srsilo_base_path }}"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Log phase start to journal
+  shell: 'echo "PHASE 2: Check new data - START" | systemd-cat -t srsilo-phase2 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
+- name: Check for new data using check_new_data binary
+  shell: |
+    {{ srsilo_tools_path }}/target/release/check_new_data \
+      --api-base-url "{{ srsilo_api_base_url }}" \
+      --timestamp-file "{{ srsilo_base_path }}/.last_update" \
+      --days-back {{ srsilo_fetch_days }} \
+      --output-timestamp-file "{{ srsilo_base_path }}/.next_timestamp" \
+      2>&1 | systemd-cat -t srsilo-check-data -p info
+  args:
+    chdir: "{{ srsilo_base_path }}"
+  register: check_new_data_result
+  failed_when: check_new_data_result.rc == 2  # Only fail on error (rc=2)
+  changed_when: check_new_data_result.rc == 0  # Changed when new data found (rc=0)
+  become: yes
+  become_user: "{{ srsilo_user }}"
+
+- name: Log phase result to journal
+  shell: 'echo "PHASE 2: Check new data - {{ "NEW DATA FOUND" if check_new_data_result.rc == 0 else "NO NEW DATA" if check_new_data_result.rc == 1 else "ERROR" }}" | systemd-cat -t srsilo-phase2 -p {{ "info" if check_new_data_result.rc != 2 else "err" }}'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
+- name: Set fact for whether new data is available
+  set_fact:
+    srsilo_has_new_data: "{{ check_new_data_result.rc == 0 }}"
+
+- name: Display check result - New data available
+  debug:
+    msg: 
+      - "=== New Data Check Result ==="
+      - "✓ New data available - pipeline will run"
+      - "{{ check_new_data_result.stdout_lines }}"
+  when: srsilo_has_new_data
+
+- name: Display check result - No new data
+  debug:
+    msg:
+      - "=== New Data Check Result ==="
+      - "• No new data found - pipeline will skip"
+      - "{{ check_new_data_result.stdout_lines }}"
+  when: not srsilo_has_new_data
+
+- name: Display check result - Error
+  debug:
+    msg:
+      - "=== New Data Check Result ==="
+      - "✗ Error checking for new data"
+      - "{{ check_new_data_result.stderr_lines }}"
+  when: check_new_data_result.rc == 2

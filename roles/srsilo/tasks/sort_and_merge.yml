@@ -1,0 +1,89 @@
+---
+# Sort and merge genomic data
+# This task splits input NDJSON files into sorted chunks, then merges them
+# Equivalent to Makefile: split_into_sorted_chunks + merge_sorted_chunks
+
+- name: Display sort and merge configuration
+  debug:
+    msg:
+      - "=== Sorting and Merging Reads ==="
+      - "Input: {{ srsilo_data_input }}"
+      - "Chunks: {{ srsilo_data_sorted_chunks }}"
+      - "Output: {{ srsilo_base_path }}/sorted.ndjson.zst"
+
+- name: Log phase start to journal
+  shell: 'echo "PHASE 6: Sort and merge reads - START" | systemd-cat -t srsilo-phase6 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
+- name: Find input files to process
+  find:
+    path: "{{ srsilo_data_input }}"
+    patterns: "*.ndjson.zst"
+    file_type: file
+  register: input_files
+
+- name: Verify input files exist
+  assert:
+    that:
+      - input_files.matched > 0
+    fail_msg: "No input files found in {{ srsilo_data_input }}"
+    success_msg: "Found {{ input_files.matched }} input file(s) to process"
+
+- name: Split input files into sorted chunks
+  shell: |
+    (zstdcat "{{ item.path }}" | \
+    {{ srsilo_tools_path }}/target/release/split_into_sorted_chunks \
+      --output-path "{{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')" \
+      --chunk-size {{ srsilo_chunk_size }} \
+      --sort-field-path /main/offset) 2>&1 | systemd-cat -t srsilo-split -p info
+    ls {{ srsilo_data_sorted_chunks }}/$(basename '{{ item.path }}')/chunk_*.ndjson.zst >> {{ srsilo_data_sorted_chunks }}/chunks.list
+  args:
+    chdir: "{{ srsilo_base_path }}"
+  loop: "{{ input_files.files }}"
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  register: split_result
+
+- name: Count created chunks
+  shell: wc -l < {{ srsilo_data_sorted_chunks }}/chunks.list || echo 0
+  register: chunk_count
+  changed_when: false
+
+- name: Display split result
+  debug:
+    msg:
+      - "✓ Split complete"
+      - "Created {{ chunk_count.stdout | trim }} chunks"
+
+- name: Merge sorted chunks
+  shell: |
+    (cat {{ srsilo_data_sorted_chunks }}/chunks.list | \
+    {{ srsilo_tools_path }}/target/release/merge_sorted_chunks \
+      --tmp-directory {{ srsilo_data_tmp }} \
+      --sort-field-path /main/offset | \
+    zstd > {{ srsilo_base_path }}/sorted.ndjson.zst) 2>&1 | systemd-cat -t srsilo-merge -p info
+  args:
+    chdir: "{{ srsilo_base_path }}"
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  register: merge_result
+
+- name: Get sorted file size
+  stat:
+    path: "{{ srsilo_base_path }}/sorted.ndjson.zst"
+  register: sorted_file
+
+- name: Log phase complete to journal
+  shell: 'echo "PHASE 6: Sort and merge - COMPLETE ({{ chunk_count.stdout | trim }} chunks, {{ (sorted_file.stat.size / 1024 / 1024) | round(2) }} MB)" | systemd-cat -t srsilo-phase6 -p info'
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
+- name: Display merge result
+  debug:
+    msg:
+      - "✓ Merge complete"
+      - "Output: sorted.ndjson.zst"
+      - "Size: {{ (sorted_file.stat.size / 1024 / 1024) | round(2) }} MB"

@@ -1,0 +1,40 @@
+---
+# Group variables for srsilo hosts
+# These override the role defaults in roles/srsilo/defaults/main.yml
+
+# Base paths
+srsilo_base_path: /opt/srsilo
+srsilo_tools_path: "{{ srsilo_base_path }}/tools"
+
+# User and group
+srsilo_user: srsilo
+srsilo_group: srsilo
+
+# Data directories (managed outside repo)
+srsilo_data_input: "{{ srsilo_base_path }}/input"
+srsilo_data_output: "{{ srsilo_base_path }}/output"
+srsilo_data_sorted_chunks: "{{ srsilo_base_path }}/sorted_chunks"
+srsilo_data_tmp: "{{ srsilo_base_path }}/tmp"
+
+# API configuration
+srsilo_api_base_url: https://api.db.wasap.genspectrum.org
+srsilo_fetch_days: 90
+srsilo_fetch_max_reads: 172500000   # 172.5M reads for production
+
+# LAPIS/SILO configuration
+srsilo_lapis_port: 8083
+
+# Retention policy
+srsilo_retention_days: 7
+srsilo_retention_min_keep: 2
+
+# Processing configuration - Production values (377GB RAM server)
+srsilo_chunk_size: 1000000          # Large chunks for 377GB RAM environment
+srsilo_docker_memory_limit: 340g    # 90% of 377GB RAM
+
+# Repository path (for development/deployment)
+wisepulse_repo_path: /opt/WisePulse
+
+# Note: For testing with constrained resources (8GB RAM), override with:
+#   ansible-playbook ... -e "@playbooks/srsilo/vars/test_vars.yml"
+# Test overrides: 7g memory, 30 days, 5M reads, 30k chunk size

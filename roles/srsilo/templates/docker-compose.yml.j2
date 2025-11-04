@@ -7,29 +7,29 @@ services:
     command: --silo.url=http://silo:8081
     volumes:
       - type: bind
-        source: ./database_config.yaml
+        source: {{ srsilo_tools_path }}/database_config.yaml
         target: /workspace/database_config.yaml
         read_only: true
       - type: bind
-        source: ./reference_genomes.json
+        source: {{ srsilo_tools_path }}/reference_genomes.json
         target: /workspace/reference_genomes.json
         read_only: true
     stop_grace_period: 0s
 
   silo:
     image: ghcr.io/genspectrum/lapis-silo:0.8.5
-    mem_limit: 350g
+    mem_limit: {{ srsilo_docker_memory_limit }}
     restart: unless-stopped
     ports:
       - 8081:8081
     command: api --api-threads-for-http-connections 96 --api-max-queued-http-connections 1024
     volumes:
       - type: bind
-        source: ./silo_output
+        source: {{ srsilo_data_output }}
         target: /data
         read_only: true
       - type: bind
-        source: logs
+        source: {{ srsilo_tools_path }}/logs
         target: /app/logs
         read_only: false
     stop_grace_period: 0s
