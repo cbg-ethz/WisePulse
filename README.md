@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="ansible/roles/loculus/files/images/wasap-logo.png" alt="WisePulse Logo" width="150"/>
+<img src="roles/loculus/files/images/wasap-logo.png" alt="WisePulse Logo" width="150"/>
 
 ### WISE Loculus with V-Pipe – Infrastructure for start-to-end viral wastewater analysis
 
