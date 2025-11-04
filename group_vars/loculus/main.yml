@@ -14,24 +14,59 @@ runDevelopmentMainDatabase: false
 runDevelopmentKeycloakDatabase: false
 runDevelopmentS3: false
 
-welcomeMessageHTML: '<div class="space-y-4">
-    <div>
-      <h2 class="text-xl font-semibold mb-2">Welcome to W-ASAP</h2>
-      <p>The <strong>Wastewater Analysis and Sharing Platform (W-ASAP)</strong> — a joint effort of the <a href="https://bsse.ethz.ch/cbg" class="underline text-blue-600">Computational Biology Group (CBG)</a> and <a href="https://bsse.ethz.ch/cevo" class="underline text-blue-600">Computational Evolution Group (cEvo)</a> at ETH Zürich.</p>
-    </div>
-    
-    <div>
-      <p>This database powers the interactive visualizations and analyses available at <a href="https://wasap.genspectrum.org/" class="underline text-blue-600">wasap.genspectrum.org</a>. Here we share processed alignment files and intermediary files for real-time plotting and analysis of wastewater surveillance data.</p>
-    </div>
-    
-    <div>
-      <p>We currently support SARS-CoV-2. For complete raw sequencing data and metadata, please refer to our ENA project: <a href="https://www.ebi.ac.uk/ena/browser/view/PRJEB85524" class="underline text-blue-600">PRJEB85524</a> (Study: <a href="https://www.ebi.ac.uk/ena/browser/view/ERP168898" class="underline text-blue-600">ERP168898</a>).</p>
-    </div>
-    
-    <div>
-      <p>Built with <a href="https://loculus.org" class="underline text-blue-600">Loculus</a> — an open-source platform for pathogen sequence sharing.</p>
-    </div>
-  </div>'
+welcomeMessageHTML: '
+    <section aria-labelledby="welcome-heading" class="mt-6">
+      <h1 id="welcome-heading" class="text-3xl sm:text-4xl font-semibold text-primary">
+          Welcome to W-ASAP
+      </h1>
+      
+      <div class="mt-4 text-base text-slate-700 leading-relaxed space-y-4">
+          <p>
+              W-ASAP (<em>Wastewater Analysis and Sharing Platform</em>) is an open-source database that makes it easier for researchers and public health workers to share, review, and act on viral wastewater pathogen genomic data.
+          </p>
+          
+          <p>
+              This database powers the interactive visualizations and analyses available on <a href="https://staging.genspectrum.org/swiss-wastewater/covid">GenSpectrum W-ASAP</a>. Here we share processed alignment files and intermediary files for real-time plotting and analysis of wastewater surveillance data.
+          </p>
+          
+          <p class="text-sm text-slate-600">
+              Built with <a href="https://loculus.org">Loculus</a> — an open-source platform for pathogen sequence sharing.
+          </p>
+      </div>
+      
+      <div class="mt-6 flex flex-wrap gap-3">
+          <a class="inline-flex items-center justify-center rounded-md px-3 md:px-5 py-2 text-base font-semibold text-primary shadow-sm transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 no-underline hover:no-underline border border-primary/60 bg-primary-50 hover:bg-primary-200" 
+            href="https://staging.genspectrum.org/swiss-wastewater/covid">
+              Analyze SARS-CoV-2
+          </a>
+          <a class="inline-flex items-center justify-center rounded-md px-3 md:px-5 py-2 text-base font-semibold text-primary shadow-sm transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 no-underline hover:no-underline border border-primary/40 bg-white hover:bg-primary/10" 
+            href="https://www.ebi.ac.uk/ena/browser/view/PRJEB85524">
+              View on ENA
+          </a>
+      </div>
+      
+      <div class="mt-8 grid gap-6 md:grid-cols-2">
+          <div class="rounded-2xl border border-base-200/70 bg-base-100 p-5 shadow-sm">
+              <h3 class="text-lg font-semibold text-slate-900 mb-3">Features</h3>
+              <ul class="list-disc list-inside space-y-2 text-sm text-slate-700">
+                  <li>Retrieve data through a simple web interface or programmatically via our API.</li>
+                  <li>Browse genomic alignments with powerful search and filtering options.</li>
+              </ul>
+          </div>
+          
+          <div class="rounded-2xl border border-base-200/70 bg-base-100 p-5 shadow-sm">
+              <h3 class="text-lg font-semibold text-slate-900 mb-3">Who is behind W-ASAP?</h3>
+              <p class="text-sm text-slate-700">
+                  A joint effort of the <a href="https://bsse.ethz.ch/cbg">Computational Biology Group (CBG)</a> and <a href="https://bsse.ethz.ch/cevo">Computational Evolution Group (cEvo)</a> at ETH Zürich.
+              </p>
+              <p class="text-sm text-slate-600 mt-3">
+                  We currently support SARS-CoV-2. For complete raw sequencing data and metadata, please refer to our ENA project: <a href="https://www.ebi.ac.uk/ena/browser/view/PRJEB85524">PRJEB85524</a> (Study: <a href="https://www.ebi.ac.uk/ena/browser/view/ERP168898">ERP168898</a>).
+              </p>
+          </div>
+      </div>
+  </section>'
+
+
 
 public:
   backendUrl: 'https://api.db.wasap.genspectrum.org/backend'
