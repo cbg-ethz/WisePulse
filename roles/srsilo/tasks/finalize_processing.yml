@@ -214,6 +214,7 @@
         src: "{{ srsilo_base_path }}/.next_timestamp"
         dest: "{{ srsilo_base_path }}/.last_update"
         remote_src: yes
+        mode: '0644'
       become: yes
       become_user: "{{ srsilo_user }}"
       when: 

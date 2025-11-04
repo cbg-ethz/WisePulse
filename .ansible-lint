@@ -1,0 +1,40 @@
+---
+# Ansible-lint configuration for WisePulse srSILO
+
+# Exclude paths - focus only on srSILO, for now
+exclude_paths:
+  - .github/
+  - .git/
+  - group_vars/loculus/
+  - group_vars/monitoring/
+  - playbooks/loculus/
+  - playbooks/monitoring/
+  - roles/loculus/
+  - roles/grafana/
+  - roles/prometheus/
+  - roles/node_exporter/
+  - roles/monitoring/
+  - roles/wisepulse_pipeline/  # Old deprecated role
+
+# Skip rules that are too strict for our use case
+skip_list:
+  - yaml[line-length]  # Allow longer lines for readability
+  - yaml[truthy]  # Allow yes/no instead of true/false  
+  - fqcn  # Allow short module names for readability
+  - var-naming[read-only]  # Allow role_path usage in playbooks
+  - var-naming[no-role-prefix]  # Allow vars without role prefix in playbooks
+  - command-instead-of-module  # Allow systemctl commands where needed
+  - command-instead-of-shell  # Allow command when appropriate
+  - risky-shell-pipe  # Our shell commands are safe
+  - no-changed-when  # Not all commands need this
+  - key-order  # Task key order is flexible
+  - jinja[spacing]  # Jinja spacing is flexible
+  - name[casing]  # Allow lowercase handler/task names
+
+# Warn instead of fail for these
+warn_list:
+  - experimental
+  - ignore-errors
+  - no-handler
+  - yaml[trailing-spaces]
+  - yaml[new-line-at-end-of-file]

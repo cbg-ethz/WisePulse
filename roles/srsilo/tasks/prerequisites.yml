@@ -70,12 +70,11 @@
   become: yes
 
 - name: Copy tools directory from repository to base path
-  synchronize:
+  copy:
     src: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools/"
     dest: "{{ srsilo_tools_path }}/"
-    recursive: yes
+    remote_src: yes
   become: yes
-  delegate_to: "{{ inventory_hostname }}"
 
 - name: Set ownership of tools directory
   file:

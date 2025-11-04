@@ -1,5 +1,3 @@
-
-
 ---
 - name: srSILO Update Pipeline - Full Automation
   hosts: srsilo
@@ -349,7 +347,8 @@
       when: srsilo_has_new_data is defined and not srsilo_has_new_data
     
     - name: Log pipeline failure to journal
-      shell: 'echo "Pipeline FAILED: {{ ansible_failed_result.msg | default(\"Unknown error\") }}" | systemd-cat -t srsilo-pipeline -p err'
+      shell: |
+        echo "Pipeline FAILED: {{ ansible_failed_result.msg | default('Unknown error') }}" | systemd-cat -t srsilo-pipeline -p err
       become: yes
       become_user: "{{ srsilo_user }}"
       changed_when: false
