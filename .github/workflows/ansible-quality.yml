@@ -1,0 +1,75 @@
+name: Ansible Quality Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  ansible-lint:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install ansible-lint
+        run: pip install ansible-lint
+      
+      - name: Run ansible-lint
+        working-directory: ansible
+        run: ansible-lint playbooks/ roles/
+
+  syntax-check:
+    name: Ansible Syntax Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Ansible
+        run: pip install ansible-core
+      
+      - name: Setup CI environment
+        run: |
+          # Temporarily remove vault files to avoid decryption attempts
+          mkdir -p .vault_backup
+          mv group_vars/loculus/vault.yml .vault_backup/ 2>/dev/null || true
+          mv group_vars/monitoring/vault.yml .vault_backup/ 2>/dev/null || true
+          
+          # Remove original ansible.cfg and create CI-specific one
+          rm -f ansible.cfg
+          cat > ansible.cfg <<EOF
+          [defaults]
+          inventory = inventory.ini
+          roles_path = ./roles
+          host_key_checking = False
+          retry_files_enabled = False
+          timeout = 30
+          gather_facts = False
+          
+          [inventory]
+          enable_plugins = host_list, script, auto, yaml, ini, toml
+          
+          [ssh_connection]
+          ssh_args = -o ControlMaster=auto -o ControlPersist=60s
+          pipelining = True
+          EOF
+      
+      - name: Validate inventory
+        run: ansible-inventory -i inventory.ini --list --yaml
+      
+      - name: Syntax check playbooks
+        run: |
+          for playbook in playbooks/*/*.yml; do
+            echo "✓ Checking $playbook"
+            ansible-playbook --syntax-check "$playbook" -i inventory.ini
+          done
