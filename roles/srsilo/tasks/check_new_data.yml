@@ -20,14 +20,17 @@
 
 - name: Check for new data using check_new_data binary
   shell: |
+    set -o pipefail
     {{ srsilo_tools_path }}/target/release/check_new_data \
       --api-base-url "{{ srsilo_api_base_url }}" \
       --timestamp-file "{{ srsilo_base_path }}/.last_update" \
       --days-back {{ srsilo_fetch_days }} \
       --output-timestamp-file "{{ srsilo_base_path }}/.next_timestamp" \
-      2>&1 | systemd-cat -t srsilo-check-data -p info
+      2>&1 | tee >(systemd-cat -t srsilo-check-data -p info)
+    exit ${PIPESTATUS[0]}
   args:
     chdir: "{{ srsilo_base_path }}"
+    executable: /bin/bash
   register: check_new_data_result
   failed_when: check_new_data_result.rc == 2  # Only fail on error (rc=2)
   changed_when: check_new_data_result.rc == 0  # Changed when new data found (rc=0)
