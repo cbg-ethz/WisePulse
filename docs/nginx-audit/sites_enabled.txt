@@ -1,0 +1,5 @@
+total 12
+drwxr-xr-x 2 root root 4096 Sep 22 15:38 .
+drwxr-xr-x 8 root root 4096 Oct 12 22:43 ..
+-rw-r--r-- 1 root root 3491 Sep 22 15:38 loculus
+lrwxrwxrwx 1 root root   38 Aug  5 16:56 wasap-scout -> /etc/nginx/sites-available/wasap-scout
