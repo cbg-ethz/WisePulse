@@ -1,0 +1,33 @@
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Found the following certs:
+  Certificate Name: db.wasap.genspectrum.org
+    Serial Number: 55a7426c7a4948e8ad01271e5e95e86097c
+    Key Type: ECDSA
+    Domains: db.wasap.genspectrum.org api.db.wasap.genspectrum.org auth.db.wasap.genspectrum.org
+    Expiry Date: 2025-12-25 14:50:24+00:00 (VALID: 42 days)
+    Certificate Path: /etc/letsencrypt/live/db.wasap.genspectrum.org/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/db.wasap.genspectrum.org/privkey.pem
+  Certificate Name: lapis.wasap.genspectrum.org
+    Serial Number: 5816fbcd56b2a49c82631fd995fba831cfd
+    Key Type: ECDSA
+    Domains: lapis.wasap.genspectrum.org
+    Expiry Date: 2026-01-10 19:45:01+00:00 (VALID: 58 days)
+    Certificate Path: /etc/letsencrypt/live/lapis.wasap.genspectrum.org/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/lapis.wasap.genspectrum.org/privkey.pem
+  Certificate Name: silo.wasap.genspectrum.org
+    Serial Number: 5940dbbe00907e0893013fe7d1b11120de5
+    Key Type: ECDSA
+    Domains: silo.wasap.genspectrum.org
+    Expiry Date: 2026-01-10 19:45:12+00:00 (VALID: 58 days)
+    Certificate Path: /etc/letsencrypt/live/silo.wasap.genspectrum.org/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/silo.wasap.genspectrum.org/privkey.pem
+  Certificate Name: wasap.genspectrum.org
+    Serial Number: 57c95100ef7f766fc38b981fbcd79958793
+    Key Type: ECDSA
+    Domains: wasap.genspectrum.org
+    Expiry Date: 2026-01-02 17:07:44+00:00 (VALID: 50 days)
+    Certificate Path: /etc/letsencrypt/live/wasap.genspectrum.org/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/wasap.genspectrum.org/privkey.pem
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
