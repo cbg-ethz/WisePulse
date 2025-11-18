@@ -6,7 +6,7 @@ logo:
   width: 200
   height: 180
 
-bannerMessage: 'This is a beta version of W-ASAP. Expect occasional modifications to the datastore structure and content.'
+bannerMessage: ''
 
 loculus_environment: 'local' # Do not change this: this setup uses a "local" environment as the public traffic is proxied through nginx.
 
