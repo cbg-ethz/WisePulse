@@ -1,0 +1,60 @@
+---
+# Pre-commit hooks for WisePulse
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # General file formatting
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+
+  # Ansible linting
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v24.9.2
+    hooks:
+      - id: ansible-lint
+        files: \.(ya?ml)$
+        args: [--profile=production]
+
+  # Python linting with ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix]
+      # Run the formatter
+      - id: ruff-format
+
+  # Python type checking with pyright
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.383
+    hooks:
+      - id: pyright
+
+  # Detect unencrypted secrets (particularly for Ansible Vault)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+  # Custom hook to check Ansible vault encryption
+  - repo: local
+    hooks:
+      - id: check-ansible-vault
+        name: Check Ansible Vault Encryption
+        entry: .pre-commit-hooks/check-ansible-vault.sh
+        language: script
+        files: (vault\.yml|vault/.*\.yml|secret.*\.yml)$
+        pass_filenames: true
