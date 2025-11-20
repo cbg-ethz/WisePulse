@@ -1,0 +1,7 @@
+total 8
+drwxr-xr-x 2 root root 4096 Nov 20 11:47 .
+drwxr-xr-x 8 root root 4096 Oct 12 22:43 ..
+lrwxrwxrwx 1 root root   32 Nov 20 11:46 lapis -> /etc/nginx/sites-available/lapis
+lrwxrwxrwx 1 root root   34 Nov 20 11:47 loculus -> /etc/nginx/sites-available/loculus
+lrwxrwxrwx 1 root root   31 Nov 20 11:46 silo -> /etc/nginx/sites-available/silo
+lrwxrwxrwx 1 root root   38 Aug  5 16:56 wasap-scout -> /etc/nginx/sites-available/wasap-scout
