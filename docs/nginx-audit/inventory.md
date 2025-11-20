@@ -1,5 +1,10 @@
 # Nginx Configuration Inventory
-*Generated: November 13, 2025*
+*Initial Audit: November 13, 2025*  
+*Updated After Improvements: November 20, 2025*
+
+> **Note**: This inventory reflects the **improved** configuration state.  
+> For original audit state, see `before-improvements/` folder.  
+> For detailed changes, see [IMPROVEMENTS.md](IMPROVEMENTS.md).
 
 ## 1. All Subdomains/Virtual Hosts
 

@@ -1,0 +1,9 @@
+total 32
+drwxr-xr-x 2 root root 4096 Nov 20 11:47 .
+drwxr-xr-x 8 root root 4096 Oct 12 22:43 ..
+-rw-r--r-- 1 root root 2412 Nov 30  2023 default
+-rw-r--r-- 1 root root  868 Nov 20 11:47 lapis
+-rw-r--r-- 1 root root 3219 Nov 20 10:33 loculus
+-rw-r--r-- 1 root root  997 Sep 12 18:53 monitoring
+-rw-r--r-- 1 root root  862 Nov 20 11:47 silo
+-rw-r--r-- 1 root root  908 Nov 20 10:37 wasap-scout
