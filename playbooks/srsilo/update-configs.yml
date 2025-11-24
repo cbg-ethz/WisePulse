@@ -1,0 +1,29 @@
+---
+- name: Update SILO configuration files
+  hosts: srsilo
+  gather_facts: no
+  
+  tasks:
+    - name: Deploy SILO configuration files
+      copy:
+        src: "{{ playbook_dir }}/../../roles/srsilo/files/{{ item }}"
+        dest: "{{ srsilo_tools_path }}/{{ item }}"
+        owner: "{{ srsilo_user }}"
+        group: "{{ srsilo_group }}"
+        mode: '0644'
+      become: yes
+      loop:
+        - database_config.yaml
+        - preprocessing_config.yaml
+        - reference_genomes.json
+    
+    - name: Display config deployment complete message
+      debug:
+        msg:
+          - "✓ Configuration files deployed"
+          - "  database_config.yaml"
+          - "  preprocessing_config.yaml"
+          - "  reference_genomes.json"
+          - ""
+          - "Note: Restart SILO/LAPIS containers for changes to take effect:"
+          - "  cd {{ srsilo_tools_path }} && docker compose restart"
