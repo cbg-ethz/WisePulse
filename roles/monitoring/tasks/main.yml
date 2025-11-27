@@ -1,9 +1,85 @@
 ---
-# Monitoring coordination tasks
-# This role serves as a meta-role to coordinate monitoring components
-# Individual components are handled by their respective roles via dependencies
+# =============================================================================
+# Monitoring Stack Orchestration
+# =============================================================================
+# This role coordinates the monitoring stack deployment:
+# 1. Generate dynamic Prometheus scrape configs from lapis_instances
+# 2. Deploy Prometheus, Node Exporter, JSON Exporter, Grafana
+# 3. Deploy custom dashboards
+# =============================================================================
 
-# Deploy custom Lapis monitoring dashboard
+# -----------------------------------------------------------------------------
+# Step 1: Generate Lapis scrape configurations dynamically
+# -----------------------------------------------------------------------------
+- name: Generate Lapis scrape configurations from instances
+  ansible.builtin.set_fact:
+    _lapis_scrape_configs: |
+      {% set configs = [] %}
+      {% for instance in lapis_instances | default([]) %}
+      {% set instance_host = instance.url | regex_replace('^https?://', '') %}
+      {% for metric in lapis_metrics | default([]) %}
+      {% set job = {
+        'job_name': 'lapis_' ~ (metric.module | regex_replace('^lapis_', '')) ~ '_' ~ instance.name,
+        'metrics_path': '/probe',
+        'params': {
+          'module': [metric.module],
+          'target': [instance.url ~ metric.path]
+        },
+        'static_configs': [{
+          'targets': ['localhost:' ~ (json_exporter_port | default(7979)) | string],
+          'labels': {'lapis_instance': instance.name}
+        }],
+        'relabel_configs': [{
+          'source_labels': ['__address__'],
+          'target_label': 'instance',
+          'replacement': instance_host
+        }]
+      } %}
+      {% if metric.scrape_interval is defined %}
+      {% set job = job | combine({'scrape_interval': metric.scrape_interval}) %}
+      {% endif %}
+      {% set _ = configs.append(job) %}
+      {% endfor %}
+      {% endfor %}
+      {{ configs | to_json }}
+  tags: ['prometheus', 'lapis', 'config']
+
+- name: Build final prometheus_scrape_configs
+  ansible.builtin.set_fact:
+    prometheus_scrape_configs: "{{ prometheus_base_scrape_configs + (_lapis_scrape_configs | from_json) }}"
+  tags: ['prometheus', 'lapis', 'config']
+
+- name: Debug - Show generated scrape config count
+  ansible.builtin.debug:
+    msg: "Generated {{ prometheus_scrape_configs | length }} scrape configs ({{ prometheus_base_scrape_configs | length }} base + {{ (_lapis_scrape_configs | from_json) | length }} Lapis)"
+  tags: ['prometheus', 'lapis', 'config']
+
+# -----------------------------------------------------------------------------
+# Step 2: Deploy monitoring components via official collections
+# -----------------------------------------------------------------------------
+- name: Deploy Prometheus
+  ansible.builtin.include_role:
+    name: prometheus.prometheus.prometheus
+  tags: ['monitoring', 'prometheus']
+
+- name: Deploy Node Exporter
+  ansible.builtin.include_role:
+    name: prometheus.prometheus.node_exporter
+  tags: ['monitoring', 'node_exporter']
+
+- name: Deploy JSON Exporter (for Lapis metrics)
+  ansible.builtin.include_role:
+    name: json_exporter
+  tags: ['monitoring', 'json_exporter', 'lapis']
+
+- name: Deploy Grafana
+  ansible.builtin.include_role:
+    name: grafana.grafana.grafana
+  tags: ['monitoring', 'grafana']
+
+# -----------------------------------------------------------------------------
+# Step 3: Deploy custom dashboards
+# -----------------------------------------------------------------------------
 - name: Ensure Grafana dashboards directory exists
   ansible.builtin.file:
     path: /var/lib/grafana/dashboards

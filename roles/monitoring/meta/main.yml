@@ -1,20 +1,9 @@
 ---
-# Monitoring Meta-Role Dependencies
-# Uses official Prometheus and Grafana Ansible collections for maintainability
+# Monitoring Meta-Role
+# 
+# This role does NOT use dependencies because we need to dynamically generate
+# Prometheus scrape configs BEFORE the prometheus role runs.
+# 
+# Instead, roles are included explicitly in tasks/main.yml after config generation.
 
-dependencies:
-  # Official Prometheus role from prometheus.prometheus collection
-  - role: prometheus.prometheus.prometheus
-    tags: ['monitoring', 'metrics', 'prometheus']
-  
-  # Official Node Exporter role from prometheus.prometheus collection
-  - role: prometheus.prometheus.node_exporter
-    tags: ['monitoring', 'exporters', 'node_exporter']
-  
-  # Custom JSON Exporter role (not available in official collection)
-  - role: json_exporter
-    tags: ['monitoring', 'exporters', 'json_exporter', 'lapis']
-  
-  # Official Grafana role from grafana.grafana collection
-  - role: grafana.grafana.grafana
-    tags: ['monitoring', 'visualization', 'grafana']
+dependencies: []

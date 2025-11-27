@@ -1,0 +1,40 @@
+# =============================================================================
+# Lapis Scrape Configurations (Auto-generated)
+# =============================================================================
+# This template generates Prometheus scrape configs for all Lapis instances
+# defined in lapis_instances variable.
+#
+# Each instance gets one scrape job per metric, with proper labels to
+# distinguish between instances in Grafana dashboards.
+# =============================================================================
+
+{% for instance in lapis_instances %}
+{% set instance_name = instance.name %}
+{% set instance_url = instance.url %}
+{% set instance_host = instance_url | regex_replace('^https?://', '') %}
+{% set actuator_path = instance.actuator_path | default('/actuator') %}
+
+# -----------------------------------------------------------------------------
+# {{ instance_name | upper }} ({{ instance_url }})
+# -----------------------------------------------------------------------------
+
+{% for metric in lapis_metrics %}
+  - job_name: 'lapis_{{ metric.module | regex_replace("^lapis_", "") }}_{{ instance_name }}'
+{% if metric.scrape_interval is defined %}
+    scrape_interval: {{ metric.scrape_interval }}
+{% endif %}
+    metrics_path: /probe
+    params:
+      module: [{{ metric.module }}]
+      target: ["{{ instance_url }}{{ metric.path }}"]
+    static_configs:
+      - targets: ['localhost:{{ json_exporter_port }}']
+        labels:
+          lapis_instance: {{ instance_name }}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: {{ instance_host }}
+
+{% endfor %}
+{% endfor %}
