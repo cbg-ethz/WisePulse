@@ -107,7 +107,7 @@
       "id": 11,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "expr": "lapis_http_requests_count", "legendFormat": "Request Count", "refId": "A" },
+        { "expr": "lapis_http_requests_value{statistic=\"COUNT\"}", "legendFormat": "Request Count", "refId": "A" },
         { "expr": "lapis_http_requests_active", "legendFormat": "Active Requests", "refId": "B" }
       ],
       "title": "HTTP Requests",
