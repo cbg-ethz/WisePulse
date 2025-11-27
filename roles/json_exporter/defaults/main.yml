@@ -1,0 +1,22 @@
+---
+json_exporter_version: "0.6.0"
+json_exporter_port: 7979
+json_exporter_listen_address: "127.0.0.1"
+json_exporter_bin_dir: /usr/local/bin
+json_exporter_config_dir: /etc/json_exporter
+json_exporter_user: prometheus
+json_exporter_group: prometheus
+
+# Lapis endpoints to scrape
+lapis_base_url: "https://lapis.wasap.genspectrum.org"
+lapis_metrics_to_scrape:
+  - name: cache_size
+    path: /actuator/metrics/cache.size
+  - name: jvm_memory_used
+    path: /actuator/metrics/jvm.memory.used
+  - name: http_server_requests
+    path: /actuator/metrics/http.server.requests
+  - name: process_uptime
+    path: /actuator/metrics/process.uptime
+  - name: jvm_threads_live
+    path: /actuator/metrics/jvm.threads.live
