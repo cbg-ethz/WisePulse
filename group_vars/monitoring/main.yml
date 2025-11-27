@@ -50,7 +50,7 @@ prometheus_base_scrape_configs:
 #       actuator_path: /management  # if different from /actuator
 #
 lapis_instances:
-  - name: wasap
+  - name: covid
     url: https://lapis.wasap.genspectrum.org
 
 # Metrics to collect from each Lapis instance
