@@ -1,0 +1,8 @@
+---
+# Handlers for the monitoring role
+
+- name: restart grafana
+  ansible.builtin.systemd:
+    name: grafana-server
+    state: restarted
+    daemon_reload: yes

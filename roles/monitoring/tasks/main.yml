@@ -1,4 +1,24 @@
 ---
 # Monitoring coordination tasks
 # This role serves as a meta-role to coordinate monitoring components
-# Individual components are handled by their respective roles
+# Individual components are handled by their respective roles via dependencies
+
+# Deploy custom Lapis monitoring dashboard
+- name: Ensure Grafana dashboards directory exists
+  ansible.builtin.file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+  tags: ['grafana', 'dashboards']
+
+- name: Deploy Lapis API monitoring dashboard
+  ansible.builtin.copy:
+    src: dashboards/lapis-dashboard.json
+    dest: /var/lib/grafana/dashboards/lapis-dashboard.json
+    owner: grafana
+    group: grafana
+    mode: '0644'
+  notify: restart grafana
+  tags: ['grafana', 'dashboards', 'lapis']
