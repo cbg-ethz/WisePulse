@@ -1,0 +1,37 @@
+---
+- name: Include geerlingguy.nginx role
+  include_role:
+    name: geerlingguy.nginx
+
+- name: Ensure snippets directory exists
+  file:
+    path: /etc/nginx/snippets
+    state: directory
+    mode: '0755'
+
+- name: Copy SSL params
+  template:
+    src: snippets/ssl-params.conf.j2
+    dest: /etc/nginx/snippets/ssl-params.conf
+  notify: reload nginx
+
+- name: Copy conf.d configurations
+  template:
+    src: conf.d/wasap.conf.j2
+    dest: /etc/nginx/conf.d/wasap.conf
+  notify: reload nginx
+
+- name: Deploy site configurations
+  template:
+    src: "sites-available/{{ item }}.j2"
+    dest: "/etc/nginx/sites-available/{{ item }}"
+  loop: "{{ nginx_sites }}"
+  notify: reload nginx
+
+- name: Enable sites
+  file:
+    src: "/etc/nginx/sites-available/{{ item }}"
+    dest: "/etc/nginx/sites-enabled/{{ item }}"
+    state: link
+  loop: "{{ nginx_enabled_sites }}"
+  notify: reload nginx
