@@ -51,7 +51,7 @@
 
 - name: Deploy JSON Exporter
   ansible.builtin.include_role:
-    name: "{{ (role_path | dirname) }}/json_exporter"
+    name: json_exporter
   tags: [json_exporter]
 
 - name: Deploy Grafana
