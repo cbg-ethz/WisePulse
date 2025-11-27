@@ -1,70 +1,131 @@
 # WisePulse Monitoring Stack
 
-This monitoring setup provides basic system metrics tracking for the WisePulse project.
+This monitoring setup provides comprehensive metrics tracking for the WisePulse project, including Lapis API monitoring.
+
+## Overview
+
+The monitoring stack uses **official Ansible collections** for better maintainability:
+
+- **[prometheus.prometheus](https://github.com/prometheus-community/ansible)** - Prometheus and Node Exporter
+- **[grafana.grafana](https://github.com/grafana/grafana-ansible-collection)** - Grafana
 
 ## Components
 
-- **Prometheus**: Metrics collection and storage
-- **Grafana**: Metrics visualization and dashboards
-- **Node Exporter**: System-level metrics (CPU, RAM, disk, network, uptime)
+| Component | Role | Description |
+|-----------|------|-------------|
+| Prometheus | `prometheus.prometheus.prometheus` | Metrics collection and storage |
+| Node Exporter | `prometheus.prometheus.node_exporter` | System-level metrics |
+| JSON Exporter | `json_exporter` (custom) | Converts Lapis JSON metrics to Prometheus format |
+| Grafana | `grafana.grafana.grafana` | Metrics visualization and dashboards |
 
 ## Architecture
 
-- All services run on localhost
-- Services listen on 127.0.0.1 (not exposed externally)
-- Requires x86_64 architecture (AMD64)
-- Ubuntu/Debian compatible
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Grafana (:3000)                          │
+│                    Dashboards & Visualization                   │
+└─────────────────────────────────────────────────────────────────┘
+                              ▲
+                              │ Query
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Prometheus (:9090)                         │
+│                   Metrics Storage & Scraping                    │
+└─────────────────────────────────────────────────────────────────┘
+        ▲                     ▲                     ▲
+        │ Scrape              │ Scrape              │ Scrape
+        │                     │                     │
+┌───────┴───────┐   ┌─────────┴─────────┐   ┌──────┴──────┐
+│ Node Exporter │   │   JSON Exporter   │   │   Future    │
+│    (:9100)    │   │     (:7979)       │   │  Exporters  │
+│ System Metrics│   │    ▼ Probe        │   │             │
+└───────────────┘   └─────────┬─────────┘   └─────────────┘
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │     Lapis API       │
+                    │ /actuator/metrics/* │
+                    │ /actuator/health    │
+                    └─────────────────────┘
+```
 
-## Dashboards
+## Lapis Monitoring
 
-The setup automatically downloads the **Node Exporter Full** dashboard (ID: 1860) from Grafana.com during deployment. This provides comprehensive system monitoring including:
+The JSON Exporter converts Spring Boot Actuator JSON responses to Prometheus metrics:
 
-- CPU usage and load
-- RAM and SWAP usage
-- Disk I/O and space
-- Network traffic
-- System uptime
-- Process-level metrics
+### Metrics Collected
 
-## Ports
+| Category | Metrics |
+|----------|---------|
+| Health | `lapis_health_status` |
+| Cache | `lapis_cache_size` |
+| HTTP | `lapis_http_requests_count`, `lapis_http_requests_active` |
+| JVM Memory | `lapis_jvm_memory_used_bytes`, `lapis_jvm_memory_max_bytes`, `lapis_jvm_memory_committed_bytes` |
+| JVM GC | `lapis_jvm_gc_pause_*`, `lapis_jvm_gc_overhead`, `lapis_jvm_gc_live_data_size` |
+| JVM Threads | `lapis_jvm_threads_live`, `lapis_jvm_threads_peak`, `lapis_jvm_threads_daemon` |
+| Process | `lapis_process_uptime_seconds`, `lapis_process_cpu_usage`, `lapis_system_cpu_usage` |
+| Disk | `lapis_disk_free_bytes`, `lapis_disk_total_bytes` |
+| Executor | `lapis_executor_active`, `lapis_executor_pool_size`, `lapis_executor_queue_remaining` |
 
-- Prometheus: 9090 (localhost only)
-- Grafana: 3000 (localhost only)
-- Node Exporter: 9100 (localhost only)
+### Custom Dashboard
 
-## Usage
+A comprehensive Lapis monitoring dashboard is included at:
+`roles/monitoring/files/dashboards/lapis-dashboard.json`
+
+## Installation
+
+### Prerequisites
+
+Install required Ansible collections:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+### Deployment
 
 Deploy the full monitoring stack:
 
 ```bash
-cd ansible
-ansible-playbook playbooks/monitoring/full.yml
+ansible-playbook playbooks/monitoring/full.yml -e "grafana_admin_password=your_secure_password"
 ```
 
-Deploy only core components (Prometheus + Grafana):
+## Ports
 
-```bash
-ansible-playbook playbooks/monitoring/core.yml
-```
-
-Deploy only exporters (Node Exporter):
-
-```bash
-ansible-playbook playbooks/monitoring/exporters.yml
-```
+| Service | Port | Binding |
+|---------|------|---------|
+| Prometheus | 9090 | 0.0.0.0 |
+| Grafana | 3000 | 0.0.0.0 |
+| Node Exporter | 9100 | 0.0.0.0 |
+| JSON Exporter | 7979 | 0.0.0.0 |
 
 ## Access
 
 After deployment:
 
-- Grafana UI: http://localhost:3000
-- Default credentials: admin / (see vault for password)
-- Prometheus UI: http://localhost:9090
+- **Grafana UI**: http://localhost:3000
+- **Prometheus UI**: http://localhost:9090
+- **Credentials**: admin / (password from `-e grafana_admin_password=...`)
 
-## Notes
+## Dashboards
 
-- Prometheus and Node Exporter: x86_64 only (hardcoded linux-amd64 downloads)
-- Grafana: x86_64 / ARM64 (installed via apt, no architecture limitation)
-- Dashboard is auto-downloaded from Grafana.com (not stored in git)
-- All binaries are downloaded from official GitHub releases
-- Compatible with Ubuntu and Debian
+Auto-provisioned dashboards:
+
+1. **Node Exporter Full** (ID: 1860) - System monitoring
+2. **JVM Micrometer** (ID: 4701) - JVM metrics reference  
+3. **Lapis API Monitoring** - Custom dashboard for Lapis
+
+## Extending
+
+To add new services to monitor:
+
+1. Add scrape configs to `group_vars/monitoring/main.yml` under `prometheus_scrape_configs`
+2. For JSON APIs, add modules to `roles/json_exporter/templates/config.yml.j2`
+3. Create Grafana dashboards in `roles/monitoring/files/dashboards/`
+
+## Requirements
+
+- Ubuntu/Debian (apt-based)
+- ARM64 (aarch64) or AMD64 (x86_64)
+- Ansible 2.14+
+- Collections: `prometheus.prometheus`, `grafana.grafana`
