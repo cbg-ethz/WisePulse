@@ -38,12 +38,7 @@
     prometheus_scrape_configs: "{{ prometheus_base_scrape_configs + (_lapis_scrape_configs | from_json) }}"
   tags: [prometheus, lapis]
 
-# Deploy components
-- name: Deploy Prometheus
-  ansible.builtin.include_role:
-    name: prometheus.prometheus.prometheus
-  tags: [prometheus]
-
+# Deploy components (exporters first, then Prometheus, then Grafana)
 - name: Deploy Node Exporter
   ansible.builtin.include_role:
     name: prometheus.prometheus.node_exporter
@@ -53,6 +48,11 @@
   ansible.builtin.include_role:
     name: json_exporter
   tags: [json_exporter]
+
+- name: Deploy Prometheus
+  ansible.builtin.include_role:
+    name: prometheus.prometheus.prometheus
+  tags: [prometheus]
 
 - name: Deploy Grafana
   ansible.builtin.include_role:
