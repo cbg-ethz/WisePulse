@@ -1,9 +1,2 @@
 ---
-# Monitoring Meta-Role
-# 
-# This role does NOT use dependencies because we need to dynamically generate
-# Prometheus scrape configs BEFORE the prometheus role runs.
-# 
-# Instead, roles are included explicitly in tasks/main.yml after config generation.
-
 dependencies: []

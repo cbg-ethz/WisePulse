@@ -1,101 +1,55 @@
 ---
-# =============================================================================
-# Monitoring Stack Configuration
-# Uses official Ansible collections:
-#   - prometheus.prometheus (https://github.com/prometheus-community/ansible)
-#   - grafana.grafana (https://github.com/grafana/grafana-ansible-collection)
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# Prometheus Configuration (prometheus.prometheus.prometheus role)
-# -----------------------------------------------------------------------------
+# Prometheus
 prometheus_version: "2.54.1"
 prometheus_storage_retention: "30d"
 prometheus_web_listen_address: "0.0.0.0:9090"
-
-# Global scrape settings
 prometheus_global:
   scrape_interval: 15s
   scrape_timeout: 10s
   evaluation_interval: 15s
 
-# Prometheus scrape configs are built dynamically in the monitoring role
-# from prometheus_base_scrape_configs + generated Lapis configs
 prometheus_base_scrape_configs:
-  # Prometheus self-monitoring
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
-
-  # Node Exporter - system metrics
   - job_name: "node"
     static_configs:
       - targets: ["localhost:9100"]
 
-# -----------------------------------------------------------------------------
-# Lapis Instances Configuration
-# -----------------------------------------------------------------------------
-# Define all Lapis instances to monitor. To add a new instance, simply add
-# an entry to this list. Each instance will automatically get all metrics
-# defined in lapis_metrics.
-#
-# Example for adding multiple instances:
-#   lapis_instances:
-#     - name: wasap
-#       url: https://lapis.wasap.genspectrum.org
-#     - name: cov-spectrum
-#       url: https://lapis.cov-spectrum.org
-#     - name: staging
-#       url: https://lapis-staging.genspectrum.org
-#       actuator_path: /management  # if different from /actuator
-#
+# Lapis instances to monitor (add more entries as needed)
 lapis_instances:
   - name: covid
     url: https://lapis.wasap.genspectrum.org
 
-# Metrics to collect from each Lapis instance
-# Each entry maps to a json_exporter module and actuator endpoint
+# Metrics collected from each Lapis instance
 lapis_metrics:
-  # Health (scraped more frequently for alerting)
   - module: lapis_health
     path: /actuator/health
     scrape_interval: 30s
-
-  # Cache
   - module: lapis_cache
     path: /actuator/metrics/cache.size
-
-  # HTTP
   - module: lapis_http_requests
     path: /actuator/metrics/http.server.requests
   - module: lapis_http_requests_active
     path: /actuator/metrics/http.server.requests.active
-
-  # JVM Memory
   - module: lapis_jvm_memory_used
     path: /actuator/metrics/jvm.memory.used
   - module: lapis_jvm_memory_max
     path: /actuator/metrics/jvm.memory.max
   - module: lapis_jvm_memory_committed
     path: /actuator/metrics/jvm.memory.committed
-
-  # JVM Garbage Collection
   - module: lapis_jvm_gc_pause
     path: /actuator/metrics/jvm.gc.pause
   - module: lapis_jvm_gc_overhead
     path: /actuator/metrics/jvm.gc.overhead
   - module: lapis_jvm_gc_live_data_size
     path: /actuator/metrics/jvm.gc.live.data.size
-
-  # JVM Threads
   - module: lapis_threads
     path: /actuator/metrics/jvm.threads.live
   - module: lapis_threads_peak
     path: /actuator/metrics/jvm.threads.peak
   - module: lapis_threads_daemon
     path: /actuator/metrics/jvm.threads.daemon
-
-  # Process
   - module: lapis_uptime
     path: /actuator/metrics/process.uptime
   - module: lapis_cpu_usage
@@ -104,14 +58,10 @@ lapis_metrics:
     path: /actuator/metrics/system.cpu.usage
   - module: lapis_system_load
     path: /actuator/metrics/system.load.average.1m
-
-  # Disk
   - module: lapis_disk_free
     path: /actuator/metrics/disk.free
   - module: lapis_disk_total
     path: /actuator/metrics/disk.total
-
-  # Executor / Thread Pool
   - module: lapis_executor_active
     path: /actuator/metrics/executor.active
   - module: lapis_executor_pool_size
@@ -119,9 +69,7 @@ lapis_metrics:
   - module: lapis_executor_queue_remaining
     path: /actuator/metrics/executor.queue.remaining
 
-# -----------------------------------------------------------------------------
-# Node Exporter Configuration (prometheus.prometheus.node_exporter role)
-# -----------------------------------------------------------------------------
+# Node Exporter
 node_exporter_version: "1.8.2"
 node_exporter_web_listen_address: "0.0.0.0:9100"
 node_exporter_enabled_collectors:
@@ -129,15 +77,11 @@ node_exporter_enabled_collectors:
   - textfile:
       directory: "/var/lib/node_exporter"
 
-# -----------------------------------------------------------------------------
-# JSON Exporter Configuration (custom role)
-# -----------------------------------------------------------------------------
+# JSON Exporter
 json_exporter_version: "0.6.0"
 json_exporter_port: 7979
 
-# -----------------------------------------------------------------------------
-# Grafana Configuration (grafana.grafana.grafana role)
-# -----------------------------------------------------------------------------
+# Grafana
 grafana_version: latest
 grafana_use_provisioning: true
 grafana_provisioning_synced: false
@@ -165,10 +109,8 @@ grafana_datasources:
       prometheusType: Prometheus
 
 grafana_dashboards:
-  # Node Exporter Full - comprehensive system monitoring
   - dashboard_id: 1860
     revision_id: 37
     datasource: Prometheus
-  # Custom Lapis dashboard is deployed via roles/monitoring/files/dashboards/
 
 grafana_dashboards_dir: "dashboards"
