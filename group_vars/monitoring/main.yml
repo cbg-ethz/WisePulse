@@ -134,7 +134,6 @@ node_exporter_enabled_collectors:
 # -----------------------------------------------------------------------------
 json_exporter_version: "0.6.0"
 json_exporter_port: 7979
-lapis_base_url: "https://lapis.wasap.genspectrum.org"
 
 # -----------------------------------------------------------------------------
 # Grafana Configuration (grafana.grafana.grafana role)
