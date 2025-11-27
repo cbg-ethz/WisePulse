@@ -1,4 +1,0 @@
-NEXT LEFT LAST PASSED UNIT ACTIVATES
-
-0 timers listed.
-Thu 2025-11-13 21:36:41 CET      10h Thu 2025-11-13 08:56:37 CET       2h 18min ago certbot.timer                  certbot.service
