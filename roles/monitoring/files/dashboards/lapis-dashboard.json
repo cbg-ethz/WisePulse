@@ -181,8 +181,8 @@
       "id": 25,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "expr": "lapis_jvm_gc_pause_count", "legendFormat": "GC Pause Count", "refId": "A" },
-        { "expr": "lapis_jvm_gc_pause_total_time", "legendFormat": "GC Pause Time (s)", "refId": "B" }
+        { "expr": "lapis_jvm_gc_pause_value{statistic=\"COUNT\"}", "legendFormat": "GC Pause Count", "refId": "A" },
+        { "expr": "lapis_jvm_gc_pause_value{statistic=\"TOTAL_TIME\"}", "legendFormat": "GC Pause Time (s)", "refId": "B" }
       ],
       "title": "GC Activity",
       "type": "timeseries"
@@ -311,7 +311,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 41 },
       "id": 43,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "1 - (lapis_disk_free_bytes / lapis_disk_total_bytes)", "legendFormat": "Disk Used %", "refId": "A" }],
+      "targets": [{ "expr": "1 - (lapis_disk_free_bytes / on(instance) lapis_disk_total_bytes)", "legendFormat": "Disk Used %", "refId": "A" }],
       "title": "Disk Usage %",
       "type": "stat"
     },
