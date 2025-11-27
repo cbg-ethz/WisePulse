@@ -1,21 +1,363 @@
 ---
-# Monitoring specific configuration
-prometheus_version: "2.45.0"
-prometheus_port: 9090
-prometheus_data_dir: /opt/prometheus/data
-prometheus_config_dir: /etc/prometheus
-prometheus_user: prometheus
+# =============================================================================
+# Monitoring Stack Configuration
+# Uses official Ansible collections:
+#   - prometheus.prometheus (https://github.com/prometheus-community/ansible)
+#   - grafana.grafana (https://github.com/grafana/grafana-ansible-collection)
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# Prometheus Configuration (prometheus.prometheus.prometheus role)
+# -----------------------------------------------------------------------------
+prometheus_version: "2.54.1"
+prometheus_storage_retention: "30d"
+prometheus_web_listen_address: "0.0.0.0:9090"
+
+# Global scrape settings
+prometheus_global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+# Scrape configurations - includes default + Lapis JSON exporter targets
+prometheus_scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets:
+          - "localhost:9090"
+
+  # Node Exporter
+  - job_name: "node"
+    static_configs:
+      - targets:
+          - "localhost:9100"
+
+  # Lapis Health check
+  - job_name: 'lapis_health'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [lapis_health]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/health"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # Lapis Cache metrics
+  - job_name: 'lapis_cache'
+    metrics_path: /probe
+    params:
+      module: [lapis_cache]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/cache.size"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # Lapis HTTP requests
+  - job_name: 'lapis_http_requests'
+    metrics_path: /probe
+    params:
+      module: [lapis_http_requests]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/http.server.requests"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_http_requests_active'
+    metrics_path: /probe
+    params:
+      module: [lapis_http_requests_active]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/http.server.requests.active"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # JVM Memory
+  - job_name: 'lapis_jvm_memory_used'
+    metrics_path: /probe
+    params:
+      module: [lapis_jvm_memory_used]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.memory.used"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_jvm_memory_max'
+    metrics_path: /probe
+    params:
+      module: [lapis_jvm_memory_max]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.memory.max"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_jvm_memory_committed'
+    metrics_path: /probe
+    params:
+      module: [lapis_jvm_memory_committed]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.memory.committed"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # JVM GC
+  - job_name: 'lapis_jvm_gc_pause'
+    metrics_path: /probe
+    params:
+      module: [lapis_jvm_gc_pause]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.gc.pause"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_jvm_gc_overhead'
+    metrics_path: /probe
+    params:
+      module: [lapis_jvm_gc_overhead]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.gc.overhead"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_jvm_gc_live_data_size'
+    metrics_path: /probe
+    params:
+      module: [lapis_jvm_gc_live_data_size]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.gc.live.data.size"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # JVM Threads
+  - job_name: 'lapis_threads'
+    metrics_path: /probe
+    params:
+      module: [lapis_threads]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.threads.live"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_threads_peak'
+    metrics_path: /probe
+    params:
+      module: [lapis_threads_peak]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.threads.peak"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_threads_daemon'
+    metrics_path: /probe
+    params:
+      module: [lapis_threads_daemon]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/jvm.threads.daemon"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # Process metrics
+  - job_name: 'lapis_uptime'
+    metrics_path: /probe
+    params:
+      module: [lapis_uptime]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/process.uptime"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_cpu_usage'
+    metrics_path: /probe
+    params:
+      module: [lapis_cpu_usage]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/process.cpu.usage"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_system_cpu_usage'
+    metrics_path: /probe
+    params:
+      module: [lapis_system_cpu_usage]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/system.cpu.usage"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_system_load'
+    metrics_path: /probe
+    params:
+      module: [lapis_system_load]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/system.load.average.1m"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # Disk metrics
+  - job_name: 'lapis_disk_free'
+    metrics_path: /probe
+    params:
+      module: [lapis_disk_free]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/disk.free"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_disk_total'
+    metrics_path: /probe
+    params:
+      module: [lapis_disk_total]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/disk.total"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  # Executor metrics
+  - job_name: 'lapis_executor_active'
+    metrics_path: /probe
+    params:
+      module: [lapis_executor_active]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/executor.active"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_executor_pool_size'
+    metrics_path: /probe
+    params:
+      module: [lapis_executor_pool_size]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/executor.pool.size"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+  - job_name: 'lapis_executor_queue_remaining'
+    metrics_path: /probe
+    params:
+      module: [lapis_executor_queue_remaining]
+      target: ["https://lapis.wasap.genspectrum.org/actuator/metrics/executor.queue.remaining"]
+    static_configs:
+      - targets: ['localhost:7979']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: lapis.wasap.genspectrum.org
+
+# -----------------------------------------------------------------------------
+# Node Exporter Configuration (prometheus.prometheus.node_exporter role)
+# -----------------------------------------------------------------------------
+node_exporter_version: "1.8.2"
+node_exporter_web_listen_address: "0.0.0.0:9100"
+node_exporter_enabled_collectors:
+  - systemd
+  - textfile:
+      directory: "/var/lib/node_exporter"
+
+# -----------------------------------------------------------------------------
+# JSON Exporter Configuration (custom role)
+# -----------------------------------------------------------------------------
+json_exporter_version: "0.6.0"
+json_exporter_port: 7979
+lapis_base_url: "https://lapis.wasap.genspectrum.org"
+
+# -----------------------------------------------------------------------------
+# Grafana Configuration (grafana.grafana.grafana role)
+# -----------------------------------------------------------------------------
 grafana_version: latest
-grafana_port: 3000
-grafana_data_dir: /var/lib/grafana
-grafana_config_dir: /etc/grafana
-grafana_admin_user: admin
+grafana_use_provisioning: true
+grafana_provisioning_synced: false
 
-# Node Exporter
-node_exporter_version: "1.6.1"
-node_exporter_port: 9100
+grafana_ini:
+  server:
+    http_addr: "0.0.0.0"
+    http_port: 3000
+  security:
+    admin_user: admin
+    admin_password: "{{ grafana_admin_password }}"
+  users:
+    allow_sign_up: false
+    auto_assign_org_role: Viewer
 
-# Alertmanager
-alertmanager_enabled: false
-alertmanager_port: 9093
+grafana_datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: "http://localhost:9090"
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+
+grafana_dashboards:
+  # Node Exporter Full - comprehensive system monitoring
+  - dashboard_id: 1860
+    revision_id: 37
+    datasource: Prometheus
+  # Custom Lapis dashboard is deployed via roles/monitoring/files/dashboards/
+
+grafana_dashboards_dir: "dashboards"
