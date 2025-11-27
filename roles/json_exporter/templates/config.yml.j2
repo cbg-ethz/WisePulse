@@ -2,20 +2,19 @@
 # See: https://github.com/prometheus-community/json_exporter
 ---
 modules:
-  # Health check - we'll use probe success/failure as the health indicator
-  # The actual status label provides context
+  # Health check - status label contains UP/DOWN, value is always 1 (reachable)
   lapis_health:
     headers:
       Accept: application/json
     metrics:
       - name: lapis_health
         type: object
-        help: "Lapis health check (1=success, status label shows actual state)"
+        help: "Lapis health (1=reachable, status label shows UP/DOWN)"
         path: "{}"
         labels:
           status: "{ .status }"
         values:
-          _value: 1  # Static value - if we can reach and parse, it's up
+          _value: 1
 
   # Cache metrics
   lapis_cache:

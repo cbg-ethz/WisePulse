@@ -29,7 +29,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "id": 1,
       "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
-      "targets": [{ "expr": "lapis_health__value", "legendFormat": "Health", "refId": "A" }],
+      "targets": [{ "expr": "lapis_health__value{status=\"UP\"} or lapis_health__value * 0", "legendFormat": "Health", "refId": "A" }],
       "title": "Health Status",
       "type": "stat"
     },
