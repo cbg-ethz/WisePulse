@@ -4,6 +4,7 @@
 
 # Ansible
 .vault_pass
+ansible/roles/geerlingguy.nginx/
 
 # IDEs
 .vscode/

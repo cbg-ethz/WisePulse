@@ -1,4 +1,0 @@
--rw-r--r-- 1 root root 593 Sep 26 17:48 /etc/letsencrypt/renewal/db.wasap.genspectrum.org.conf
--rw-r--r-- 1 root root 608 Oct 12 22:43 /etc/letsencrypt/renewal/lapis.wasap.genspectrum.org.conf
--rw-r--r-- 1 root root 603 Oct 12 22:43 /etc/letsencrypt/renewal/silo.wasap.genspectrum.org.conf
--rw-r--r-- 1 root root 578 Oct  4 20:06 /etc/letsencrypt/renewal/wasap.genspectrum.org.conf

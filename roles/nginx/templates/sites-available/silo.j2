@@ -1,0 +1,26 @@
+server {
+    server_name silo.{{ nginx_domain_name }};
+
+    location / {
+        proxy_pass http://silo-wasap/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen 443 ssl http2; # managed by Certbot
+    ssl_certificate {{ nginx_silo_ssl_certificate_path }}; # managed by Certbot
+    ssl_certificate_key {{ nginx_silo_ssl_certificate_key_path }}; # managed by Certbot
+    include /etc/nginx/snippets/ssl-params.conf;
+}
+
+server {
+    if ($host = silo.{{ nginx_domain_name }}) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    server_name silo.{{ nginx_domain_name }};
+    return 404; # managed by Certbot
+}
