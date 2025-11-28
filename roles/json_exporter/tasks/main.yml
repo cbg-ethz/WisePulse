@@ -1,0 +1,81 @@
+---
+- name: Create json_exporter group
+  ansible.builtin.group:
+    name: "{{ json_exporter_group }}"
+    state: present
+    system: yes
+
+- name: Create json_exporter user
+  ansible.builtin.user:
+    name: "{{ json_exporter_user }}"
+    group: "{{ json_exporter_group }}"
+    shell: /usr/sbin/nologin
+    system: yes
+    create_home: no
+
+- name: Create json_exporter config directory
+  ansible.builtin.file:
+    path: "{{ json_exporter_config_dir }}"
+    state: directory
+    owner: "{{ json_exporter_user }}"
+    group: "{{ json_exporter_group }}"
+    mode: '0755'
+
+- name: Set architecture variable
+  ansible.builtin.set_fact:
+    go_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+- name: Debug architecture
+  ansible.builtin.debug:
+    msg: "Detected architecture: {{ ansible_architecture }} -> {{ go_arch }}"
+
+- name: Download json_exporter binary
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus-community/json_exporter/releases/download/v{{ json_exporter_version }}/json_exporter-{{ json_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+    dest: "/tmp/json_exporter-{{ json_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+    mode: '0644'
+    force: no
+
+- name: Extract json_exporter binary
+  ansible.builtin.unarchive:
+    src: "/tmp/json_exporter-{{ json_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+    dest: /tmp
+    remote_src: yes
+    creates: "/tmp/json_exporter-{{ json_exporter_version }}.linux-{{ go_arch }}"
+
+- name: Install json_exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/json_exporter-{{ json_exporter_version }}.linux-{{ go_arch }}/json_exporter"
+    dest: "{{ json_exporter_bin_dir }}/json_exporter"
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0755'
+  notify: restart json_exporter
+
+- name: Configure json_exporter
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: "{{ json_exporter_config_dir }}/config.yml"
+    owner: "{{ json_exporter_user }}"
+    group: "{{ json_exporter_group }}"
+    mode: '0644'
+  notify: restart json_exporter
+
+- name: Create json_exporter systemd service
+  ansible.builtin.template:
+    src: json_exporter.service.j2
+    dest: /etc/systemd/system/json_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart json_exporter
+
+- name: Start and enable json_exporter
+  ansible.builtin.systemd:
+    name: json_exporter
+    state: started
+    enabled: yes
+    daemon_reload: yes

@@ -1,0 +1,161 @@
+# JSON Exporter configuration for Lapis Actuator metrics
+# See: https://github.com/prometheus-community/json_exporter
+---
+modules:
+  # Health check - status label contains UP/DOWN, value is always 1 (reachable)
+  lapis_health:
+    headers:
+      Accept: application/json
+    metrics:
+      - name: lapis_health
+        type: object
+        help: "Lapis health (1=reachable, status label shows UP/DOWN)"
+        path: "{}"
+        labels:
+          status: "{ .status }"
+        values:
+          _value: 1
+
+  # Cache metrics
+  lapis_cache:
+    metrics:
+      - name: lapis_cache_size
+        help: "Lapis cache size"
+        path: "{ .measurements[0].value }"
+
+  # HTTP metrics
+  lapis_http_requests:
+    metrics:
+      - name: lapis_http_requests
+        type: object
+        help: "HTTP server requests metrics"
+        path: "{ .measurements[*] }"
+        labels:
+          statistic: "{ .statistic }"
+        values:
+          value: "{ .value }"
+
+  lapis_http_requests_active:
+    metrics:
+      - name: lapis_http_requests_active
+        help: "Currently active HTTP requests"
+        path: "{ .measurements[0].value }"
+
+  # JVM Memory metrics
+  lapis_jvm_memory_used:
+    metrics:
+      - name: lapis_jvm_memory_used_bytes
+        help: "JVM memory used in bytes"
+        path: "{ .measurements[0].value }"
+
+  lapis_jvm_memory_max:
+    metrics:
+      - name: lapis_jvm_memory_max_bytes
+        help: "JVM memory max in bytes"
+        path: "{ .measurements[0].value }"
+
+  lapis_jvm_memory_committed:
+    metrics:
+      - name: lapis_jvm_memory_committed_bytes
+        help: "JVM memory committed in bytes"
+        path: "{ .measurements[0].value }"
+
+  # JVM GC metrics
+  lapis_jvm_gc_pause:
+    metrics:
+      - name: lapis_jvm_gc_pause
+        type: object
+        help: "JVM GC pause metrics"
+        path: "{ .measurements[*] }"
+        labels:
+          statistic: "{ .statistic }"
+        values:
+          value: "{ .value }"
+
+  lapis_jvm_gc_overhead:
+    metrics:
+      - name: lapis_jvm_gc_overhead
+        help: "JVM GC overhead percentage"
+        path: "{ .measurements[0].value }"
+
+  lapis_jvm_gc_live_data_size:
+    metrics:
+      - name: lapis_jvm_gc_live_data_size_bytes
+        help: "JVM GC live data size"
+        path: "{ .measurements[0].value }"
+
+  # JVM Thread metrics
+  lapis_threads:
+    metrics:
+      - name: lapis_jvm_threads_live
+        help: "Current number of live threads"
+        path: "{ .measurements[0].value }"
+
+  lapis_threads_peak:
+    metrics:
+      - name: lapis_jvm_threads_peak
+        help: "Peak number of threads"
+        path: "{ .measurements[0].value }"
+
+  lapis_threads_daemon:
+    metrics:
+      - name: lapis_jvm_threads_daemon
+        help: "Number of daemon threads"
+        path: "{ .measurements[0].value }"
+
+  # Process metrics
+  lapis_uptime:
+    metrics:
+      - name: lapis_process_uptime_seconds
+        help: "Process uptime in seconds"
+        path: "{ .measurements[0].value }"
+
+  lapis_cpu_usage:
+    metrics:
+      - name: lapis_process_cpu_usage
+        help: "Process CPU usage (0-1)"
+        path: "{ .measurements[0].value }"
+
+  lapis_system_cpu_usage:
+    metrics:
+      - name: lapis_system_cpu_usage
+        help: "System CPU usage (0-1)"
+        path: "{ .measurements[0].value }"
+
+  lapis_system_load:
+    metrics:
+      - name: lapis_system_load_average_1m
+        help: "System load average 1 minute"
+        path: "{ .measurements[0].value }"
+
+  # Disk metrics
+  lapis_disk_free:
+    metrics:
+      - name: lapis_disk_free_bytes
+        help: "Free disk space in bytes"
+        path: "{ .measurements[0].value }"
+
+  lapis_disk_total:
+    metrics:
+      - name: lapis_disk_total_bytes
+        help: "Total disk space in bytes"
+        path: "{ .measurements[0].value }"
+
+  # Executor/Thread pool metrics
+  lapis_executor_active:
+    metrics:
+      - name: lapis_executor_active
+        help: "Number of active executor threads"
+        path: "{ .measurements[0].value }"
+
+  lapis_executor_pool_size:
+    metrics:
+      - name: lapis_executor_pool_size
+        help: "Current executor pool size"
+        path: "{ .measurements[0].value }"
+
+  lapis_executor_queue_remaining:
+    metrics:
+      - name: lapis_executor_queue_remaining
+        help: "Remaining capacity in executor queue"
+        path: "{ .measurements[0].value }"
