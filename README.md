@@ -52,6 +52,41 @@ curl http://localhost:8083/sample/info
 
 API available at: http://localhost:8083/swagger-ui/index.html
 
+## Development
+
+### Pre-commit Hooks
+
+This repository uses [pre-commit](https://pre-commit.com/) hooks to ensure code quality and prevent accidental commits of sensitive data.
+
+**Setup:**
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install the git hooks
+pre-commit install
+```
+
+**What the hooks do:**
+- Check YAML syntax and formatting
+- Detect large files before committing
+- Run Ansible linting with production profile
+- Format and lint Python code with ruff
+- Type-check Python code with pyright
+- Scan for secrets with detect-secrets
+- Verify Ansible vault files are encrypted (prevents unencrypted secrets)
+
+**Manual execution:**
+```bash
+# Run all hooks on all files
+pre-commit run --all-files
+
+# Run specific hook
+pre-commit run check-ansible-vault --all-files
+```
+
+**Note:** All Ansible vault files (e.g., `vault.yml`, `secret*.yml`) must be encrypted with `ansible-vault` before committing.
+
 ## Architecture
 
 ### srSILO Pipeline
