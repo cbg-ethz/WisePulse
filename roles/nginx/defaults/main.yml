@@ -1,0 +1,43 @@
+---
+nginx_domain_name: "wasap.genspectrum.org"
+nginx_ssl_certificate_path: "/etc/letsencrypt/live/{{ nginx_domain_name }}/fullchain.pem"
+nginx_ssl_certificate_key_path: "/etc/letsencrypt/live/{{ nginx_domain_name }}/privkey.pem"
+nginx_dhparam_path: "/etc/letsencrypt/ssl-dhparams.pem"
+
+# Subdomain SSL Certificate Paths (Defaults match standard Let's Encrypt structure)
+nginx_lapis_ssl_certificate_path: "/etc/letsencrypt/live/lapis.{{ nginx_domain_name }}/fullchain.pem"
+nginx_lapis_ssl_certificate_key_path: "/etc/letsencrypt/live/lapis.{{ nginx_domain_name }}/privkey.pem"
+
+nginx_silo_ssl_certificate_path: "/etc/letsencrypt/live/silo.{{ nginx_domain_name }}/fullchain.pem"
+nginx_silo_ssl_certificate_key_path: "/etc/letsencrypt/live/silo.{{ nginx_domain_name }}/privkey.pem"
+
+nginx_loculus_ssl_certificate_path: "/etc/letsencrypt/live/db.{{ nginx_domain_name }}/fullchain.pem"
+nginx_loculus_ssl_certificate_key_path: "/etc/letsencrypt/live/db.{{ nginx_domain_name }}/privkey.pem"
+
+# Upstream Service Ports
+nginx_lapis_port: 8083
+nginx_silo_port: 8081
+nginx_wasap_scout_port: 9001
+nginx_loculus_port: 9000
+nginx_loculus_auth_port: 9083
+nginx_loculus_api_backend_port: 9079
+nginx_loculus_api_port: 9080
+nginx_grafana_port: 3000
+nginx_prometheus_port: 9090
+
+# Configure geerlingguy.nginx to remove the default vhost
+nginx_remove_default_vhost: true
+
+nginx_sites:
+  - lapis
+  - loculus
+  - monitoring
+  - silo
+  - wasap-scout
+
+nginx_enabled_sites:
+  - lapis
+  - loculus
+  - monitoring
+  - silo
+  - wasap-scout

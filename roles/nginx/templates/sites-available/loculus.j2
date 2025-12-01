@@ -1,0 +1,115 @@
+server {
+
+    server_name db.{{ nginx_domain_name }};
+
+    location / {
+        proxy_pass http://127.0.0.1:{{ nginx_loculus_port }}/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen 443 ssl http2; # managed by Certbot
+    ssl_certificate {{ nginx_loculus_ssl_certificate_path }}; # managed by Certbot
+    ssl_certificate_key {{ nginx_loculus_ssl_certificate_key_path }}; # managed by Certbot
+    include /etc/nginx/snippets/ssl-params.conf;
+   
+   location /static/ {
+        alias /var/www/html/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri $uri/ =404;
+    }
+
+}
+
+server {
+
+    server_name auth.db.{{ nginx_domain_name }};
+
+    location / {
+        proxy_pass http://127.0.0.1:{{ nginx_loculus_auth_port }}/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffer_size 16k;
+        proxy_buffers 4 16k;
+        proxy_busy_buffers_size 32k;
+    }
+
+    listen 443 ssl http2; # managed by Certbot
+    ssl_certificate {{ nginx_loculus_ssl_certificate_path }}; # managed by Certbot
+    ssl_certificate_key {{ nginx_loculus_ssl_certificate_key_path }}; # managed by Certbot
+    include /etc/nginx/snippets/ssl-params.conf;
+}
+
+server {
+
+    server_name api.db.{{ nginx_domain_name }};
+
+    location /backend/ {
+        proxy_pass http://127.0.0.1:{{ nginx_loculus_api_backend_port }}/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+	proxy_set_header X-Forwarded-Prefix /backend/;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:{{ nginx_loculus_api_port }}/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen 443 ssl http2; # managed by Certbot
+    ssl_certificate {{ nginx_loculus_ssl_certificate_path }}; # managed by Certbot
+    ssl_certificate_key {{ nginx_loculus_ssl_certificate_key_path }}; # managed by Certbot
+    include /etc/nginx/snippets/ssl-params.conf;
+}
+
+server {
+    if ($host = db.{{ nginx_domain_name }}) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+
+    server_name db.{{ nginx_domain_name }};
+    return 404; # managed by Certbot
+
+
+}
+
+server {
+    if ($host = api.db.{{ nginx_domain_name }}) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+
+    server_name api.db.{{ nginx_domain_name }};
+    return 404; # managed by Certbot
+
+
+}
+
+server {
+    if ($host = auth.db.{{ nginx_domain_name }}) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+
+    server_name auth.db.{{ nginx_domain_name }};
+    return 404; # managed by Certbot
+
+
+}
