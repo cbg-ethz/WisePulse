@@ -97,14 +97,8 @@ ansible-playbook playbooks/loculus/deploy-loculus.yml -i inventory.ini
 ### Deploy
 
 ```bash
-# Full stack (Prometheus, Grafana, Node Exporter)
+# Monitoring stack (Prometheus, Grafana, Node Exporter, JSON Exporter)
 ansible-playbook playbooks/monitoring/full.yml -i inventory.ini --become
-
-# Core only (Prometheus, Grafana)
-ansible-playbook playbooks/monitoring/core.yml -i inventory.ini --become
-
-# Exporters only (Node Exporter)
-ansible-playbook playbooks/monitoring/exporters.yml -i inventory.ini --become
 ```
 
 ### Access
