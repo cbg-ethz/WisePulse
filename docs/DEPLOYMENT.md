@@ -64,7 +64,7 @@ sudo rm -rf /opt/srsilo/tmp/*
 sudo rm /opt/srsilo/output/.preprocessing_in_progress
 ```
 
-### Monitoring
+### Logging
 
 ```bash
 # Timer status
@@ -94,18 +94,7 @@ ansible-playbook playbooks/loculus/deploy-loculus.yml -i inventory.ini
 
 ## Monitoring Stack
 
-### Deploy
-
-```bash
-# Monitoring stack (Prometheus, Grafana, Node Exporter, JSON Exporter)
-ansible-playbook playbooks/monitoring/full.yml -i inventory.ini --become
-```
-
-### Access
-
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (admin / check vault.yml)
-- **Node Exporter**: http://localhost:9100/metrics
+See [MONITORING.md](MONITORING.md) for deployment and access instructions.
 
 ## Common Issues
 

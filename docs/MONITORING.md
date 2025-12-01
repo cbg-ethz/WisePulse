@@ -2,7 +2,15 @@
 
 ## Overview
 
-**Components**: Prometheus, Grafana, Node Exporter, JSON Exporter (for LAPIS).
+We are currently monitoring the general server resource usage, as well as the LAPIS (covid) instance. Monitoring is done using Grafana and Prometheus at the top.
+
+| Component | Role | Purpose |
+|-----------|------|---------|
+| **Prometheus** | `prometheus.prometheus` | Metrics collection and storage |
+| **Grafana** | `grafana.grafana` | Visualization and dashboards |
+| **Node Exporter** | `prometheus.prometheus.node_exporter` | Host resource metrics (CPU, RAM, Disk) |
+| **JSON Exporter** | `json_exporter` | LAPIS application metrics (via Actuator) |
+
 **External Uptime**: [UptimeRobot Status Page](https://stats.uptimerobot.com/EfH9UmhAYf) (independent check).
 
 ---
@@ -12,7 +20,7 @@
 **Canonical Command**:
 ```bash
 # Deploys full stack using official collections
-ansible-playbook playbooks/monitoring/full.yml -i inventory.ini --become
+ansible-playbook playbooks/monitoring/full.yml -i inventory.ini --ask-become-pass
 ```
 
 **Prerequisites**:
