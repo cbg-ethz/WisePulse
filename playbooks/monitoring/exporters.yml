@@ -1,9 +1,0 @@
----
-- name: Deploy Monitoring Exporters
-  hosts: monitoring
-  become: yes
-  roles:
-    - node_exporter
-  tags:
-    - monitoring
-    - exporters

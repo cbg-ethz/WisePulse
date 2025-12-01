@@ -1,0 +1,17 @@
+[Unit]
+Description=Prometheus JSON Exporter
+Documentation=https://github.com/prometheus-community/json_exporter
+After=network-online.target
+
+[Service]
+User={{ json_exporter_user }}
+Group={{ json_exporter_group }}
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart={{ json_exporter_bin_dir }}/json_exporter \
+  --config.file={{ json_exporter_config_dir }}/config.yml \
+  --web.listen-address={{ json_exporter_listen_address }}:{{ json_exporter_port }}
+
+[Install]
+WantedBy=multi-user.target
