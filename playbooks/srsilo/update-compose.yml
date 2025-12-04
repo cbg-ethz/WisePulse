@@ -1,0 +1,19 @@
+---
+- name: Redeploy docker-compose files
+  hosts: srsilo
+  gather_facts: no
+  
+  tasks:
+    - name: Template docker-compose files with absolute paths
+      template:
+        src: "{{ role_path }}/templates/{{ item.src }}"
+        dest: "{{ srsilo_tools_path }}/{{ item.dest }}"
+        owner: "{{ srsilo_user }}"
+        group: "{{ srsilo_group }}"
+        mode: '0644'
+      become: yes
+      vars:
+        role_path: "{{ wisepulse_repo_path }}/roles/srsilo"
+      loop:
+        - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
+        - { src: 'docker-compose-preprocessing.yml.j2', dest: 'docker-compose-preprocessing.yml' }
