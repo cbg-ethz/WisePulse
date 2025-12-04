@@ -1,5 +1,5 @@
 ---
-- name: Update SILO configuration files
+- name: Update srSILO configuration files
   hosts: srsilo
   gather_facts: no
   
