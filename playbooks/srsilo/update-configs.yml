@@ -6,7 +6,7 @@
   tasks:
     - name: Deploy SILO configuration files
       copy:
-        src: "{{ playbook_dir }}/../../roles/srsilo/files/{{ item }}"
+        src: "{{ wisepulse_repo_path }}/roles/srsilo/files/{{ item }}"
         dest: "{{ srsilo_tools_path }}/{{ item }}"
         owner: "{{ srsilo_user }}"
         group: "{{ srsilo_group }}"
