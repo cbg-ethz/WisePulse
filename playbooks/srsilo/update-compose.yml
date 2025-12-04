@@ -13,7 +13,7 @@
         mode: '0644'
       become: yes
       vars:
-        role_path: "{{ playbook_dir }}/../../roles/srsilo"
+        role_path: "{{ wisepulse_repo_path }}/roles/srsilo"
       loop:
         - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
         - { src: 'docker-compose-preprocessing.yml.j2', dest: 'docker-compose-preprocessing.yml' }
