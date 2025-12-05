@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
     ports:
       - ${LAPIS_PORT}:8080
+    environment:
+      # Cache size tuned to avoid GC pressure, more predictable maximum cache size (see #147) 
+      - SPRING_CACHE_CAFFEINE_SPEC=maximumSize=50000
     command: --silo.url=http://silo:8081
     volumes:
       - type: bind
