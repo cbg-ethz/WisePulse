@@ -1,6 +1,6 @@
 services:
   lapisOpen:
-    image: ghcr.io/genspectrum/lapis:0.5.17
+    image: ghcr.io/genspectrum/lapis:0.6.2
     restart: unless-stopped
     ports:
       - ${LAPIS_PORT}:8080
@@ -20,7 +20,7 @@ services:
     stop_grace_period: 0s
 
   silo:
-    image: ghcr.io/genspectrum/lapis-silo:0.8.5
+    image: ghcr.io/genspectrum/lapis-silo:pr-1072
     mem_limit: {{ srsilo_docker_memory_limit }}
     restart: unless-stopped
     ports:
