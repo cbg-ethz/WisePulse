@@ -115,6 +115,82 @@ organisms:
       singleReference:
         nucleotideSequences: []
         genes: []
+   rsva:
+    schema:
+      organismName: 'RSV-A'
+      image: 'https://db.wasap.genspectrum.org/static/images/rsv-virus.png'
+      metadata:
+        - name: date
+          type: date
+          header: Sample details
+          displayName: Submission Date
+        - name: sampleId
+          type: string
+          header: Sample details
+          displayName: Sample ID
+          initiallyVisible: true
+        - name: batchId
+          type: string
+          definition: "Sequencing batch"
+          header: Sample details
+          displayName: Batch ID
+        - name: locationCode
+          type: string
+          header: Sample details
+          displayName: Location Code
+        - name: locationName
+          type: string
+          generateIndex: true
+          autocomplete: true
+          header: Sample details
+          displayName: Location
+          initiallyVisible: true
+        - name: samplingDate
+          type: date
+          header: Sample details
+          displayName: Sampling Date
+          initiallyVisible: true
+        - name: sr2siloVersion
+          type: string
+          header: srSILO info
+          definition: "Version of sr2silo used for preprocessing"
+          displayName: sr2silo Version
+          hideOnSequenceDetailsPage: true
+          hideInSearchResultsTable: true
+        - name: countSiloReads
+          type: string
+          header: srSILO info
+          hideOnSequenceDetailsPage: true
+          hideInSearchResultsTable: true
+          definition: "Number of reads in subsampled srSILO alignments"
+          displayName: srSILO Read Count
+      website:
+        tableColumns:
+          - date
+          - locationName
+          - samplingDate
+        defaultOrder: ascending
+        defaultOrderBy: date
+      submissionDataTypes:
+        consensusSequences: false
+        files:
+          enabled: true
+          categories:
+            - name: nucleotideAlignment
+            - name: siloReads
+      files:
+        - name: nucleotideAlignment
+        - name: siloReads
+    preprocessing:
+      - version: 1
+        image: ghcr.io/loculus-project/preprocessing-dummy
+        args:
+          - "--watch"
+          - "--disableConsensusSequences"
+    referenceGenomes:
+      singleReference:
+        nucleotideSequences: []
+        genes: []
 
 dataUseTerms:
   enabled: false
