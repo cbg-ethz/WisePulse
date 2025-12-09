@@ -12,3 +12,13 @@ loculus_cleanup_temp_files: true
 # This is used to ensure kubectl/helm commands can find the kubeconfig
 # Note: Run playbook without sudo (use --ask-become-pass instead)
 loculus_kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+# Static images to deploy
+# Add new virus images here as needed
+virus_images:
+  - covid-virus.png
+  - rsv-virus.png
+
+# Static branding/logo images
+static_images:
+  - wasap-logo.png
