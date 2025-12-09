@@ -17,23 +17,25 @@
     mode: '0755'
   become: yes
 
-- name: Copy COVID virus image for static serving
+- name: Copy virus images for static serving
   copy:
-    src: images/covid-virus.png
-    dest: /var/www/html/static/images/covid-virus.png
+    src: "images/{{ item }}"
+    dest: "/var/www/html/static/images/{{ item }}"
     owner: www-data
     group: www-data
     mode: '0644'
   become: yes
+  loop: "{{ virus_images }}"
 
-- name: Copy W-ASAP logo for static serving
+- name: Copy static branding images for static serving
   copy:
-    src: images/wasap-logo.png
-    dest: /var/www/html/static/images/wasap-logo.png
+    src: "images/{{ item }}"
+    dest: "/var/www/html/static/images/{{ item }}"
     owner: www-data
     group: www-data
     mode: '0644'
   become: yes
+  loop: "{{ static_images }}"
 
 - name: Generate values file from template
   template:

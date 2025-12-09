@@ -1,21 +1,116 @@
 ---
-# Monitoring specific configuration
-prometheus_version: "2.45.0"
-prometheus_port: 9090
-prometheus_data_dir: /opt/prometheus/data
-prometheus_config_dir: /etc/prometheus
-prometheus_user: prometheus
+# Prometheus
+prometheus_version: "2.54.1"
+prometheus_storage_retention: "30d"
+prometheus_web_listen_address: "127.0.0.1:9090"
+prometheus_global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
 
-grafana_version: latest
-grafana_port: 3000
-grafana_data_dir: /var/lib/grafana
-grafana_config_dir: /etc/grafana
-grafana_admin_user: admin
+prometheus_base_scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: "node"
+    static_configs:
+      - targets: ["localhost:9100"]
+
+# Lapis instances to monitor (add more entries as needed)
+lapis_instances:
+  - name: covid
+    url: https://lapis.wasap.genspectrum.org
+
+# Metrics collected from each Lapis instance
+lapis_metrics:
+  - module: lapis_health
+    path: /actuator/health
+    scrape_interval: 30s
+  - module: lapis_cache
+    path: /actuator/metrics/cache.size
+  - module: lapis_http_requests
+    path: /actuator/metrics/http.server.requests
+  - module: lapis_http_requests_active
+    path: /actuator/metrics/http.server.requests.active
+  - module: lapis_jvm_memory_used
+    path: /actuator/metrics/jvm.memory.used
+  - module: lapis_jvm_memory_max
+    path: /actuator/metrics/jvm.memory.max
+  - module: lapis_jvm_memory_committed
+    path: /actuator/metrics/jvm.memory.committed
+  - module: lapis_jvm_gc_pause
+    path: /actuator/metrics/jvm.gc.pause
+  - module: lapis_jvm_gc_overhead
+    path: /actuator/metrics/jvm.gc.overhead
+  - module: lapis_jvm_gc_live_data_size
+    path: /actuator/metrics/jvm.gc.live.data.size
+  - module: lapis_threads
+    path: /actuator/metrics/jvm.threads.live
+  - module: lapis_threads_peak
+    path: /actuator/metrics/jvm.threads.peak
+  - module: lapis_threads_daemon
+    path: /actuator/metrics/jvm.threads.daemon
+  - module: lapis_uptime
+    path: /actuator/metrics/process.uptime
+  - module: lapis_cpu_usage
+    path: /actuator/metrics/process.cpu.usage
+  - module: lapis_system_cpu_usage
+    path: /actuator/metrics/system.cpu.usage
+  - module: lapis_system_load
+    path: /actuator/metrics/system.load.average.1m
+  - module: lapis_disk_free
+    path: /actuator/metrics/disk.free
+  - module: lapis_disk_total
+    path: /actuator/metrics/disk.total
+  - module: lapis_executor_active
+    path: /actuator/metrics/executor.active
+  - module: lapis_executor_pool_size
+    path: /actuator/metrics/executor.pool.size
+  - module: lapis_executor_queue_remaining
+    path: /actuator/metrics/executor.queue.remaining
 
 # Node Exporter
-node_exporter_version: "1.6.1"
-node_exporter_port: 9100
+node_exporter_version: "1.8.2"
+node_exporter_web_listen_address: "127.0.0.1:9100"
+node_exporter_enabled_collectors:
+  - systemd
+  - textfile:
+      directory: "/var/lib/node_exporter"
 
-# Alertmanager
-alertmanager_enabled: false
-alertmanager_port: 9093
+# JSON Exporter
+json_exporter_version: "0.6.0"
+json_exporter_port: 7979
+
+# Grafana
+grafana_version: latest
+grafana_use_provisioning: true
+grafana_provisioning_synced: false
+
+grafana_ini:
+  server:
+    http_addr: "127.0.0.1"
+    http_port: 3000
+  security:
+    admin_user: admin
+    admin_password: "{{ grafana_admin_password }}"
+  users:
+    allow_sign_up: false
+    auto_assign_org_role: Viewer
+
+grafana_datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: "http://localhost:9090"
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+
+grafana_dashboards:
+  - dashboard_id: 1860
+    revision_id: 37
+    datasource: Prometheus
+
+grafana_dashboards_dir: "dashboards"

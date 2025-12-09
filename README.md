@@ -135,6 +135,14 @@ Deploy Prometheus + Grafana:
 ansible-playbook playbooks/monitoring/full.yml
 ```
 
+### Nginx Reverse Proxy
+
+Deploy Nginx as a reverse proxy with SSL termination for all services:
+```bash
+ansible-playbook playbooks/setup_nginx.yml -i inventory.ini --ask-become-pass
+```
+See [`docs/nginx/README.md`](docs/nginx/README.md) for details.
+
 ## Configuration
 
 Key configuration in `group_vars/srsilo/main.yml`:

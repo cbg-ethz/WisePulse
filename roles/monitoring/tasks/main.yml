@@ -1,4 +1,80 @@
 ---
-# Monitoring coordination tasks
-# This role serves as a meta-role to coordinate monitoring components
-# Individual components are handled by their respective roles
+# Generate Lapis scrape configs dynamically
+- name: Generate Lapis scrape configurations
+  ansible.builtin.set_fact:
+    _lapis_scrape_configs: |
+      {% set configs = [] %}
+      {% for instance in lapis_instances %}
+      {% set instance_host = instance.url | regex_replace('^https?://', '') %}
+      {% for metric in lapis_metrics %}
+      {% set job = {
+        'job_name': 'lapis_' ~ (metric.module | regex_replace('^lapis_', '')) ~ '_' ~ instance.name,
+        'metrics_path': '/probe',
+        'params': {
+          'module': [metric.module],
+          'target': [instance.url ~ metric.path]
+        },
+        'static_configs': [{
+          'targets': ['localhost:' ~ json_exporter_port | string],
+          'labels': {'lapis_instance': instance.name}
+        }],
+        'relabel_configs': [{
+          'source_labels': ['__address__'],
+          'target_label': 'instance',
+          'replacement': instance_host
+        }]
+      } %}
+      {% if metric.scrape_interval is defined %}
+      {% set job = job | combine({'scrape_interval': metric.scrape_interval}) %}
+      {% endif %}
+      {% set _ = configs.append(job) %}
+      {% endfor %}
+      {% endfor %}
+      {{ configs | to_json }}
+  tags: [prometheus, lapis]
+
+- name: Build prometheus_scrape_configs
+  ansible.builtin.set_fact:
+    prometheus_scrape_configs: "{{ prometheus_base_scrape_configs + (_lapis_scrape_configs | from_json) }}"
+  tags: [prometheus, lapis]
+
+# Deploy components (exporters first, then Prometheus, then Grafana)
+- name: Deploy Node Exporter
+  ansible.builtin.include_role:
+    name: prometheus.prometheus.node_exporter
+  tags: [node_exporter]
+
+- name: Deploy JSON Exporter
+  ansible.builtin.include_role:
+    name: json_exporter
+  tags: [json_exporter]
+
+- name: Deploy Prometheus
+  ansible.builtin.include_role:
+    name: prometheus.prometheus.prometheus
+  tags: [prometheus]
+
+- name: Deploy Grafana
+  ansible.builtin.include_role:
+    name: grafana.grafana.grafana
+  tags: [grafana]
+
+# Deploy dashboards
+- name: Ensure dashboards directory
+  ansible.builtin.file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+  tags: [grafana]
+
+- name: Deploy Lapis dashboard
+  ansible.builtin.copy:
+    src: dashboards/lapis-dashboard.json
+    dest: /var/lib/grafana/dashboards/lapis-dashboard.json
+    owner: grafana
+    group: grafana
+    mode: '0644'
+  notify: restart grafana
+  tags: [grafana]

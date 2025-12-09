@@ -1,0 +1,13 @@
+---
+# Ansible Collection Requirements
+# Install with: ansible-galaxy collection install -r requirements.yml
+
+collections:
+  - name: prometheus.prometheus
+    version: ">=0.27.0"
+  - name: grafana.grafana
+    version: ">=6.0.0"
+  - name: community.general
+    version: ">=8.0.0"
+  - name: ansible.posix
+    version: ">=1.5.0"

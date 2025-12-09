@@ -1,0 +1,8 @@
+---
+json_exporter_version: "0.6.0"
+json_exporter_port: 7979
+json_exporter_listen_address: "127.0.0.1"
+json_exporter_bin_dir: /usr/local/bin
+json_exporter_config_dir: /etc/json_exporter
+json_exporter_user: prometheus
+json_exporter_group: prometheus
