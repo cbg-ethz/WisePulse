@@ -25,6 +25,11 @@ struct Args {
     #[arg(long, default_value = "https://api.db.wasap.genspectrum.org")]
     api_base_url: String,
 
+    /// Organism/virus identifier for the API endpoint (e.g., "covid", "rsva", "rsvb")
+    /// This is appended to the API base URL: {api_base_url}/{organism}/sample/details
+    #[arg(long, default_value = "covid")]
+    organism: String,
+
     /// Path to read last update timestamp from
     #[arg(long, default_value = ".last_update")]
     timestamp_file: String,
@@ -78,6 +83,7 @@ async fn run() -> Result<bool> {
 
     println!("=== Checking for new data ===");
     println!("API: {}", args.api_base_url);
+    println!("Organism: {}", args.organism);
 
     let last_update = read_last_update(&args.timestamp_file).await?;
 
@@ -188,9 +194,10 @@ async fn check_for_data_changes(
     println!("  (submittedAtTimestampFrom: {})", timestamp);
 
     // Call 1: Get new submissions within the rolling window
+    // URL format: {base_url}/{organism}/sample/details?...
     let submissions_url = format!(
-        "{}/covid/sample/details?submittedAtTimestampFrom={}&samplingDateFrom={}&dataFormat=JSON&downloadAsFile=false",
-        args.api_base_url, timestamp, sampling_date_from
+        "{}/{}/sample/details?submittedAtTimestampFrom={}&samplingDateFrom={}&dataFormat=JSON&downloadAsFile=false",
+        args.api_base_url, args.organism, timestamp, sampling_date_from
     );
 
     println!(
@@ -215,8 +222,8 @@ async fn check_for_data_changes(
 
     // Call 2: Get all revocations since last update
     let revocations_url = format!(
-        "{}/covid/sample/details?submittedAtTimestampFrom={}&isRevocation=true&dataFormat=JSON&downloadAsFile=false",
-        args.api_base_url, timestamp
+        "{}/{}/sample/details?submittedAtTimestampFrom={}&isRevocation=true&dataFormat=JSON&downloadAsFile=false",
+        args.api_base_url, args.organism, timestamp
     );
 
     println!("  Fetching revocations since last update");

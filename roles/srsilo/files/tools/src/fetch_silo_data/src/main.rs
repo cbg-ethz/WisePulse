@@ -1,6 +1,6 @@
 //! SILO Data Fetcher - WisePulse Genomic Data Pipeline
 //!
-//! Fetches COVID-19 genomic sample data from the LAPIS API, working backwards in time
+//! Fetches genomic sample data from the LAPIS API, working backwards in time
 //! from the current date. Downloads .ndjson.zst files containing sequencing reads.
 //!
 //! Key behaviors:
@@ -28,6 +28,7 @@ struct Config {
     max_reads: u64,
     output_dir: String,
     api_base_url: String,
+    organism: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -109,14 +110,22 @@ async fn main() -> Result<()> {
                 .help("Base URL for the LAPIS API")
                 .required(true),
         )
+        .arg(
+            Arg::new("organism")
+                .long("organism")
+                .value_name("NAME")
+                .help("Organism/virus identifier for the API endpoint (e.g., covid, rsva, rsvb)")
+                .default_value("covid"),
+        )
         .get_matches();
 
-    // Parse command line arguments (all required)
+    // Parse command line arguments (all required except organism which has default)
     let date_str = matches.get_one::<String>("start-date").unwrap();
     let days_str = matches.get_one::<String>("days").unwrap();
     let reads_str = matches.get_one::<String>("max-reads").unwrap();
     let dir_str = matches.get_one::<String>("output-dir").unwrap();
     let api_url_str = matches.get_one::<String>("api-base-url").unwrap();
+    let organism_str = matches.get_one::<String>("organism").unwrap();
 
     let config = Config {
         start_date: NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
@@ -129,6 +138,7 @@ async fn main() -> Result<()> {
             .map_err(|e| format!("Invalid max-reads value: {}", e))?,
         output_dir: dir_str.to_string(),
         api_base_url: api_url_str.to_string(),
+        organism: organism_str.to_string(),
     };
 
     run_fetch_with_config(config).await
@@ -146,6 +156,7 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
     println!("Configuration:");
     println!("  Output directory: {}", config.output_dir);
     println!("  API base URL: {}", config.api_base_url);
+    println!("  Organism: {}", config.organism);
 
     let start_date = config.start_date;
     let earliest_allowed = start_date - Duration::days(config.days_to_fetch);
@@ -172,8 +183,13 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
         days_processed += 1;
         let progress = (days_processed as f32 / total_days_to_check as f32 * 100.0) as u32;
 
-        let samples =
-            fetch_samples_for_single_date(&client, current_date, &config.api_base_url).await?;
+        let samples = fetch_samples_for_single_date(
+            &client,
+            current_date,
+            &config.api_base_url,
+            &config.organism,
+        )
+        .await?;
 
         if samples.is_empty() {
             consecutive_empty_days += 1;
@@ -332,11 +348,13 @@ async fn fetch_samples_for_single_date(
     client: &Client,
     date: NaiveDate,
     api_base_url: &str,
+    organism: &str,
 ) -> Result<Vec<SampleData>> {
     let date_str = date.format("%Y-%m-%d");
+    // URL format: {base_url}/{organism}/sample/details?...
     let url = format!(
-        "{}/covid/sample/details?samplingDate={}&dataFormat=JSON&downloadAsFile=false",
-        api_base_url, date_str
+        "{}/{}/sample/details?samplingDate={}&dataFormat=JSON&downloadAsFile=false",
+        api_base_url, organism, date_str
     );
 
     let response = client
