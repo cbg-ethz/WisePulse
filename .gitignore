@@ -17,5 +17,10 @@ ansible/roles/geerlingguy.nginx/
 .DS_Store
 Thumbs.db
 
+
+# Pre-commit
+.pre-commit-cache/
+
 # Downloaded Ansible roles/collections (install via requirements.yml)
 ansible/roles/
+
