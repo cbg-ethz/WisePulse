@@ -48,7 +48,7 @@ struct ApiResponse {
     data: Vec<SampleData>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct SampleData {
     sample_id: Option<String>,
@@ -164,6 +164,45 @@ async fn read_last_update(path: &str) -> Result<Option<DateTime<Utc>>> {
     Ok(Some(datetime))
 }
 
+/// Builds the URL for fetching new submissions from the LAPIS API.
+///
+/// # Arguments
+/// * `api_base_url` - Base URL of the API (e.g., "https://api.db.wasap.genspectrum.org")
+/// * `organism` - Organism identifier (e.g., "covid", "rsva")
+/// * `timestamp` - Unix timestamp for submittedAtTimestampFrom filter
+/// * `sampling_date_from` - Date string (YYYY-MM-DD) for samplingDateFrom filter
+fn build_submissions_url(
+    api_base_url: &str,
+    organism: &str,
+    timestamp: i64,
+    sampling_date_from: &str,
+) -> String {
+    format!(
+        "{}/{}/sample/details?submittedAtTimestampFrom={}&samplingDateFrom={}&dataFormat=JSON&downloadAsFile=false",
+        api_base_url, organism, timestamp, sampling_date_from
+    )
+}
+
+/// Builds the URL for fetching revocations from the LAPIS API.
+///
+/// # Arguments
+/// * `api_base_url` - Base URL of the API
+/// * `organism` - Organism identifier
+/// * `timestamp` - Unix timestamp for submittedAtTimestampFrom filter
+fn build_revocations_url(api_base_url: &str, organism: &str, timestamp: i64) -> String {
+    format!(
+        "{}/{}/sample/details?submittedAtTimestampFrom={}&isRevocation=true&dataFormat=JSON&downloadAsFile=false",
+        api_base_url, organism, timestamp
+    )
+}
+
+/// Calculates the maximum timestamp from a collection of samples.
+///
+/// Returns `None` if the collection is empty.
+fn calculate_max_timestamp(samples: &[SampleData]) -> Option<i64> {
+    samples.iter().map(|s| s.submitted_at_timestamp).max()
+}
+
 /// Checks if there are any data changes (new submissions or revocations) after the given timestamp.
 ///
 /// Makes two separate API calls:
@@ -194,10 +233,11 @@ async fn check_for_data_changes(
     println!("  (submittedAtTimestampFrom: {})", timestamp);
 
     // Call 1: Get new submissions within the rolling window
-    // URL format: {base_url}/{organism}/sample/details?...
-    let submissions_url = format!(
-        "{}/{}/sample/details?submittedAtTimestampFrom={}&samplingDateFrom={}&dataFormat=JSON&downloadAsFile=false",
-        args.api_base_url, args.organism, timestamp, sampling_date_from
+    let submissions_url = build_submissions_url(
+        &args.api_base_url,
+        &args.organism,
+        timestamp,
+        &sampling_date_from,
     );
 
     println!(
@@ -221,10 +261,7 @@ async fn check_for_data_changes(
     let submissions_data: ApiResponse = submissions_response.json().await?;
 
     // Call 2: Get all revocations since last update
-    let revocations_url = format!(
-        "{}/{}/sample/details?submittedAtTimestampFrom={}&isRevocation=true&dataFormat=JSON&downloadAsFile=false",
-        args.api_base_url, args.organism, timestamp
-    );
+    let revocations_url = build_revocations_url(&args.api_base_url, &args.organism, timestamp);
 
     println!("  Fetching revocations since last update");
     let revocations_response = client
@@ -250,17 +287,13 @@ async fn check_for_data_changes(
     let has_data = total_changes > 0;
 
     // Calculate max timestamp from both datasets
-    let mut max_timestamp: Option<i64> = None;
-
-    for sample in submissions_data
+    let all_samples: Vec<_> = submissions_data
         .data
         .iter()
         .chain(revocations_data.data.iter())
-    {
-        max_timestamp = Some(max_timestamp.map_or(sample.submitted_at_timestamp, |max| {
-            max.max(sample.submitted_at_timestamp)
-        }));
-    }
+        .cloned()
+        .collect();
+    let max_timestamp = calculate_max_timestamp(&all_samples);
 
     // Log summary
     if new_submissions_count > 0 {
@@ -325,5 +358,91 @@ fn log_sample_details(samples: &[SampleData], category: &str, is_revocation_cate
 
     if samples.len() > 3 {
         println!("    ... and {} more", samples.len() - 3);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_submissions_url() {
+        let url =
+            build_submissions_url("https://api.example.org", "covid", 1700000000, "2024-01-01");
+        assert_eq!(
+            url,
+            "https://api.example.org/covid/sample/details?submittedAtTimestampFrom=1700000000&samplingDateFrom=2024-01-01&dataFormat=JSON&downloadAsFile=false"
+        );
+    }
+
+    #[test]
+    fn test_build_submissions_url_rsva() {
+        let url = build_submissions_url(
+            "https://api.db.wasap.genspectrum.org",
+            "rsva",
+            1700000000,
+            "2024-06-15",
+        );
+        assert!(url.contains("/rsva/sample/details"));
+        assert!(url.contains("submittedAtTimestampFrom=1700000000"));
+        assert!(url.contains("samplingDateFrom=2024-06-15"));
+    }
+
+    #[test]
+    fn test_build_revocations_url() {
+        let url = build_revocations_url("https://api.example.org", "covid", 1700000000);
+        assert_eq!(
+            url,
+            "https://api.example.org/covid/sample/details?submittedAtTimestampFrom=1700000000&isRevocation=true&dataFormat=JSON&downloadAsFile=false"
+        );
+    }
+
+    #[test]
+    fn test_build_revocations_url_rsvb() {
+        let url = build_revocations_url("https://api.example.org", "rsvb", 1600000000);
+        assert!(url.contains("/rsvb/sample/details"));
+        assert!(url.contains("isRevocation=true"));
+    }
+
+    #[test]
+    fn test_calculate_max_timestamp_empty() {
+        let samples: Vec<SampleData> = vec![];
+        assert_eq!(calculate_max_timestamp(&samples), None);
+    }
+
+    #[test]
+    fn test_calculate_max_timestamp_single() {
+        let samples = vec![SampleData {
+            sample_id: Some("test1".to_string()),
+            submitted_at_timestamp: 1700000000,
+            version_status: None,
+            version_comment: None,
+        }];
+        assert_eq!(calculate_max_timestamp(&samples), Some(1700000000));
+    }
+
+    #[test]
+    fn test_calculate_max_timestamp_multiple() {
+        let samples = vec![
+            SampleData {
+                sample_id: Some("test1".to_string()),
+                submitted_at_timestamp: 1700000000,
+                version_status: None,
+                version_comment: None,
+            },
+            SampleData {
+                sample_id: Some("test2".to_string()),
+                submitted_at_timestamp: 1700000500,
+                version_status: None,
+                version_comment: None,
+            },
+            SampleData {
+                sample_id: Some("test3".to_string()),
+                submitted_at_timestamp: 1700000100,
+                version_status: None,
+                version_comment: None,
+            },
+        ];
+        assert_eq!(calculate_max_timestamp(&samples), Some(1700000500));
     }
 }
