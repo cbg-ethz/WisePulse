@@ -100,7 +100,7 @@ fn main() -> std::io::Result<()> {
 fn merge_files_in_batches<I>(
     input_files: I,
     tmp_dir: &Path,
-    sort_field_path: &String,
+    sort_field_path: &str,
     batch_size: usize,
     merge_iteration: usize,
 ) -> std::io::Result<Vec<PathBuf>>
@@ -141,7 +141,7 @@ where
 }
 
 // Wrapper struct to allow sorting JSON values in a min-heap
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Debug)]
 struct HeapEntry {
     sort_field: i64,
     value: Value,
@@ -160,12 +160,17 @@ impl PartialOrd for HeapEntry {
     }
 }
 
+/// Extract the sort field value from a JSON object using a JSON pointer path.
+/// Returns the i64 value at the specified path.
+fn extract_sort_field(json: &Value, sort_field_path: &str) -> i64 {
+    json.pointer(sort_field_path)
+        .unwrap_or_else(|| panic!("Did not find field {sort_field_path} in object {json}"))
+        .as_i64()
+        .unwrap_or_else(|| panic!("the specified sort_column is not of type i64: {}", json))
+}
+
 // Merging function that reads from readers and writes to any object implementing `Write`
-fn merge_files<I, W: Write>(
-    files: I,
-    output: &mut W,
-    sort_field_path: &String,
-) -> std::io::Result<()>
+fn merge_files<I, W: Write>(files: I, output: &mut W, sort_field_path: &str) -> std::io::Result<()>
 where
     I: IntoIterator<Item = PathBuf>,
 {
@@ -183,15 +188,7 @@ where
         if let Some(Ok(line)) = iter.next() {
             let json: Value = serde_json::from_str(&line)?;
             heap.push(HeapEntry {
-                sort_field: json
-                    .pointer(sort_field_path)
-                    .unwrap_or_else(|| {
-                        panic!("Did not find field {sort_field_path} in object {json}")
-                    })
-                    .as_i64()
-                    .unwrap_or_else(|| {
-                        panic!("the specified sort_column is not of type i64: {}", json)
-                    }),
+                sort_field: extract_sort_field(&json, sort_field_path),
                 value: json,
                 index,
             });
@@ -209,15 +206,7 @@ where
         if let Some(Ok(line)) = reader_iters[index].next() {
             let json: Value = serde_json::from_str(&line)?;
             heap.push(HeapEntry {
-                sort_field: json
-                    .pointer(sort_field_path)
-                    .unwrap_or_else(|| {
-                        panic!("Did not find field {sort_field_path} in object {json}")
-                    })
-                    .as_i64()
-                    .unwrap_or_else(|| {
-                        panic!("the specified sort_column is not of type i64: {}", json)
-                    }),
+                sort_field: extract_sort_field(&json, sort_field_path),
                 value: json,
                 index,
             });
@@ -225,4 +214,118 @@ where
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::cmp::Ordering;
+
+    // ==================== HeapEntry ordering tests ====================
+
+    #[test]
+    fn test_heap_entry_ordering_min_heap() {
+        // HeapEntry uses reversed ordering to create a min-heap from BinaryHeap
+        let entry1 = HeapEntry {
+            sort_field: 10,
+            value: json!({"id": 1}),
+            index: 0,
+        };
+        let entry2 = HeapEntry {
+            sort_field: 20,
+            value: json!({"id": 2}),
+            index: 1,
+        };
+
+        // In a min-heap, smaller values should come first
+        // Reversed ordering means entry1 (10) > entry2 (20) in Ord
+        assert_eq!(entry1.cmp(&entry2), Ordering::Greater);
+        assert_eq!(entry2.cmp(&entry1), Ordering::Less);
+    }
+
+    #[test]
+    fn test_heap_entry_equal_sort_fields() {
+        let entry1 = HeapEntry {
+            sort_field: 100,
+            value: json!({"id": 1}),
+            index: 0,
+        };
+        let entry2 = HeapEntry {
+            sort_field: 100,
+            value: json!({"id": 2}),
+            index: 1,
+        };
+
+        assert_eq!(entry1.cmp(&entry2), Ordering::Equal);
+    }
+
+    #[test]
+    fn test_binary_heap_pops_smallest_first() {
+        let mut heap = BinaryHeap::new();
+
+        heap.push(HeapEntry {
+            sort_field: 30,
+            value: json!({"ts": 30}),
+            index: 0,
+        });
+        heap.push(HeapEntry {
+            sort_field: 10,
+            value: json!({"ts": 10}),
+            index: 1,
+        });
+        heap.push(HeapEntry {
+            sort_field: 20,
+            value: json!({"ts": 20}),
+            index: 2,
+        });
+
+        // Should pop in ascending order (min-heap behavior)
+        assert_eq!(heap.pop().unwrap().sort_field, 10);
+        assert_eq!(heap.pop().unwrap().sort_field, 20);
+        assert_eq!(heap.pop().unwrap().sort_field, 30);
+    }
+
+    // ==================== extract_sort_field tests ====================
+
+    #[test]
+    fn test_extract_sort_field_top_level() {
+        let json = json!({"timestamp": 1234567890, "name": "test"});
+        assert_eq!(extract_sort_field(&json, "/timestamp"), 1234567890);
+    }
+
+    #[test]
+    fn test_extract_sort_field_nested() {
+        let json = json!({
+            "metadata": {
+                "created": {
+                    "timestamp": 9876543210_i64
+                }
+            }
+        });
+        assert_eq!(
+            extract_sort_field(&json, "/metadata/created/timestamp"),
+            9876543210
+        );
+    }
+
+    #[test]
+    fn test_extract_sort_field_negative_value() {
+        let json = json!({"sort_key": -500});
+        assert_eq!(extract_sort_field(&json, "/sort_key"), -500);
+    }
+
+    #[test]
+    #[should_panic(expected = "Did not find field")]
+    fn test_extract_sort_field_missing_field() {
+        let json = json!({"other_field": 123});
+        extract_sort_field(&json, "/timestamp");
+    }
+
+    #[test]
+    #[should_panic(expected = "not of type i64")]
+    fn test_extract_sort_field_wrong_type() {
+        let json = json!({"timestamp": "not a number"});
+        extract_sort_field(&json, "/timestamp");
+    }
 }

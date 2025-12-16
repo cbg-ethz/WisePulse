@@ -344,18 +344,27 @@ async fn download_single_file(
     Ok(bytes_downloaded)
 }
 
+/// Builds the URL for fetching samples for a specific date from the LAPIS API.
+///
+/// # Arguments
+/// * `api_base_url` - Base URL of the API (e.g., "https://api.db.wasap.genspectrum.org")
+/// * `organism` - Organism identifier (e.g., "covid", "rsva")
+/// * `date` - The sampling date to query
+fn build_samples_url(api_base_url: &str, organism: &str, date: NaiveDate) -> String {
+    let date_str = date.format("%Y-%m-%d");
+    format!(
+        "{}/{}/sample/details?samplingDate={}&dataFormat=JSON&downloadAsFile=false",
+        api_base_url, organism, date_str
+    )
+}
+
 async fn fetch_samples_for_single_date(
     client: &Client,
     date: NaiveDate,
     api_base_url: &str,
     organism: &str,
 ) -> Result<Vec<SampleData>> {
-    let date_str = date.format("%Y-%m-%d");
-    // URL format: {base_url}/{organism}/sample/details?...
-    let url = format!(
-        "{}/{}/sample/details?samplingDate={}&dataFormat=JSON&downloadAsFile=false",
-        api_base_url, organism, date_str
-    );
+    let url = build_samples_url(api_base_url, organism, date);
 
     let response = client
         .get(&url)
@@ -489,5 +498,120 @@ fn print_final_summary(stats: &ProcessingStats, output_dir: &str) {
     } else if stats.download_errors > 0 {
         println!();
         println!("Some downloads failed. Check the logs above for details.");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_samples_url() {
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let url = build_samples_url("https://api.example.org", "covid", date);
+        assert_eq!(
+            url,
+            "https://api.example.org/covid/sample/details?samplingDate=2024-06-15&dataFormat=JSON&downloadAsFile=false"
+        );
+    }
+
+    #[test]
+    fn test_build_samples_url_rsva() {
+        let date = NaiveDate::from_ymd_opt(2024, 12, 1).unwrap();
+        let url = build_samples_url("https://api.db.wasap.genspectrum.org", "rsva", date);
+        assert!(url.contains("/rsva/sample/details"));
+        assert!(url.contains("samplingDate=2024-12-01"));
+    }
+
+    #[test]
+    fn test_process_samples_deduplication() {
+        // Test that duplicate sample_ids are deduplicated (keeping the last one)
+        let samples = vec![
+            SampleData {
+                sample_id: "sample1".to_string(),
+                sampling_date: "2024-06-15".to_string(),
+                count_silo_reads: "1000".to_string(),
+                silo_reads: r#"[{"name": "file1.ndjson.zst", "url": "http://example.com/file1"}]"#
+                    .to_string(),
+            },
+            SampleData {
+                sample_id: "sample1".to_string(), // duplicate - this one should be kept
+                sampling_date: "2024-06-15".to_string(),
+                count_silo_reads: "2000".to_string(), // different read count
+                silo_reads:
+                    r#"[{"name": "file1_v2.ndjson.zst", "url": "http://example.com/file1_v2"}]"#
+                        .to_string(),
+            },
+            SampleData {
+                sample_id: "sample2".to_string(),
+                sampling_date: "2024-06-15".to_string(),
+                count_silo_reads: "500".to_string(),
+                silo_reads: r#"[{"name": "file2.ndjson.zst", "url": "http://example.com/file2"}]"#
+                    .to_string(),
+            },
+        ];
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+
+        // Should have 2 files (sample1 deduplicated, sample2 kept)
+        assert_eq!(files.len(), 2);
+
+        // Verify the "keep last" behavior: sample1 should have read_count 2000 (from the second entry)
+        let sample1_file = files.iter().find(|f| f.sample_id == "sample1").unwrap();
+        assert_eq!(
+            sample1_file.read_count, 2000,
+            "Deduplication should keep the last occurrence (read_count 2000, not 1000)"
+        );
+
+        // Verify sample2 is also present
+        let sample2_file = files.iter().find(|f| f.sample_id == "sample2").unwrap();
+        assert_eq!(sample2_file.read_count, 500);
+    }
+
+    #[test]
+    fn test_process_samples_multiple_files_per_sample() {
+        let samples = vec![SampleData {
+            sample_id: "sample1".to_string(),
+            sampling_date: "2024-06-15".to_string(),
+            count_silo_reads: "1000".to_string(),
+            silo_reads: r#"[
+                {"name": "file1a.ndjson.zst", "url": "http://example.com/file1a"},
+                {"name": "file1b.ndjson.zst", "url": "http://example.com/file1b"}
+            ]"#
+            .to_string(),
+        }];
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+
+        // Should have 2 files from the same sample
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().all(|f| f.sample_id == "sample1"));
+    }
+
+    #[test]
+    fn test_process_samples_empty() {
+        let samples: Vec<SampleData> = vec![];
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_process_samples_read_count_parsing() {
+        let samples = vec![SampleData {
+            sample_id: "sample1".to_string(),
+            sampling_date: "2024-06-15".to_string(),
+            count_silo_reads: "12345678".to_string(),
+            silo_reads: r#"[{"name": "file1.ndjson.zst", "url": "http://example.com/file1"}]"#
+                .to_string(),
+        }];
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].read_count, 12345678);
     }
 }
