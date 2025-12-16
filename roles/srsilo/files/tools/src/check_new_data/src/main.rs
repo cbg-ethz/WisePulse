@@ -48,7 +48,7 @@ struct ApiResponse {
     data: Vec<SampleData>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct SampleData {
     sample_id: Option<String>,
@@ -196,11 +196,11 @@ fn build_revocations_url(api_base_url: &str, organism: &str, timestamp: i64) -> 
     )
 }
 
-/// Calculates the maximum timestamp from a collection of samples.
+/// Calculates the maximum timestamp from an iterator of samples.
 ///
-/// Returns `None` if the collection is empty.
-fn calculate_max_timestamp(samples: &[SampleData]) -> Option<i64> {
-    samples.iter().map(|s| s.submitted_at_timestamp).max()
+/// Returns `None` if the iterator is empty.
+fn calculate_max_timestamp<'a>(samples: impl Iterator<Item = &'a SampleData>) -> Option<i64> {
+    samples.map(|s| s.submitted_at_timestamp).max()
 }
 
 /// Checks if there are any data changes (new submissions or revocations) after the given timestamp.
@@ -286,14 +286,13 @@ async fn check_for_data_changes(
     let total_changes = new_submissions_count + revocations_count;
     let has_data = total_changes > 0;
 
-    // Calculate max timestamp from both datasets
-    let all_samples: Vec<_> = submissions_data
-        .data
-        .iter()
-        .chain(revocations_data.data.iter())
-        .cloned()
-        .collect();
-    let max_timestamp = calculate_max_timestamp(&all_samples);
+    // Calculate max timestamp from both datasets (no cloning needed)
+    let max_timestamp = calculate_max_timestamp(
+        submissions_data
+            .data
+            .iter()
+            .chain(revocations_data.data.iter()),
+    );
 
     // Log summary
     if new_submissions_count > 0 {
@@ -407,23 +406,23 @@ mod tests {
     #[test]
     fn test_calculate_max_timestamp_empty() {
         let samples: Vec<SampleData> = vec![];
-        assert_eq!(calculate_max_timestamp(&samples), None);
+        assert_eq!(calculate_max_timestamp(samples.iter()), None);
     }
 
     #[test]
     fn test_calculate_max_timestamp_single() {
-        let samples = vec![SampleData {
+        let samples = [SampleData {
             sample_id: Some("test1".to_string()),
             submitted_at_timestamp: 1700000000,
             version_status: None,
             version_comment: None,
         }];
-        assert_eq!(calculate_max_timestamp(&samples), Some(1700000000));
+        assert_eq!(calculate_max_timestamp(samples.iter()), Some(1700000000));
     }
 
     #[test]
     fn test_calculate_max_timestamp_multiple() {
-        let samples = vec![
+        let samples = [
             SampleData {
                 sample_id: Some("test1".to_string()),
                 submitted_at_timestamp: 1700000000,
@@ -443,6 +442,6 @@ mod tests {
                 version_comment: None,
             },
         ];
-        assert_eq!(calculate_max_timestamp(&samples), Some(1700000500));
+        assert_eq!(calculate_max_timestamp(samples.iter()), Some(1700000500));
     }
 }
