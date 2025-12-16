@@ -535,7 +535,7 @@ mod tests {
                     .to_string(),
             },
             SampleData {
-                sample_id: "sample1".to_string(), // duplicate
+                sample_id: "sample1".to_string(), // duplicate - this one should be kept
                 sampling_date: "2024-06-15".to_string(),
                 count_silo_reads: "2000".to_string(), // different read count
                 silo_reads:
@@ -557,10 +557,16 @@ mod tests {
         // Should have 2 files (sample1 deduplicated, sample2 kept)
         assert_eq!(files.len(), 2);
 
-        // Check that both sample_ids are present
-        let sample_ids: Vec<&str> = files.iter().map(|f| f.sample_id.as_str()).collect();
-        assert!(sample_ids.contains(&"sample1"));
-        assert!(sample_ids.contains(&"sample2"));
+        // Verify the "keep last" behavior: sample1 should have read_count 2000 (from the second entry)
+        let sample1_file = files.iter().find(|f| f.sample_id == "sample1").unwrap();
+        assert_eq!(
+            sample1_file.read_count, 2000,
+            "Deduplication should keep the last occurrence (read_count 2000, not 1000)"
+        );
+
+        // Verify sample2 is also present
+        let sample2_file = files.iter().find(|f| f.sample_id == "sample2").unwrap();
+        assert_eq!(sample2_file.read_count, 500);
     }
 
     #[test]
