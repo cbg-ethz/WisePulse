@@ -18,12 +18,13 @@ Generalize the `srsilo` Ansible role to support multiple viruses beyond SARS-CoV
 
 ## Sub-Issues / PRs
 
-- [ ] **PR 1: Rust Tools - Add `--organism` Parameter** (Small, 2-4h)
+- [x] **PR 1: Rust Tools - Add `--organism` Parameter** (Small, 2-4h) ✅ Merged
   - Add `--organism` CLI argument to `fetch_silo_data` and `check_new_data`
   - Use organism in API URL instead of hardcoded `covid`
   - Dependencies: None
+  - **Merged:** commit `5ca2bc7` (#176)
 
-- [ ] **PR 2: Restructure Defaults and Variables** (Small, 2-3h)
+- [ ] **PR 2: Restructure Defaults and Variables** (Small, 2-3h) 🚧 In Progress
   - Add `srsilo_virus` variable and `srsilo_viruses` registry
   - Add derived path variables (`srsilo_virus_path`, etc.)
   - Dependencies: None
