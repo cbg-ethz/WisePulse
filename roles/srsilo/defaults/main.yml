@@ -26,7 +26,7 @@ srsilo_virus: covid
 # The 'organism' field is the exact value passed to the LAPIS API
 #
 # To add a new virus:
-#   1. Add entry here with organism, instance_name, ports, enabled: false
+#   1. Add entry here with organism, instance_name, and ports
 #   2. Create config files in roles/srsilo/files/viruses/<virus>/
 #   3. Add to srsilo_enabled_viruses in group_vars when ready
 #
@@ -38,16 +38,14 @@ srsilo_viruses:
     instance_name: wise-sarsCoV2
     lapis_port: 8083
     silo_port: 8081
-    enabled: true
   rsva:
     organism: rsva
     instance_name: wise-rsva
     lapis_port: 8084
     silo_port: 8082
-    enabled: false
 
 # List of enabled viruses (for multi-virus playbooks)
-# Override in group_vars to enable additional viruses
+# This controls which viruses are actually processed - override in group_vars
 srsilo_enabled_viruses:
   - covid
 
