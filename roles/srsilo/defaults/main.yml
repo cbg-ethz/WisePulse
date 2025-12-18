@@ -50,10 +50,11 @@ srsilo_enabled_viruses:
   - covid
 
 # =============================================================================
-# Derived Virus-Specific Paths
+# Derived Virus-Specific Paths (New Multi-Virus Structure)
 # =============================================================================
-# These paths are computed based on srsilo_virus and used by tasks/templates
-# For backward compatibility during migration, these initially point to base paths
+# These paths follow the new per-virus directory structure:
+#   /opt/srsilo/{virus}/input, /opt/srsilo/{virus}/output, etc.
+# Tasks will be migrated to use these in PR5.
 
 # Virus-specific base path (e.g., /opt/srsilo/covid)
 srsilo_virus_path: "{{ srsilo_base_path }}/{{ srsilo_virus }}"
