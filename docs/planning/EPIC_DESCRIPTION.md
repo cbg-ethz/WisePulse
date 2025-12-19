@@ -18,15 +18,19 @@ Generalize the `srsilo` Ansible role to support multiple viruses beyond SARS-CoV
 
 ## Sub-Issues / PRs
 
-- [ ] **PR 1: Rust Tools - Add `--organism` Parameter** (Small, 2-4h)
+- [x] **PR 1: Rust Tools - Add `--organism` Parameter** (Small, 2-4h) ✅ Merged
   - Add `--organism` CLI argument to `fetch_silo_data` and `check_new_data`
   - Use organism in API URL instead of hardcoded `covid`
   - Dependencies: None
+  - **Merged:** #176
 
-- [ ] **PR 2: Restructure Defaults and Variables** (Small, 2-3h)
-  - Add `srsilo_virus` variable and `srsilo_viruses` registry
+- [x] **PR 2: Restructure Defaults and Variables** (Small, 2-3h) ✅ Merged
+  - Add `srsilo_virus` variable and `srsilo_viruses` registry (covid + rsva)
+  - Add `srsilo_enabled_viruses` list as single source of truth
   - Add derived path variables (`srsilo_virus_path`, etc.)
+  - Add convenience lookup variables (`srsilo_current_organism`, etc.)
   - Dependencies: None
+  - **Merged:** #184
 
 - [ ] **PR 3: Reorganize Configuration Files** (Small, 2-3h)
   - Create `files/viruses/` directory structure
@@ -78,6 +82,9 @@ PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼
 2. **Playbook Strategy**: Wrapper + parameterized core (Option C) - single core playbook with loop wrapper for all viruses
 3. **Directory Structure**: `/opt/srsilo/{virus}/` with per-virus config, input, output directories
 4. **Shared Binaries**: Rust tools compiled once in `/opt/srsilo/tools/`, used by all viruses
+5. **Single Source of Truth**: `srsilo_enabled_viruses` list controls which viruses are active (no redundant `enabled` field in registry)
+6. **Explicit Organism Field**: Registry uses explicit `organism` field for API endpoint naming (handles hyphens vs underscores)
+7. **Incremental Virus Support**: Start with covid + rsva only; add more viruses to registry as needed
 
 ## Success Criteria
 

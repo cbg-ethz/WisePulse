@@ -13,7 +13,7 @@
 //! Integration: Downloads to silo_input/ for processing by existing WisePulse pipeline
 
 use chrono::{Duration, NaiveDate};
-use clap::{Arg, Command};
+use clap::Parser;
 use reqwest::Client;
 use serde::Deserialize;
 use std::path::Path;
@@ -21,13 +21,32 @@ use tokio::{fs, io::AsyncWriteExt, time};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-#[derive(Debug)]
-struct Config {
+#[derive(Parser, Debug)]
+#[command(name = "fetch_silo_data")]
+#[command(about = "Fetches genomic data files from LAPIS API")]
+struct Args {
+    /// Start date for fetching (YYYY-MM-DD format)
+    #[arg(long)]
     start_date: NaiveDate,
-    days_to_fetch: i64,
+
+    /// Number of days to fetch backwards
+    #[arg(long)]
+    days: i64,
+
+    /// Maximum number of reads to fetch
+    #[arg(long)]
     max_reads: u64,
+
+    /// Output directory for downloaded files
+    #[arg(long)]
     output_dir: String,
+
+    /// Base URL for the LAPIS API
+    #[arg(long)]
     api_base_url: String,
+
+    /// Organism/virus identifier for the API endpoint (e.g., "covid", "rsva", "rsvb")
+    #[arg(long, default_value = "covid")]
     organism: String,
 }
 
@@ -73,78 +92,11 @@ struct FileToDownload {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let matches = Command::new("fetch_silo_data")
-        .about("Fetches genomic data files from LAPIS API")
-        .arg(
-            Arg::new("start-date")
-                .long("start-date")
-                .value_name("YYYY-MM-DD")
-                .help("Start date for fetching")
-                .required(true),
-        )
-        .arg(
-            Arg::new("days")
-                .long("days")
-                .value_name("NUMBER")
-                .help("Number of days to fetch backwards")
-                .required(true),
-        )
-        .arg(
-            Arg::new("max-reads")
-                .long("max-reads")
-                .value_name("NUMBER")
-                .help("Maximum number of reads to fetch")
-                .required(true),
-        )
-        .arg(
-            Arg::new("output-dir")
-                .long("output-dir")
-                .value_name("PATH")
-                .help("Output directory for downloaded files")
-                .required(true),
-        )
-        .arg(
-            Arg::new("api-base-url")
-                .long("api-base-url")
-                .value_name("URL")
-                .help("Base URL for the LAPIS API")
-                .required(true),
-        )
-        .arg(
-            Arg::new("organism")
-                .long("organism")
-                .value_name("NAME")
-                .help("Organism/virus identifier for the API endpoint (e.g., covid, rsva, rsvb)")
-                .default_value("covid"),
-        )
-        .get_matches();
-
-    // Parse command line arguments (all required except organism which has default)
-    let date_str = matches.get_one::<String>("start-date").unwrap();
-    let days_str = matches.get_one::<String>("days").unwrap();
-    let reads_str = matches.get_one::<String>("max-reads").unwrap();
-    let dir_str = matches.get_one::<String>("output-dir").unwrap();
-    let api_url_str = matches.get_one::<String>("api-base-url").unwrap();
-    let organism_str = matches.get_one::<String>("organism").unwrap();
-
-    let config = Config {
-        start_date: NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-            .map_err(|e| format!("Invalid date format: {}", e))?,
-        days_to_fetch: days_str
-            .parse()
-            .map_err(|e| format!("Invalid days value: {}", e))?,
-        max_reads: reads_str
-            .parse()
-            .map_err(|e| format!("Invalid max-reads value: {}", e))?,
-        output_dir: dir_str.to_string(),
-        api_base_url: api_url_str.to_string(),
-        organism: organism_str.to_string(),
-    };
-
-    run_fetch_with_config(config).await
+    let args = Args::parse();
+    run_fetch(&args).await
 }
 
-async fn run_fetch_with_config(config: Config) -> Result<()> {
+async fn run_fetch(args: &Args) -> Result<()> {
     let client = Client::new();
 
     // Print starting banner
@@ -152,14 +104,14 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
     println!("Fetching genomic data from LAPIS API");
     println!();
 
-    fs::create_dir_all(&config.output_dir).await?;
+    fs::create_dir_all(&args.output_dir).await?;
     println!("Configuration:");
-    println!("  Output directory: {}", config.output_dir);
-    println!("  API base URL: {}", config.api_base_url);
-    println!("  Organism: {}", config.organism);
+    println!("  Output directory: {}", args.output_dir);
+    println!("  API base URL: {}", args.api_base_url);
+    println!("  Organism: {}", args.organism);
 
-    let start_date = config.start_date;
-    let earliest_allowed = start_date - Duration::days(config.days_to_fetch);
+    let start_date = args.start_date;
+    let earliest_allowed = start_date - Duration::days(args.days);
 
     let mut stats = ProcessingStats::default();
     let mut all_files = Vec::<FileToDownload>::new();
@@ -167,9 +119,9 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
     println!("  Start date: {}", start_date);
     println!(
         "  Date range: {} -> {} (max {} days)",
-        start_date, earliest_allowed, config.days_to_fetch
+        start_date, earliest_allowed, args.days
     );
-    println!("  Max reads: {}", config.max_reads);
+    println!("  Max reads: {}", args.max_reads);
     println!();
     println!("Starting data collection...");
     println!();
@@ -186,8 +138,8 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
         let samples = fetch_samples_for_single_date(
             &client,
             current_date,
-            &config.api_base_url,
-            &config.organism,
+            &args.api_base_url,
+            &args.organism,
         )
         .await?;
 
@@ -225,7 +177,7 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
             let date_files = process_samples_for_date(&samples, current_date)?;
             let date_reads: u64 = date_files.iter().map(|f| f.read_count).sum();
 
-            if stats.total_reads + date_reads > config.max_reads {
+            if stats.total_reads + date_reads > args.max_reads {
                 println!("   Would exceed read limit, stopping");
                 break;
             }
@@ -268,9 +220,9 @@ async fn run_fetch_with_config(config: Config) -> Result<()> {
 
     println!();
     println!("Starting file downloads...");
-    download_all_files(&client, &all_files, &mut stats, &config.output_dir).await?;
+    download_all_files(&client, &all_files, &mut stats, &args.output_dir).await?;
 
-    print_final_summary(&stats, &config.output_dir);
+    print_final_summary(&stats, &args.output_dir);
     Ok(())
 }
 
@@ -344,18 +296,27 @@ async fn download_single_file(
     Ok(bytes_downloaded)
 }
 
+/// Builds the URL for fetching samples for a specific date from the LAPIS API.
+///
+/// # Arguments
+/// * `api_base_url` - Base URL of the API (e.g., "https://api.db.wasap.genspectrum.org")
+/// * `organism` - Organism identifier (e.g., "covid", "rsva")
+/// * `date` - The sampling date to query
+fn build_samples_url(api_base_url: &str, organism: &str, date: NaiveDate) -> String {
+    let date_str = date.format("%Y-%m-%d");
+    format!(
+        "{}/{}/sample/details?samplingDate={}&dataFormat=JSON&downloadAsFile=false",
+        api_base_url, organism, date_str
+    )
+}
+
 async fn fetch_samples_for_single_date(
     client: &Client,
     date: NaiveDate,
     api_base_url: &str,
     organism: &str,
 ) -> Result<Vec<SampleData>> {
-    let date_str = date.format("%Y-%m-%d");
-    // URL format: {base_url}/{organism}/sample/details?...
-    let url = format!(
-        "{}/{}/sample/details?samplingDate={}&dataFormat=JSON&downloadAsFile=false",
-        api_base_url, organism, date_str
-    );
+    let url = build_samples_url(api_base_url, organism, date);
 
     let response = client
         .get(&url)
@@ -489,5 +450,120 @@ fn print_final_summary(stats: &ProcessingStats, output_dir: &str) {
     } else if stats.download_errors > 0 {
         println!();
         println!("Some downloads failed. Check the logs above for details.");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_samples_url() {
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let url = build_samples_url("https://api.example.org", "covid", date);
+        assert_eq!(
+            url,
+            "https://api.example.org/covid/sample/details?samplingDate=2024-06-15&dataFormat=JSON&downloadAsFile=false"
+        );
+    }
+
+    #[test]
+    fn test_build_samples_url_rsva() {
+        let date = NaiveDate::from_ymd_opt(2024, 12, 1).unwrap();
+        let url = build_samples_url("https://api.db.wasap.genspectrum.org", "rsva", date);
+        assert!(url.contains("/rsva/sample/details"));
+        assert!(url.contains("samplingDate=2024-12-01"));
+    }
+
+    #[test]
+    fn test_process_samples_deduplication() {
+        // Test that duplicate sample_ids are deduplicated (keeping the last one)
+        let samples = vec![
+            SampleData {
+                sample_id: "sample1".to_string(),
+                sampling_date: "2024-06-15".to_string(),
+                count_silo_reads: "1000".to_string(),
+                silo_reads: r#"[{"name": "file1.ndjson.zst", "url": "http://example.com/file1"}]"#
+                    .to_string(),
+            },
+            SampleData {
+                sample_id: "sample1".to_string(), // duplicate - this one should be kept
+                sampling_date: "2024-06-15".to_string(),
+                count_silo_reads: "2000".to_string(), // different read count
+                silo_reads:
+                    r#"[{"name": "file1_v2.ndjson.zst", "url": "http://example.com/file1_v2"}]"#
+                        .to_string(),
+            },
+            SampleData {
+                sample_id: "sample2".to_string(),
+                sampling_date: "2024-06-15".to_string(),
+                count_silo_reads: "500".to_string(),
+                silo_reads: r#"[{"name": "file2.ndjson.zst", "url": "http://example.com/file2"}]"#
+                    .to_string(),
+            },
+        ];
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+
+        // Should have 2 files (sample1 deduplicated, sample2 kept)
+        assert_eq!(files.len(), 2);
+
+        // Verify the "keep last" behavior: sample1 should have read_count 2000 (from the second entry)
+        let sample1_file = files.iter().find(|f| f.sample_id == "sample1").unwrap();
+        assert_eq!(
+            sample1_file.read_count, 2000,
+            "Deduplication should keep the last occurrence (read_count 2000, not 1000)"
+        );
+
+        // Verify sample2 is also present
+        let sample2_file = files.iter().find(|f| f.sample_id == "sample2").unwrap();
+        assert_eq!(sample2_file.read_count, 500);
+    }
+
+    #[test]
+    fn test_process_samples_multiple_files_per_sample() {
+        let samples = vec![SampleData {
+            sample_id: "sample1".to_string(),
+            sampling_date: "2024-06-15".to_string(),
+            count_silo_reads: "1000".to_string(),
+            silo_reads: r#"[
+                {"name": "file1a.ndjson.zst", "url": "http://example.com/file1a"},
+                {"name": "file1b.ndjson.zst", "url": "http://example.com/file1b"}
+            ]"#
+            .to_string(),
+        }];
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+
+        // Should have 2 files from the same sample
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().all(|f| f.sample_id == "sample1"));
+    }
+
+    #[test]
+    fn test_process_samples_empty() {
+        let samples: Vec<SampleData> = vec![];
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_process_samples_read_count_parsing() {
+        let samples = vec![SampleData {
+            sample_id: "sample1".to_string(),
+            sampling_date: "2024-06-15".to_string(),
+            count_silo_reads: "12345678".to_string(),
+            silo_reads: r#"[{"name": "file1.ndjson.zst", "url": "http://example.com/file1"}]"#
+                .to_string(),
+        }];
+
+        let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
+        let files = process_samples_for_date(&samples, date).unwrap();
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].read_count, 12345678);
     }
 }

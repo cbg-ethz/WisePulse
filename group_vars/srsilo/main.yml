@@ -2,7 +2,10 @@
 # Group variables for srsilo hosts
 # These override the role defaults in roles/srsilo/defaults/main.yml
 
-# Base paths
+# =============================================================================
+# Base Configuration
+# =============================================================================
+
 srsilo_base_path: /opt/srsilo
 srsilo_tools_path: "{{ srsilo_base_path }}/tools"
 
@@ -10,31 +13,73 @@ srsilo_tools_path: "{{ srsilo_base_path }}/tools"
 srsilo_user: srsilo
 srsilo_group: srsilo
 
-# Data directories (managed outside repo)
+# =============================================================================
+# Multi-Virus Configuration
+# =============================================================================
+
+# Enable specific viruses for this host group
+# Add viruses here as they become ready for production
+srsilo_enabled_viruses:
+  - covid
+  # - rsva    # Uncomment when RSV-A is ready (PR6)
+
+# Per-virus configuration overrides (optional)
+# Use this to override defaults from srsilo_viruses registry
+# Example: increase fetch_max_reads for a specific virus
+# srsilo_virus_overrides:
+#   covid:
+#     fetch_max_reads: 200000000
+#   rsva:
+#     fetch_days: 60
+
+# =============================================================================
+# API Configuration
+# =============================================================================
+
+srsilo_api_base_url: https://api.db.wasap.genspectrum.org
+srsilo_fetch_days: 90
+srsilo_fetch_max_reads: 172500000   # 172.5M reads for production
+
+# =============================================================================
+# Legacy Path Variables (Backward Compatibility)
+# =============================================================================
+# These maintain compatibility with existing tasks until PR5 migration
+# TODO: Remove after PR5 completes migration to srsilo_virus_* variables
+
 srsilo_data_input: "{{ srsilo_base_path }}/input"
 srsilo_data_output: "{{ srsilo_base_path }}/output"
 srsilo_data_sorted_chunks: "{{ srsilo_base_path }}/sorted_chunks"
 srsilo_data_tmp: "{{ srsilo_base_path }}/tmp"
 
-# API configuration
-srsilo_api_base_url: https://api.db.wasap.genspectrum.org
-srsilo_fetch_days: 90
-srsilo_fetch_max_reads: 172500000   # 172.5M reads for production
-
-# LAPIS/SILO configuration
+# Legacy single-port variable
 srsilo_lapis_port: 8083
 
-# Retention policy
+# =============================================================================
+# Retention Policy
+# =============================================================================
+
 srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
-# Processing configuration - Production values (377GB RAM server)
-srsilo_chunk_size: 1000000          # Large chunks for 377GB RAM environment
-srsilo_docker_memory_limit: 340g    # 90% of 377GB RAM
+# =============================================================================
+# Processing Configuration - Production Values
+# =============================================================================
 
-# Repository path (for development/deployment)
+# Chunk size for splitting reads - 377GB RAM server
+srsilo_chunk_size: 1000000
+
+# Docker memory limits - 90% of 377GB RAM
+srsilo_docker_memory_limit: 340g
+
+# =============================================================================
+# Repository Path
+# =============================================================================
+
 wisepulse_repo_path: /opt/WisePulse
 
-# Note: For testing with constrained resources (8GB RAM), override with:
+# =============================================================================
+# Testing Notes
+# =============================================================================
+# For testing with constrained resources (8GB RAM), override with:
 #   ansible-playbook ... -e "@playbooks/srsilo/vars/test_vars.yml"
 # Test overrides: 7g memory, 30 days, 5M reads, 30k chunk size
