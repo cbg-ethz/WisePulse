@@ -1,6 +1,10 @@
 ---
 # Default variables for srsilo role
 
+# =============================================================================
+# Base Configuration
+# =============================================================================
+
 # Base paths
 srsilo_base_path: /opt/srsilo
 srsilo_tools_path: "{{ srsilo_base_path }}/tools"
@@ -9,21 +13,103 @@ srsilo_tools_path: "{{ srsilo_base_path }}/tools"
 srsilo_user: srsilo
 srsilo_group: srsilo
 
-# Data directories (managed outside repo)
+# =============================================================================
+# Multi-Virus Configuration
+# =============================================================================
+
+# Current virus being processed (set per-playbook or per-run)
+# This is the key into srsilo_viruses registry
+srsilo_virus: covid
+
+# Virus registry - defines all supported viruses and their configurations
+# Keys are used for directory names and Ansible variable references
+# The 'organism' field is the exact value passed to the LAPIS API
+#
+# To add a new virus:
+#   1. Add entry here with organism, instance_name, and ports
+#   2. Create config files in roles/srsilo/files/viruses/<virus>/
+#   3. Add to srsilo_enabled_viruses in group_vars when ready
+#
+# Note: For viruses with hyphens in API name (e.g., flu-h1), use underscore
+# for the key (flu_h1) and set organism to the API value (flu-h1)
+srsilo_viruses:
+  covid:
+    organism: covid           # API endpoint identifier
+    instance_name: wise-sarsCoV2
+    lapis_port: 8083
+    silo_port: 8081
+  rsva:
+    organism: rsva
+    instance_name: wise-rsva
+    lapis_port: 8084
+    silo_port: 8082
+
+# List of enabled viruses (for multi-virus playbooks)
+# This controls which viruses are actually processed - override in group_vars
+srsilo_enabled_viruses:
+  - covid
+
+# =============================================================================
+# Derived Virus-Specific Paths (New Multi-Virus Structure)
+# =============================================================================
+# These paths follow the new per-virus directory structure:
+#   /opt/srsilo/{virus}/input, /opt/srsilo/{virus}/output, etc.
+# Tasks will be migrated to use these in PR5.
+
+# Virus-specific base path (e.g., /opt/srsilo/covid)
+srsilo_virus_path: "{{ srsilo_base_path }}/{{ srsilo_virus }}"
+
+# Virus-specific config directory (e.g., /opt/srsilo/covid/config)
+srsilo_virus_config_path: "{{ srsilo_virus_path }}/config"
+
+# Virus-specific data directories
+srsilo_virus_input: "{{ srsilo_virus_path }}/input"
+srsilo_virus_output: "{{ srsilo_virus_path }}/output"
+srsilo_virus_sorted_chunks: "{{ srsilo_virus_path }}/sorted_chunks"
+srsilo_virus_tmp: "{{ srsilo_virus_path }}/tmp"
+
+# Virus-specific state files
+srsilo_virus_last_update: "{{ srsilo_virus_path }}/.last_update"
+srsilo_virus_next_timestamp: "{{ srsilo_virus_path }}/.next_timestamp"
+srsilo_virus_sorted_file: "{{ srsilo_virus_path }}/sorted.ndjson.zst"
+
+# =============================================================================
+# Current Virus Configuration Lookup
+# =============================================================================
+# Convenience variables to access current virus settings from registry
+
+srsilo_current_virus: "{{ srsilo_viruses[srsilo_virus] }}"
+srsilo_current_organism: "{{ srsilo_current_virus.organism }}"
+srsilo_current_instance_name: "{{ srsilo_current_virus.instance_name }}"
+srsilo_current_lapis_port: "{{ srsilo_current_virus.lapis_port }}"
+srsilo_current_silo_port: "{{ srsilo_current_virus.silo_port }}"
+
+# =============================================================================
+# Legacy Path Variables (Backward Compatibility)
+# =============================================================================
+# These maintain compatibility with existing tasks until PR5 migration
+# TODO: Remove after PR5 completes migration to srsilo_virus_* variables
+
 srsilo_data_input: "{{ srsilo_base_path }}/input"
 srsilo_data_output: "{{ srsilo_base_path }}/output"
 srsilo_data_sorted_chunks: "{{ srsilo_base_path }}/sorted_chunks"
 srsilo_data_tmp: "{{ srsilo_base_path }}/tmp"
 
-# API configuration
+# =============================================================================
+# API Configuration
+# =============================================================================
+
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 srsilo_fetch_days: 90
 srsilo_fetch_max_reads: 125000000
 
-# LAPIS/SILO configuration
+# Legacy single-port variable (use srsilo_current_lapis_port for multi-virus)
 srsilo_lapis_port: 8083
 
-# Retention policy
+# =============================================================================
+# Retention Policy
+# =============================================================================
+
 srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
