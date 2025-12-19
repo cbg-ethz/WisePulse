@@ -170,66 +170,55 @@ let url = format!(
 );
 ```
 
-### 2. Ansible Role Defaults
+### 2. Ansible Role Defaults ✅ IMPLEMENTED (PR #184)
 
 **File:** `roles/srsilo/defaults/main.yml`
 
-**Add virus configuration structure:**
+**Implemented virus configuration structure:**
 ```yaml
-# Virus-specific configuration
-srsilo_virus: covid  # default virus (used when running single-virus playbook)
+# Current virus being processed (set per-playbook or per-run)
+srsilo_virus: covid
 
-# Virus registry with defaults
+# Virus registry - defines available viruses (no 'enabled' field - use srsilo_enabled_viruses)
 srsilo_viruses:
   covid:
-    organism: covid
+    organism: covid           # API endpoint identifier
     instance_name: wise-sarsCoV2
     lapis_port: 8083
     silo_port: 8081
-    enabled: true
   rsva:
     organism: rsva
     instance_name: wise-rsva
     lapis_port: 8084
     silo_port: 8082
-    enabled: false
-  rsvb:
-    organism: rsvb
-    instance_name: wise-rsvb
-    lapis_port: 8085
-    silo_port: 8086
-    enabled: false
-  flu_h1:
-    organism: flu-h1
-    instance_name: wise-flu-h1
-    lapis_port: 8087
-    silo_port: 8088
-    enabled: false
-  flu_n1:
-    organism: flu-n1
-    instance_name: wise-flu-n1
-    lapis_port: 8089
-    silo_port: 8090
-    enabled: false
-  flu_h3:
-    organism: flu-h3
-    instance_name: wise-flu-h3
-    lapis_port: 8091
-    silo_port: 8092
-    enabled: false
-  flu_n2:
-    organism: flu-n2
-    instance_name: wise-flu-n2
-    lapis_port: 8093
-    silo_port: 8094
-    enabled: false
 
-# Derived paths (computed per virus)
+# Single source of truth for which viruses are active
+srsilo_enabled_viruses:
+  - covid
+
+# Derived virus-specific paths
 srsilo_virus_path: "{{ srsilo_base_path }}/{{ srsilo_virus }}"
 srsilo_virus_config_path: "{{ srsilo_virus_path }}/config"
 srsilo_virus_input: "{{ srsilo_virus_path }}/input"
 srsilo_virus_output: "{{ srsilo_virus_path }}/output"
-# ... etc
+srsilo_virus_sorted_chunks: "{{ srsilo_virus_path }}/sorted_chunks"
+srsilo_virus_tmp: "{{ srsilo_virus_path }}/tmp"
+srsilo_virus_last_update: "{{ srsilo_virus_path }}/.last_update"
+srsilo_virus_next_timestamp: "{{ srsilo_virus_path }}/.next_timestamp"
+srsilo_virus_sorted_file: "{{ srsilo_virus_path }}/sorted.ndjson.zst"
+
+# Convenience lookup variables for current virus
+srsilo_current_virus: "{{ srsilo_viruses[srsilo_virus] }}"
+srsilo_current_organism: "{{ srsilo_current_virus.organism }}"
+srsilo_current_instance_name: "{{ srsilo_current_virus.instance_name }}"
+srsilo_current_lapis_port: "{{ srsilo_current_virus.lapis_port }}"
+srsilo_current_silo_port: "{{ srsilo_current_virus.silo_port }}"
+
+# Legacy path variables (backward compatibility until PR5)
+srsilo_data_input: "{{ srsilo_base_path }}/input"
+srsilo_data_output: "{{ srsilo_base_path }}/output"
+srsilo_data_sorted_chunks: "{{ srsilo_base_path }}/sorted_chunks"
+srsilo_data_tmp: "{{ srsilo_base_path }}/tmp"
 ```
 
 ### 3. Configuration Files (Per-Virus)
@@ -362,7 +351,7 @@ srsilo_virus_config:
 
 ## Implementation PRs (Ordered)
 
-### PR 1: Rust Tools - Add `--organism` Parameter
+### PR 1: Rust Tools - Add `--organism` Parameter ✅ MERGED (#176)
 **Scope:** Make Rust tools virus-agnostic
 **Files:**
 - `roles/srsilo/files/tools/src/fetch_silo_data/src/main.rs`
@@ -376,11 +365,11 @@ srsilo_virus_config:
 
 **Testing:** Run locally with `--organism covid` and `--organism rsva`
 
-**Estimated effort:** Small (2-4 hours)
+**Actual effort:** Small (2-4 hours)
 
 ---
 
-### PR 2: Restructure Defaults and Variables
+### PR 2: Restructure Defaults and Variables ✅ MERGED (#184)
 **Scope:** Create virus-aware variable structure
 **Files:**
 - `roles/srsilo/defaults/main.yml`
@@ -388,14 +377,16 @@ srsilo_virus_config:
 
 **Changes:**
 1. Add `srsilo_virus` variable with default `covid`
-2. Add `srsilo_viruses` registry with port assignments
-3. Add derived path variables (`srsilo_virus_path`, etc.)
-4. Update group_vars to use new structure
-5. Maintain backward compatibility
+2. Add `srsilo_viruses` registry (covid + rsva only, no `enabled` field)
+3. Add `srsilo_enabled_viruses` list as single source of truth
+4. Add derived path variables (`srsilo_virus_path`, etc.)
+5. Add convenience lookup variables (`srsilo_current_organism`, etc.)
+6. Update group_vars to use new structure
+7. Maintain backward compatibility with legacy path variables
 
 **Testing:** Ansible syntax check, dry-run existing playbooks
 
-**Estimated effort:** Small (2-3 hours)
+**Actual effort:** Small (2-3 hours)
 
 ---
 
