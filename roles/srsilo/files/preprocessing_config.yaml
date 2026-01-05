@@ -1,2 +1,1 @@
-ndjsonInputFilename: sorted.ndjson.zst
-withoutUnalignedSequences: true
+viruses/covid/preprocessing_config.yaml

@@ -32,10 +32,13 @@ Generalize the `srsilo` Ansible role to support multiple viruses beyond SARS-CoV
   - Dependencies: None
   - **Merged:** #184
 
-- [ ] **PR 3: Reorganize Configuration Files** (Small, 2-3h)
+- [x] **PR 3: Reorganize Configuration Files** (Small, 2-3h) ✅ Complete
   - Create `files/viruses/` directory structure
   - Move existing COVID configs to `files/viruses/covid/`
+  - Update `deploy_configs.yml` to use virus-parameterized paths
+  - Add backward compatibility symlinks
   - Dependencies: PR 2
+  - **Branch:** `pr-3-reorganize-configuration-files` (ready for PR)
 
 - [ ] **PR 4: Parameterize Templates** (Medium, 3-4h)
   - Replace hardcoded paths/ports in docker-compose and systemd templates
@@ -104,6 +107,56 @@ PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼
 | 2 | Infrastructure (PR 4-5): Multi-virus infrastructure complete |
 | 2-3 | RSV-A (PR 6): RSV-A pipeline works end-to-end |
 | 3-4 | Integration (PR 7-8): Epic complete |
+
+## Deployment Notes
+
+### Current Environment: Staging Server
+
+PR 3 has been implemented and tested on the **staging server**. All changes are backward compatible with the existing COVID pipeline.
+
+### Production Deployment Strategy
+
+When deploying PRs to production, follow this process:
+
+1. **Pre-Deployment Verification** (on staging):
+   - Verify COVID pipeline still works with new structure
+   - Run syntax checks: `ansible-playbook playbooks/srsilo/setup.yml --syntax-check`
+   - Perform dry run: `ansible-playbook playbooks/srsilo/setup.yml --check`
+
+2. **Production Deployment** (after PR merge):
+   ```bash
+   # On production server (or from control node targeting production)
+   cd /path/to/WisePulse
+   git fetch origin
+   git checkout main  # or target branch
+   git pull origin main
+
+   # Run Ansible playbook to deploy changes
+   ansible-playbook -i inventory/production playbooks/srsilo/setup.yml
+   ```
+
+3. **Post-Deployment Verification**:
+   - Verify COVID pipeline continues to function
+   - Check configuration files deployed correctly
+   - Monitor first pipeline run after deployment
+
+4. **Rollback Plan** (if issues arise):
+   - Revert to previous git commit
+   - Re-run Ansible playbook
+   - Existing COVID indexes remain intact (atomic swap)
+
+### PR 3 Specific Deployment Notes
+
+- **No service downtime required**: Changes are file organization only
+- **Backward compatible**: Symlinks maintain old paths
+- **No data migration needed**: File moves handled by git/Ansible
+- **Safe to deploy**: Syntax validated, dry-run tested on staging
+
+### Future PR Deployment Considerations
+
+- **PR 4-5**: May require service restart (docker-compose changes)
+- **PR 6**: Adds RSV-A (new virus) - requires enabling in `srsilo_enabled_viruses`
+- **PR 7**: Changes playbook invocation pattern - update cron/systemd timers
 
 ## References
 
