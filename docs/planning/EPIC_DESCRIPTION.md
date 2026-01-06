@@ -40,10 +40,15 @@ Generalize the `srsilo` Ansible role to support multiple viruses beyond SARS-CoV
   - Dependencies: PR 2
   - **Branch:** `pr-3-reorganize-configuration-files` (ready for PR)
 
-- [ ] **PR 4: Parameterize Templates** (Medium, 3-4h)
-  - Replace hardcoded paths/ports in docker-compose and systemd templates
-  - Add virus identifier to service/timer names
+- [x] **PR 4: Parameterize Templates** (Medium, 3-4h) ✅ Complete
+  - Parameterized docker-compose templates with virus-specific ports, paths, container names
+  - Updated task files to deploy to virus-specific config directories
+  - Systemd changes deferred to PR 7 (playbook orchestration)
   - Dependencies: PR 2, PR 3
+  - **Branch:** `168-pr-4-parameterize-templates` (ready for merge)
+  - **Testing:** ✅ Template rendering validated for COVID and RSV-A
+  - **Testing:** ✅ Deployed to staging server successfully
+  - **Testing:** ✅ Production deployment verified (zero downtime)
   - **Note**: Memory limits (`srsilo_docker_memory_limit`) currently global in group_vars
     - Future enhancement: Add per-virus memory limits to `srsilo_viruses` registry
     - COVID ports unchanged: 8083 (LAPIS), 8081 (SILO)
@@ -106,8 +111,8 @@ PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼
 
 | Week | Milestones |
 |------|------------|
-| 1 | Foundation (PR 1-3): COVID works with new structure |
-| 2 | Infrastructure (PR 4-5): Multi-virus infrastructure complete |
+| 1 | Foundation (PR 1-3): COVID works with new structure ✅ |
+| 2 | Infrastructure (PR 4-5): Multi-virus infrastructure complete (PR 4 ✅) |
 | 2-3 | RSV-A (PR 6): RSV-A pipeline works end-to-end |
 | 3-4 | Integration (PR 7-8): Epic complete |
 
@@ -157,7 +162,8 @@ When deploying PRs to production, follow this process:
 
 ### Future PR Deployment Considerations
 
-- **PR 4-5**: May require service restart (docker-compose changes)
+- **PR 4**: ✅ Zero downtime deployment - templates deploy to new paths, old containers keep running
+- **PR 5**: Will update task files to use virus-specific paths - may require coordination with timer
 - **PR 6**: Adds RSV-A (new virus) - requires enabling in `srsilo_enabled_viruses`
 - **PR 7**: Changes playbook invocation pattern - update cron/systemd timers
 
