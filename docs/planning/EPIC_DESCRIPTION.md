@@ -44,6 +44,9 @@ Generalize the `srsilo` Ansible role to support multiple viruses beyond SARS-CoV
   - Replace hardcoded paths/ports in docker-compose and systemd templates
   - Add virus identifier to service/timer names
   - Dependencies: PR 2, PR 3
+  - **Note**: Memory limits (`srsilo_docker_memory_limit`) currently global in group_vars
+    - Future enhancement: Add per-virus memory limits to `srsilo_viruses` registry
+    - COVID ports unchanged: 8083 (LAPIS), 8081 (SILO)
 
 - [ ] **PR 5: Update All Task Files** (Medium, 4-6h)
   - Update path references to use `srsilo_virus_*` variables
@@ -157,6 +160,56 @@ When deploying PRs to production, follow this process:
 - **PR 4-5**: May require service restart (docker-compose changes)
 - **PR 6**: Adds RSV-A (new virus) - requires enabling in `srsilo_enabled_viruses`
 - **PR 7**: Changes playbook invocation pattern - update cron/systemd timers
+
+## Future Enhancements (Post-Epic)
+
+### Per-Virus Resource Configuration
+
+**Current State (PR 4):**
+- Memory limits: Global `srsilo_docker_memory_limit: 340g` in group_vars
+- Chunk size: Global `srsilo_chunk_size: 1000000` in group_vars
+- All viruses share same resource settings
+
+**Future Enhancement:**
+Add per-virus resource settings to `srsilo_viruses` registry in `defaults/main.yml`:
+
+```yaml
+srsilo_viruses:
+  covid:
+    organism: covid
+    instance_name: wise-sarsCoV2
+    lapis_port: 8083
+    silo_port: 8081
+    docker_memory_limit: 340g      # High volume virus
+    chunk_size: 1000000
+  rsva:
+    organism: rsva
+    instance_name: wise-rsva
+    lapis_port: 8084
+    silo_port: 8082
+    docker_memory_limit: 340g      # Similar volume
+    chunk_size: 500000
+  flu_h1:
+    organism: flu-h1
+    instance_name: wise-flu-h1
+    lapis_port: 8085
+    silo_port: 8086
+    docker_memory_limit: 100g      # Lower volume per segment
+    chunk_size: 200000
+```
+
+Then update lookup variables:
+```yaml
+srsilo_docker_memory_limit: "{{ srsilo_current_virus.docker_memory_limit | default('340g') }}"
+srsilo_chunk_size: "{{ srsilo_current_virus.chunk_size | default(1000000) }}"
+```
+
+**Benefits:**
+- Optimize resource usage per virus
+- Support viruses with different data volumes
+- Influenza segments can use less memory
+
+**When to implement:** After PR 6 when RSV-A is added, or when adding influenza segments
 
 ## References
 
