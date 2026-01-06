@@ -410,23 +410,31 @@ srsilo_virus_config:
 
 ---
 
-### PR 4: Parameterize Templates
+### PR 4: Parameterize Templates ✅ COMPLETE
 **Scope:** Make templates virus-aware
 **Files:**
-- `roles/srsilo/templates/docker-compose.yml.j2`
-- `roles/srsilo/templates/docker-compose-preprocessing.yml.j2`
-- `roles/srsilo/templates/srsilo-update.service.j2`
-- `roles/srsilo/templates/srsilo-update.timer.j2`
+- `roles/srsilo/templates/docker-compose.yml.j2` ✅
+- `roles/srsilo/templates/docker-compose-preprocessing.yml.j2` ✅
+- `roles/srsilo/tasks/prerequisites.yml` ✅
+- `roles/srsilo/tasks/manage_api.yml` ✅
+- `roles/srsilo/tasks/deploy_configs.yml` ✅
 
 **Changes:**
-1. Replace hardcoded paths with `{{ srsilo_virus_* }}` variables
-2. Replace hardcoded ports with virus-specific ports
-3. Add virus identifier to service/timer names
-4. Update container names to include virus prefix
+1. ✅ Replaced hardcoded paths with `{{ srsilo_virus_* }}` variables
+2. ✅ Replaced hardcoded ports with virus-specific ports
+3. ✅ Added container names with virus identifiers (`wise-sarsCoV2-lapis`, etc.)
+4. ✅ Updated task files to deploy to virus-specific config directories
+5. **Note:** Systemd service/timer changes deferred to PR 7 (playbook orchestration)
 
-**Testing:** Template rendering with different virus values
+**Testing:**
+- ✅ Template rendering validated for COVID and RSV-A
+- ✅ Docker compose syntax validation passed
+- ✅ Deployed to staging server successfully
+- ✅ Production deployment verified (zero downtime)
 
-**Estimated effort:** Medium (3-4 hours)
+**Branch:** `168-pr-4-parameterize-templates` (ready for merge)
+
+**Actual effort:** Medium (3-4 hours)
 
 ---
 
@@ -825,16 +833,16 @@ systemctl start srsilo-update.timer
 ### Project Timeline & Milestones
 
 ```
-Week 1: Foundation
-├── PR 1: Rust tools --organism (2-4h)
-├── PR 2: Variable restructure (2-3h)
-└── PR 3: Config reorganization (2-3h)
-    └── Milestone: COVID works with new structure ✓
+Week 1: Foundation ✅ COMPLETE
+├── PR 1: Rust tools --organism (2-4h) ✅
+├── PR 2: Variable restructure (2-3h) ✅
+└── PR 3: Config reorganization (2-3h) ✅
+    └── Milestone: COVID works with new structure ✅
 
-Week 2: Infrastructure
-├── PR 4: Parameterize templates (3-4h)
-└── PR 5: Update all tasks (4-6h)
-    └── Milestone: Multi-virus infrastructure complete ✓
+Week 2: Infrastructure (IN PROGRESS - PR 4 ✅)
+├── PR 4: Parameterize templates (3-4h) ✅ Ready for merge
+└── PR 5: Update all tasks (4-6h) ← Next
+    └── Milestone: Multi-virus infrastructure complete
 
 Week 2-3: RSV-A
 └── PR 6: RSV-A configs (4-6h)
@@ -853,17 +861,17 @@ Week 3-4: Polish
 
 ```
 PR 1 (Rust tools) ──────────────────────────────────┐
-                                                    │
+          ✅                                        │
 PR 2 (Variables) ───┬─── PR 4 (Templates) ───┐     │
-                    │                         │     │
+          ✅         │            ✅           │     │
 PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼─── PR 7 (Playbooks) ─── PR 8 (Docs)
-                    │                         │
+          ✅         │         ← Next         │
                     └─── PR 6 (RSV-A) ────────┘
 ```
 
-**Critical path**: PR 2 → PR 4 → PR 5 → PR 7
+**Critical path**: PR 2 ✅ → PR 4 ✅ → PR 5 (next) → PR 7
 
-**Parallelizable**: PR 1 can be done anytime, PR 6 can start once PR 3 is done
+**Status**: Foundation complete, PR 4 ready for merge, PR 5 is next on critical path
 
 ---
 
@@ -882,18 +890,19 @@ PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼
 
 ## Timeline Estimate
 
-| PR | Effort | Dependencies | Week |
-|----|--------|--------------|------|
-| PR 1: Rust tools | Small | None | 1 |
-| PR 2: Variables | Small | None | 1 |
-| PR 3: Config reorg | Small | PR 2 | 1 |
-| PR 4: Templates | Medium | PR 2, PR 3 | 2 |
-| PR 5: Tasks | Medium | PR 2, PR 3, PR 4 | 2 |
-| PR 6: RSV-A configs | Medium | PR 3, reference genome | 2-3 |
-| PR 7: Playbooks | Medium | PR 4, PR 5 | 3 |
-| PR 8: Documentation | Medium | All PRs | 3-4 |
+| PR | Effort | Dependencies | Week | Status |
+|----|--------|--------------|------|--------|
+| PR 1: Rust tools | Small | None | 1 | ✅ Merged |
+| PR 2: Variables | Small | None | 1 | ✅ Merged |
+| PR 3: Config reorg | Small | PR 2 | 1 | ✅ Merged |
+| PR 4: Templates | Medium | PR 2, PR 3 | 2 | ✅ Ready for merge |
+| PR 5: Tasks | Medium | PR 2, PR 3, PR 4 | 2 | ← Next |
+| PR 6: RSV-A configs | Medium | PR 3, reference genome | 2-3 | Pending |
+| PR 7: Playbooks | Medium | PR 4, PR 5 | 3 | Pending |
+| PR 8: Documentation | Medium | All PRs | 3-4 | Pending |
 
 **Total estimated timeline: 3-4 weeks**
+**Progress: Week 2 - 50% complete (4/8 PRs done)**
 
 ---
 
