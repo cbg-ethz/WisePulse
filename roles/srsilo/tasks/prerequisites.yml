@@ -84,10 +84,28 @@
     recurse: yes
   become: yes
 
-- name: Template docker-compose files with absolute paths
+- name: Ensure virus config directory exists
+  file:
+    path: "{{ srsilo_virus_config_path }}"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Ensure virus logs directory exists
+  file:
+    path: "{{ srsilo_virus_path }}/logs"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Template docker-compose files with virus-specific paths
   template:
     src: "{{ item.src }}"
-    dest: "{{ srsilo_tools_path }}/{{ item.dest }}"
+    dest: "{{ srsilo_virus_config_path }}/{{ item.dest }}"
     owner: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
     mode: '0644'

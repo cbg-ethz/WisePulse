@@ -5,25 +5,27 @@
 - name: Display API management action
   debug:
     msg:
-      - "=== Managing SILO API ==="
+      - "=== Managing SILO API for {{ srsilo_virus }} ==="
       - "Action: {{ api_action }}"
-      - "Port: {{ srsilo_lapis_port }}"
+      - "Instance: {{ srsilo_current_instance_name }}"
+      - "LAPIS Port: {{ srsilo_current_lapis_port }}"
+      - "SILO Port: {{ srsilo_current_silo_port }}"
       - "{{ 'Index: ' + (api_index | default('latest')) if api_action == 'start' else '' }}"
   when: api_action is defined
 
 - name: Stop SILO API
   shell: docker compose down || true
   args:
-    chdir: "{{ srsilo_tools_path }}"
+    chdir: "{{ srsilo_virus_config_path }}"
   become: yes
   when: api_action == 'stop'
   register: api_stop_result
   changed_when: "'Removed' in api_stop_result.stdout or 'Stopped' in api_stop_result.stdout"
 
 - name: Start SILO API
-  shell: LAPIS_PORT={{ srsilo_lapis_port }} docker compose up -d
+  shell: docker compose up -d
   args:
-    chdir: "{{ srsilo_tools_path }}"
+    chdir: "{{ srsilo_virus_config_path }}"
   become: yes
   when: api_action == 'start'
   register: api_start_result
@@ -31,7 +33,7 @@
 
 - name: Wait for API to be ready
   uri:
-    url: "http://localhost:{{ srsilo_lapis_port }}/sample/info"
+    url: "http://localhost:{{ srsilo_current_lapis_port }}/sample/info"
     method: GET
     status_code: 200
     timeout: 10
@@ -39,7 +41,7 @@
   retries: 12
   delay: 5
   until: api_health.status == 200
-  when: 
+  when:
     - api_action == 'start'
     - api_start_result is changed
   ignore_errors: yes
@@ -49,7 +51,7 @@
     - name: Stop containers
       shell: docker compose down --remove-orphans || true
       args:
-        chdir: "{{ srsilo_tools_path }}"
+        chdir: "{{ srsilo_virus_config_path }}"
       become: yes
     
     - name: Prune unused networks
@@ -64,7 +66,7 @@
 
 - name: Check API health
   uri:
-    url: "http://localhost:{{ srsilo_lapis_port }}/health"
+    url: "http://localhost:{{ srsilo_current_lapis_port }}/health"
     method: GET
     status_code: 200
     timeout: 5

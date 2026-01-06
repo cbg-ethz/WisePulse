@@ -1,38 +1,40 @@
 services:
   lapisOpen:
+    container_name: {{ srsilo_current_instance_name }}-lapis
     image: ghcr.io/genspectrum/lapis:0.6.2
     restart: unless-stopped
     ports:
-      - ${LAPIS_PORT}:8080
+      - {{ srsilo_current_lapis_port }}:8080
     environment:
-      # Cache size tuned to avoid GC pressure, more predictable maximum cache size (see #147) 
+      # Cache size tuned to avoid GC pressure, more predictable maximum cache size (see #147)
       - SPRING_CACHE_CAFFEINE_SPEC=maximumSize=500000
-    command: --silo.url=http://silo:8081
+    command: --silo.url=http://{{ srsilo_current_instance_name }}-silo:{{ srsilo_current_silo_port }}
     volumes:
       - type: bind
-        source: {{ srsilo_tools_path }}/database_config.yaml
+        source: {{ srsilo_virus_config_path }}/database_config.yaml
         target: /workspace/database_config.yaml
         read_only: true
       - type: bind
-        source: {{ srsilo_tools_path }}/reference_genomes.json
+        source: {{ srsilo_virus_config_path }}/reference_genomes.json
         target: /workspace/reference_genomes.json
         read_only: true
     stop_grace_period: 0s
 
   silo:
+    container_name: {{ srsilo_current_instance_name }}-silo
     image: ghcr.io/genspectrum/lapis-silo:pr-1072
     mem_limit: {{ srsilo_docker_memory_limit }}
     restart: unless-stopped
     ports:
-      - 8081:8081
+      - {{ srsilo_current_silo_port }}:{{ srsilo_current_silo_port }}
     command: api --api-threads-for-http-connections 96 --api-max-queued-http-connections 1024
     volumes:
       - type: bind
-        source: {{ srsilo_data_output }}
+        source: {{ srsilo_virus_output }}
         target: /data
         read_only: true
       - type: bind
-        source: {{ srsilo_tools_path }}/logs
+        source: {{ srsilo_virus_path }}/logs
         target: /app/logs
         read_only: false
     stop_grace_period: 0s
