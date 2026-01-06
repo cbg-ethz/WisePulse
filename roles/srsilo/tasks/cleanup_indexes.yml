@@ -4,7 +4,7 @@
 # Retention policy: Keep N newest indexes, delete those older than M days
 
 - name: Log phase start to journal
-  shell: 'echo "PHASE 3: Cleanup old indexes - START" | systemd-cat -t srsilo-phase3 -p info'
+  shell: 'echo "PHASE 3: Cleanup old indexes for {{ srsilo_virus }} - START" | systemd-cat -t srsilo-phase3 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false
@@ -13,13 +13,13 @@
   debug:
     msg:
       - "=== Cleanup Old Indexes ==="
-      - "Output directory: {{ srsilo_data_output }}"
+      - "Output directory: {{ srsilo_virus_output }}"
       - "Retention days: {{ srsilo_retention_days }}"
       - "Min keep: {{ srsilo_retention_min_keep }}"
 
 - name: Find all index directories
   find:
-    path: "{{ srsilo_data_output }}"
+    path: "{{ srsilo_virus_output }}"
     file_type: directory
     recurse: no
   register: all_indexes
@@ -30,7 +30,7 @@
 
 - name: Find indexes older than retention period
   find:
-    path: "{{ srsilo_data_output }}"
+    path: "{{ srsilo_virus_output }}"
     file_type: directory
     age: "{{ srsilo_retention_days }}d"
     recurse: no
@@ -84,7 +84,7 @@
   when: indexes_to_delete is not defined or indexes_to_delete | length == 0
 
 - name: Log phase complete to journal
-  shell: 'echo "PHASE 3: Cleanup - COMPLETE (deleted {{ deletion_result.results | default([]) | length }} indexes)" | systemd-cat -t srsilo-phase3 -p info'
+  shell: 'echo "PHASE 3: Cleanup for {{ srsilo_virus }} - COMPLETE (deleted {{ deletion_result.results | default([]) | length }} indexes)" | systemd-cat -t srsilo-phase3 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false
