@@ -85,26 +85,15 @@ srsilo_current_lapis_port: "{{ srsilo_current_virus.lapis_port }}"
 srsilo_current_silo_port: "{{ srsilo_current_virus.silo_port }}"
 
 # =============================================================================
-# Legacy Path Variables (Backward Compatibility)
+# API Configuration (Global Defaults)
 # =============================================================================
-# These maintain compatibility with existing tasks until PR5 migration
-# TODO: Remove after PR5 completes migration to srsilo_virus_* variables
-
-srsilo_data_input: "{{ srsilo_base_path }}/input"
-srsilo_data_output: "{{ srsilo_base_path }}/output"
-srsilo_data_sorted_chunks: "{{ srsilo_base_path }}/sorted_chunks"
-srsilo_data_tmp: "{{ srsilo_base_path }}/tmp"
-
-# =============================================================================
-# API Configuration
-# =============================================================================
+# NOTE: These serve as fallback defaults until PR7 implements per-virus
+# config merging. Per-virus overrides in srsilo_virus_config are not yet
+# automatically applied - that requires the set_fact merging logic from PR7.
 
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 srsilo_fetch_days: 90
 srsilo_fetch_max_reads: 125000000
-
-# Legacy single-port variable (use srsilo_current_lapis_port for multi-virus)
-srsilo_lapis_port: 8083
 
 # =============================================================================
 # Retention Policy
@@ -113,7 +102,14 @@ srsilo_lapis_port: 8083
 srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
-# Processing configuration
+# =============================================================================
+# Processing Configuration (Global Defaults)
+# =============================================================================
+# NOTE: These serve as fallback defaults until PR7 implements per-virus
+# config merging. Per-virus overrides in srsilo_virus_config are not yet
+# automatically applied - that requires the set_fact merging logic from PR7.
+# TODO PR7: Remove these once virus-specific config merging is implemented.
+
 # Chunk size for splitting reads - adjust based on available RAM
 # Default: 100000 (works with ~8GB RAM)
 # For 4GB RAM: use 50000
