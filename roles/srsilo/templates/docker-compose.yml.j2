@@ -8,7 +8,7 @@ services:
     environment:
       # Cache size tuned to avoid GC pressure, more predictable maximum cache size (see #147)
       - SPRING_CACHE_CAFFEINE_SPEC=maximumSize=500000
-    command: --silo.url=http://{{ srsilo_current_instance_name }}-silo:{{ srsilo_current_silo_port }}
+    command: --silo.url=http://{{ srsilo_current_instance_name }}-silo:8081
     volumes:
       - type: bind
         source: {{ srsilo_virus_config_path }}/database_config.yaml
@@ -26,7 +26,7 @@ services:
     mem_limit: {{ srsilo_docker_memory_limit }}
     restart: unless-stopped
     ports:
-      - {{ srsilo_current_silo_port }}:{{ srsilo_current_silo_port }}
+      - {{ srsilo_current_silo_port }}:8081
     command: api --api-threads-for-http-connections 96 --api-max-queued-http-connections 1024
     volumes:
       - type: bind

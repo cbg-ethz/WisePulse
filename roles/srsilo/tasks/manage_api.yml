@@ -14,7 +14,7 @@
   when: api_action is defined
 
 - name: Stop SILO API
-  shell: docker compose down || true
+  shell: docker compose -p {{ srsilo_virus }} down || true
   args:
     chdir: "{{ srsilo_virus_config_path }}"
   become: yes
@@ -23,7 +23,7 @@
   changed_when: "'Removed' in api_stop_result.stdout or 'Stopped' in api_stop_result.stdout"
 
 - name: Start SILO API
-  shell: docker compose up -d
+  shell: docker compose -p {{ srsilo_virus }} up -d
   args:
     chdir: "{{ srsilo_virus_config_path }}"
   become: yes
@@ -49,7 +49,7 @@
 - name: Clean up Docker resources
   block:
     - name: Stop containers
-      shell: docker compose down --remove-orphans || true
+      shell: docker compose -p {{ srsilo_virus }} down --remove-orphans || true
       args:
         chdir: "{{ srsilo_virus_config_path }}"
       become: yes
