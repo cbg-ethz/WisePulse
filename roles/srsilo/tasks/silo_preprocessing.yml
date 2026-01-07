@@ -7,24 +7,24 @@
   debug:
     msg:
       - "=== SILO Preprocessing ==="
-      - "Input: {{ srsilo_base_path }}/sorted.ndjson.zst"
-      - "Output: {{ srsilo_data_output }}/<timestamp>/"
-      - "Tools: {{ srsilo_tools_path }}"
+      - "Input: {{ srsilo_virus_sorted_file }}"
+      - "Output: {{ srsilo_virus_output }}/<timestamp>/"
+      - "Config: {{ srsilo_virus_config_path }}"
 
 - name: Log phase start to journal
-  shell: 'echo "PHASE 6: SILO preprocessing - START" | systemd-cat -t srsilo-phase6 -p info'
+  shell: 'echo "PHASE 6: SILO preprocessing for {{ srsilo_virus }} - START" | systemd-cat -t srsilo-phase6 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false
 
 - name: Verify sorted file exists
   stat:
-    path: "{{ srsilo_base_path }}/sorted.ndjson.zst"
+    path: "{{ srsilo_virus_sorted_file }}"
   register: sorted_file_check
 
 - name: Fail if sorted file missing
   fail:
-    msg: "Sorted file not found: {{ srsilo_base_path }}/sorted.ndjson.zst"
+    msg: "Sorted file not found: {{ srsilo_virus_sorted_file }}"
   when: not sorted_file_check.stat.exists
 
 - name: Verify Docker is available
@@ -36,14 +36,14 @@
 - name: Clean up any previous preprocessing containers
   shell: docker compose -f docker-compose-preprocessing.yml down -v || true
   args:
-    chdir: "{{ srsilo_tools_path }}"
+    chdir: "{{ srsilo_virus_config_path }}"
   become: yes
   changed_when: false
 
 - name: Run preprocessing container
   shell: docker compose -f docker-compose-preprocessing.yml up --exit-code-from siloPreprocessing
   args:
-    chdir: "{{ srsilo_tools_path }}"
+    chdir: "{{ srsilo_virus_config_path }}"
   become: yes
   register: preprocessing_result
   failed_when: preprocessing_result.rc != 0
@@ -54,7 +54,7 @@
 
 - name: Find created index directory
   find:
-    path: "{{ srsilo_data_output }}"
+    path: "{{ srsilo_virus_output }}"
     file_type: directory
     recurse: no
   register: output_indexes
@@ -69,7 +69,7 @@
     index_name: "{{ new_index_dir.path | basename if new_index_dir is defined and new_index_dir.path is defined else 'unknown' }}"
 
 - name: Log phase complete to journal
-  shell: 'echo "PHASE 6: SILO preprocessing - COMPLETE (index: {{ index_name }})" | systemd-cat -t srsilo-phase6 -p info'
+  shell: 'echo "PHASE 6: SILO preprocessing for {{ srsilo_virus }} - COMPLETE (index: {{ index_name }})" | systemd-cat -t srsilo-phase6 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false

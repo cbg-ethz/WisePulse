@@ -20,9 +20,9 @@
   debug:
     msg:
       - "=== Finalizing Processing ==="
-      - "Output directory: {{ srsilo_data_output }}"
-      - "Marker: {{ srsilo_data_output }}/.preprocessing_in_progress"
-      - "Timestamp: {{ srsilo_base_path }}/.last_update"
+      - "Output directory: {{ srsilo_virus_output }}"
+      - "Marker: {{ srsilo_virus_output }}/.preprocessing_in_progress"
+      - "Timestamp: {{ srsilo_virus_last_update }}"
   tags: [finalize]
 
 - name: Check if Docker is available
@@ -38,7 +38,7 @@
 
 - name: Find all index directories
   find:
-    paths: "{{ srsilo_data_output }}"
+    paths: "{{ srsilo_virus_output }}"
     file_type: directory
     recurse: no
   register: all_indexes
@@ -68,7 +68,7 @@
   block:
     - name: Read preprocessing marker
       slurp:
-        path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+        path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
       become: yes
       become_user: "{{ srsilo_user }}"
       register: marker_content
@@ -83,18 +83,18 @@
 
     - name: Delete failed/partial index
       file:
-        path: "{{ srsilo_data_output }}/{{ failed_index_ts }}"
+        path: "{{ srsilo_virus_output }}/{{ failed_index_ts }}"
         state: absent
       become: yes
       become_user: "{{ srsilo_user }}"
-      when: 
+      when:
         - marker_content is succeeded
         - failed_index_ts is defined
       tags: [finalize, failure, rollback]
 
     - name: Remove preprocessing marker after failure
       file:
-        path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+        path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
         state: absent
       become: yes
       become_user: "{{ srsilo_user }}"
@@ -102,7 +102,7 @@
 
     - name: Cleanup next timestamp file on failure
       file:
-        path: "{{ srsilo_base_path }}/.next_timestamp"
+        path: "{{ srsilo_virus_next_timestamp }}"
         state: absent
       become: yes
       become_user: "{{ srsilo_user }}"
@@ -110,7 +110,7 @@
 
     - name: Find previous valid index for rollback
       find:
-        paths: "{{ srsilo_data_output }}"
+        paths: "{{ srsilo_virus_output }}"
         file_type: directory
         recurse: no
       register: remaining_indexes
@@ -176,7 +176,7 @@
     # --- Success Path: New index is valid ---
     - name: Remove preprocessing marker
       file:
-        path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+        path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
         state: absent
       become: yes
       become_user: "{{ srsilo_user }}"
@@ -187,7 +187,7 @@
         docker compose down --remove-orphans || true
         docker network prune -f || true
       args:
-        chdir: "{{ srsilo_tools_path }}"
+        chdir: "{{ srsilo_virus_config_path }}"
       when: docker_check.rc == 0
       tags: [finalize, success, docker]
 
@@ -205,26 +205,26 @@
 
     - name: Check if next timestamp file exists
       stat:
-        path: "{{ srsilo_base_path }}/.next_timestamp"
+        path: "{{ srsilo_virus_next_timestamp }}"
       register: next_timestamp_stat
       tags: [finalize, success]
 
     - name: Update timestamp file on success
       copy:
-        src: "{{ srsilo_base_path }}/.next_timestamp"
-        dest: "{{ srsilo_base_path }}/.last_update"
+        src: "{{ srsilo_virus_next_timestamp }}"
+        dest: "{{ srsilo_virus_last_update }}"
         remote_src: yes
         mode: '0644'
       become: yes
       become_user: "{{ srsilo_user }}"
-      when: 
+      when:
         - srsilo_newest_index is defined
         - next_timestamp_stat.stat.exists
       tags: [finalize, success]
 
     - name: Cleanup next timestamp file
       file:
-        path: "{{ srsilo_base_path }}/.next_timestamp"
+        path: "{{ srsilo_virus_next_timestamp }}"
         state: absent
       become: yes
       become_user: "{{ srsilo_user }}"

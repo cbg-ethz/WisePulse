@@ -5,7 +5,7 @@
 
 - name: Ensure input directory exists
   file:
-    path: "{{ srsilo_data_input }}"
+    path: "{{ srsilo_virus_input }}"
     state: directory
     owner: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
@@ -23,15 +23,15 @@
 - name: Display fetch configuration
   debug:
     msg:
-      - "=== Fetching data from LAPIS API ==="
+      - "=== Fetching data for {{ srsilo_virus }} from LAPIS API ==="
       - "API: {{ srsilo_api_base_url }}"
       - "Start date: {{ fetch_start_date }}"
       - "Days: {{ srsilo_fetch_days }}"
       - "Max reads per batch: {{ srsilo_fetch_max_reads }}"
-      - "Output directory: {{ srsilo_data_input }}"
+      - "Output directory: {{ srsilo_virus_input }}"
 
 - name: Log phase start to journal
-  shell: 'echo "PHASE 4: Fetch data from API - START" | systemd-cat -t srsilo-phase4 -p info'
+  shell: 'echo "PHASE 4: Fetch data for {{ srsilo_virus }} - START" | systemd-cat -t srsilo-phase4 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false
@@ -39,14 +39,15 @@
 - name: Fetch data from LAPIS API
   shell: |
     {{ srsilo_tools_path }}/target/release/fetch_silo_data \
+      --organism {{ srsilo_current_organism }} \
       --start-date "{{ fetch_start_date }}" \
       --days {{ srsilo_fetch_days }} \
       --max-reads {{ srsilo_fetch_max_reads }} \
-      --output-dir "{{ srsilo_data_input }}" \
+      --output-dir "{{ srsilo_virus_input }}" \
       --api-base-url "{{ srsilo_api_base_url }}" \
       2>&1 | systemd-cat -t srsilo-fetch -p info
   args:
-    chdir: "{{ srsilo_base_path }}"
+    chdir: "{{ srsilo_virus_path }}"
   become: yes
   become_user: "{{ srsilo_user }}"
   register: fetch_result
@@ -62,13 +63,13 @@
 
 - name: Verify downloaded files exist
   find:
-    path: "{{ srsilo_data_input }}"
+    path: "{{ srsilo_virus_input }}"
     patterns: "*.ndjson.zst"
     file_type: file
   register: fetched_files
 
 - name: Log phase complete to journal
-  shell: 'echo "PHASE 4: Fetch data - COMPLETE ({{ fetched_files.matched }} files)" | systemd-cat -t srsilo-phase4 -p info'
+  shell: 'echo "PHASE 4: Fetch data for {{ srsilo_virus }} - COMPLETE ({{ fetched_files.matched }} files)" | systemd-cat -t srsilo-phase4 -p info'
   become: yes
   become_user: "{{ srsilo_user }}"
   changed_when: false
