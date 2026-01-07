@@ -45,7 +45,7 @@
     mode: '0755'
   become: yes
 
-- name: Ensure data directories exist
+- name: Ensure virus data directories exist
   file:
     path: "{{ item }}"
     state: directory
@@ -54,11 +54,10 @@
     mode: '0755'
   become: yes
   loop:
-    - "{{ srsilo_data_input }}"
-    - "{{ srsilo_data_output }}"
-    - "{{ srsilo_data_sorted_chunks }}"
-    - "{{ srsilo_data_tmp }}"
-    - "{{ srsilo_tools_path }}/logs"
+    - "{{ srsilo_virus_input }}"
+    - "{{ srsilo_virus_output }}"
+    - "{{ srsilo_virus_sorted_chunks }}"
+    - "{{ srsilo_virus_tmp }}"
 
 - name: Ensure Ansible log directory exists
   file:
