@@ -21,38 +21,32 @@ srsilo_group: srsilo
 # Add viruses here as they become ready for production
 srsilo_enabled_viruses:
   - covid
-  # - rsva    # Uncomment when RSV-A is ready (PR6)
+  - rsva    # ✅ Enabled in PR6
 
-# Per-virus configuration overrides (optional)
-# Use this to override defaults from srsilo_viruses registry
-# Example: increase fetch_max_reads for a specific virus
-# srsilo_virus_overrides:
-#   covid:
-#     fetch_max_reads: 200000000
-#   rsva:
-#     fetch_days: 60
+# Per-virus configuration overrides
+# Use this to override global defaults for specific viruses
+srsilo_virus_config:
+  covid:
+    fetch_days: 90
+    fetch_max_reads: 172500000    # 172.5M reads - high volume
+    chunk_size: 1000000           # Large chunks for production
+    docker_memory_limit: 200g
+  rsva:
+    fetch_days: 90
+    fetch_max_reads: 50000000     # 50M reads - lower volume expected
+    chunk_size: 500000            # Smaller chunks
+    docker_memory_limit: 50g
 
 # =============================================================================
-# API Configuration
+# API Configuration (Global Defaults)
 # =============================================================================
+# NOTE: These serve as fallback defaults until PR7 implements per-virus
+# config merging. Per-virus overrides in srsilo_virus_config are not yet
+# automatically applied - that requires the set_fact merging logic from PR7.
 
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
-srsilo_fetch_days: 90
+srsilo_fetch_days: 45
 srsilo_fetch_max_reads: 172500000   # 172.5M reads for production
-
-# =============================================================================
-# Legacy Path Variables (Backward Compatibility)
-# =============================================================================
-# These maintain compatibility with existing tasks until PR5 migration
-# TODO: Remove after PR5 completes migration to srsilo_virus_* variables
-
-srsilo_data_input: "{{ srsilo_base_path }}/input"
-srsilo_data_output: "{{ srsilo_base_path }}/output"
-srsilo_data_sorted_chunks: "{{ srsilo_base_path }}/sorted_chunks"
-srsilo_data_tmp: "{{ srsilo_base_path }}/tmp"
-
-# Legacy single-port variable
-srsilo_lapis_port: 8083
 
 # =============================================================================
 # Retention Policy
@@ -62,8 +56,12 @@ srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
 # =============================================================================
-# Processing Configuration - Production Values
+# Processing Configuration (Global Defaults)
 # =============================================================================
+# NOTE: These serve as fallback defaults until PR7 implements per-virus
+# config merging. Per-virus overrides in srsilo_virus_config are not yet
+# automatically applied - that requires the set_fact merging logic from PR7.
+# TODO PR7: Remove these once virus-specific config merging is implemented.
 
 # Chunk size for splitting reads - 377GB RAM server
 srsilo_chunk_size: 1000000

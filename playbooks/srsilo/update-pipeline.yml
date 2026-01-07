@@ -2,7 +2,16 @@
 - name: srSILO Update Pipeline - Full Automation
   hosts: srsilo
   gather_facts: yes
-  
+
+  vars:
+    # Virus-specific path variables (derived from srsilo_virus parameter)
+    srsilo_virus_path: "{{ srsilo_base_path }}/{{ srsilo_virus }}"
+    srsilo_virus_input: "{{ srsilo_virus_path }}/input"
+    srsilo_virus_output: "{{ srsilo_virus_path }}/output"
+    srsilo_virus_sorted_chunks: "{{ srsilo_virus_path }}/sorted_chunks"
+    srsilo_virus_tmp: "{{ srsilo_virus_path }}/tmp"
+    srsilo_virus_config: "{{ srsilo_virus_path }}/config"
+
   pre_tasks:
     - name: Log pipeline start to journal
       shell: |
@@ -102,28 +111,28 @@
       block:
         - name: Check if preprocessing_in_progress marker exists
           stat:
-            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
           register: preprocessing_marker
-        
+
         - name: Read orphaned index timestamp
           slurp:
-            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
           register: orphaned_timestamp
           when: preprocessing_marker.stat.exists
-        
+
         - name: Delete orphaned preprocessing index
           file:
-            path: "{{ srsilo_data_output }}/{{ orphaned_timestamp.content | b64decode | trim }}"
+            path: "{{ srsilo_virus_output }}/{{ orphaned_timestamp.content | b64decode | trim }}"
             state: absent
           become: yes
-          when: 
+          when:
             - preprocessing_marker.stat.exists
             - orphaned_timestamp.content is defined
           register: orphan_deletion
-        
+
         - name: Remove preprocessing marker
           file:
-            path: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
             state: absent
           become: yes
           when: preprocessing_marker.stat.exists
@@ -139,7 +148,7 @@
       block:
         - name: Find old input files
           find:
-            path: "{{ srsilo_data_input }}"
+            path: "{{ srsilo_virus_input }}"
             patterns: "*.ndjson.zst"
             age: "1d"
           register: old_input_files
@@ -163,28 +172,28 @@
       block:
         - name: Clean sorted chunks directory
           file:
-            path: "{{ srsilo_data_sorted_chunks }}"
+            path: "{{ srsilo_virus_sorted_chunks }}"
             state: absent
           become: yes
-        
+
         - name: Recreate sorted chunks directory
           file:
-            path: "{{ srsilo_data_sorted_chunks }}"
+            path: "{{ srsilo_virus_sorted_chunks }}"
             state: directory
             owner: "{{ srsilo_user }}"
             group: "{{ srsilo_group }}"
             mode: '0755'
           become: yes
-        
+
         - name: Clean tmp directory
           file:
-            path: "{{ srsilo_data_tmp }}"
+            path: "{{ srsilo_virus_tmp }}"
             state: absent
           become: yes
-        
+
         - name: Recreate tmp directory
           file:
-            path: "{{ srsilo_data_tmp }}"
+            path: "{{ srsilo_virus_tmp }}"
             state: directory
             owner: "{{ srsilo_user }}"
             group: "{{ srsilo_group }}"
@@ -234,7 +243,7 @@
         - name: Create preprocessing_in_progress marker
           copy:
             content: "{{ preprocessing_timestamp }}"
-            dest: "{{ srsilo_data_output }}/.preprocessing_in_progress"
+            dest: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
             owner: "{{ srsilo_user }}"
             group: "{{ srsilo_group }}"
             mode: '0644'
