@@ -58,10 +58,17 @@ Generalize the `srsilo` Ansible role to support multiple viruses beyond SARS-CoV
   - Pass `--organism` to Rust tool invocations
   - Dependencies: PR 2, PR 3, PR 4
 
-- [ ] **PR 6: Add RSV-A Configuration Files** (Medium, 4-6h)
+- [x] **PR 6: Add RSV-A Configuration Files** (Medium, 4-6h) ✅ Deployed
   - Create RSV-A database/preprocessing configs
   - Add RSV-A reference genome from [sr2silo repo](https://github.com/cbg-ethz/sr2silo/tree/dev/resources/references/rsva)
   - Dependencies: PR 3
+  - **Branch:** Multiple branches (config files + bugfixes)
+  - **Testing:** ✅ Full pipeline tested on production
+  - **Testing:** ✅ 171K sequences indexed successfully
+  - **Testing:** ✅ SILO API responding (port 8082)
+  - **Testing:** ✅ LAPIS API responding with RSV-A data (port 8084)
+  - **Production deployment:** ✅ Complete (Jan 7, 2026)
+  - **Bugfixes:** Critical Docker Compose fixes deployed (see below)
 
 - [ ] **PR 7: Multi-Virus Playbook Support** (Medium, 4-6h)
   - Create wrapper playbook to run all enabled viruses
@@ -99,11 +106,11 @@ PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼
 
 ## Success Criteria
 
-- [ ] COVID pipeline continues to work (backward compatible)
-- [ ] RSV-A pipeline runs end-to-end
-- [ ] All enabled viruses run sequentially without interference
-- [ ] Adding a new virus requires only config files (no code changes)
-- [ ] Single command updates all enabled viruses
+- [x] COVID pipeline continues to work (backward compatible) ✅
+- [x] RSV-A pipeline runs end-to-end ✅
+- [x] All enabled viruses run sequentially without interference ✅
+- [x] Adding a new virus requires only config files (no code changes) ✅
+- [ ] Single command updates all enabled viruses (PR 7)
 
 ## Timeline
 
@@ -160,12 +167,48 @@ When deploying PRs to production, follow this process:
 - **No data migration needed**: File moves handled by git/Ansible
 - **Safe to deploy**: Syntax validated, dry-run tested on staging
 
+### PR 6 Production Deployment (Jan 7, 2026) ✅
+
+**RSV-A deployment completed successfully:**
+- ✅ 171,592 sequences indexed
+- ✅ SILO API healthy on port 8082
+- ✅ LAPIS API healthy on port 8084
+- ✅ Data version: 1767793267 (Jan 7, 2026)
+- ✅ Multi-virus infrastructure validated (COVID + RSV-A running simultaneously)
+
+**Critical Bugfixes Deployed (Branch: `fix-multi-virus-docker-compose-bugs`):**
+
+**Bug 1: SILO Internal Port Mapping**
+- **Issue:** Template used `{{ srsilo_current_silo_port }}` for both external and internal ports
+- **Impact:** RSV-A LAPIS tried connecting to `wise-rsva-silo:8082`, but SILO listens on `8081` internally
+- **Fix:** Changed docker-compose.yml.j2 line 11 to hardcoded `:8081` and line 29 to `{{ srsilo_current_silo_port }}:8081`
+- **Why COVID worked:** External port 8081 matched internal port 8081 by accident
+- **Why RSV-A failed:** External port 8082 ≠ internal port 8081
+
+**Bug 2: Docker Compose Project Isolation**
+- **Issue:** `docker compose` commands lacked `-p {{ srsilo_virus }}` flag
+- **Impact:** Both viruses shared `config_default` network; starting one recreated the other's containers
+- **Fix:** Added `-p {{ srsilo_virus }}` to all docker compose commands in manage_api.yml (lines 17, 26, 52)
+- **Result:** Each virus now has isolated project (`covid_default`, `rsva_default` networks)
+
+**Deployment Challenges:**
+1. Initial deployment created orphaned containers without project names
+2. Subsequent deployments failed with "container name already in use" errors
+3. Required manual cleanup: `docker rm -f $(docker ps -a --filter "name=wise-rsva" -q)`
+4. After cleanup, both viruses started successfully with proper isolation
+
+**Current Status:**
+```
+COVID:  169M sequences | Ports 8081 (SILO), 8083 (LAPIS) | Healthy ✅
+RSV-A:  171K sequences | Ports 8082 (SILO), 8084 (LAPIS) | Healthy ✅
+```
+
 ### Future PR Deployment Considerations
 
 - **PR 4**: ✅ Zero downtime deployment - templates deploy to new paths, old containers keep running
-- **PR 5**: Will update task files to use virus-specific paths - may require coordination with timer
-- **PR 6**: Adds RSV-A (new virus) - requires enabling in `srsilo_enabled_viruses`
-- **PR 7**: Changes playbook invocation pattern - update cron/systemd timers
+- **PR 5**: ✅ Deployed successfully - full pipeline migration to virus-specific paths complete
+- **PR 6**: ✅ RSV-A deployed - bugfixes ensure proper multi-virus isolation
+- **PR 7**: Multi-virus wrapper playbook - will simplify running all viruses sequentially
 
 ## Future Enhancements (Post-Epic)
 
