@@ -44,6 +44,10 @@ ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini --beco
 # Or update a single virus
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini -e "srsilo_virus=rsva"
 
+# Test with reduced resources (8GB RAM)
+ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini \
+  -e "@playbooks/srsilo/vars/test_vars.yml"
+
 # Setup daily automated runs at 2 AM
 ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
 
