@@ -1,17 +1,32 @@
 ---
 # Test variables for srSILO update pipeline
 # These override group_vars/srsilo/main.yml for safe testing with reduced resources
-# Usage: ansible-playbook update-pipeline.yml -i inventory.ini -e "@playbooks/srsilo/vars/test_vars.yml"
+#
+# Usage (single virus):
+#   ansible-playbook update-pipeline.yml -e "srsilo_virus=covid" -e "@playbooks/srsilo/vars/test_vars.yml"
+#
+# Usage (all viruses):
+#   ansible-playbook update-all-viruses.yml -e "@playbooks/srsilo/vars/test_vars.yml"
 
-# Processing configuration - Test environment (8GB RAM)
-srsilo_chunk_size: 30000            # Reduced for 8GB RAM test environment
-srsilo_docker_memory_limit: 7g      # 90% of 8GB RAM
+# Enabled viruses for testing (can be overridden to test single virus)
+srsilo_enabled_viruses:
+  - covid
+  - rsva
 
-# Fetch configuration - Constrained for testing
-srsilo_fetch_days: 45               # Fetch only 30 days instead of 90
-srsilo_fetch_max_reads: 5000000     # Limit to 5M reads instead of 172.5M
+# Per-virus configuration overrides for test environment (8GB RAM)
+srsilo_virus_config:
+  covid:
+    fetch_days: 45                  # Fetch only 45 days instead of 90
+    fetch_max_reads: 5000000        # Limit to 5M reads instead of 172.5M
+    chunk_size: 30000               # Reduced for 8GB RAM test environment
+    docker_memory_limit: 7g         # 90% of 8GB RAM
+  rsva:
+    fetch_days: 45                  # Fetch only 45 days instead of 90
+    fetch_max_reads: 2000000        # Limit to 2M reads instead of 50M
+    chunk_size: 30000               # Reduced for 8GB RAM test environment
+    docker_memory_limit: 7g         # 90% of 8GB RAM
 
-# API configuration (same as production)
+# Shared configuration (same as production)
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 
 # Retention policy - More aggressive for testing

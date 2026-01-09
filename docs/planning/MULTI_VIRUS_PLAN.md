@@ -424,7 +424,6 @@ srsilo_virus_config:
 2. ✅ Replaced hardcoded ports with virus-specific ports
 3. ✅ Added container names with virus identifiers (`wise-sarsCoV2-lapis`, etc.)
 4. ✅ Updated task files to deploy to virus-specific config directories
-5. **Note:** Systemd service/timer changes deferred to PR 7 (playbook orchestration)
 
 **Testing:**
 - ✅ Template rendering validated for COVID and RSV-A
@@ -476,22 +475,33 @@ srsilo_virus_config:
 
 ---
 
-### PR 7: Multi-Virus Playbook Support
+### PR 7: Multi-Virus Playbook Support ✅ COMPLETE
 **Scope:** Enable running pipelines for multiple viruses
 **Files:**
-- `playbooks/srsilo/update-pipeline.yml` (parameterize)
-- `playbooks/srsilo/update-all-viruses.yml` (new)
-- `playbooks/srsilo/vars/` (per-virus var files)
+- `playbooks/srsilo/update-all-viruses.yml` (implemented)
+- `playbooks/srsilo/_tasks/run-single-virus-pipeline.yml` (new, 341 lines)
+- `roles/srsilo/defaults/main.yml` (enabled rsva)
 
 **Changes:**
-1. Make `update-pipeline.yml` accept virus parameter
-2. Create wrapper playbook to run all enabled viruses
-3. Create per-virus variable override files
-4. Update timer to run all-viruses playbook (or separate timers)
+1. ✅ `update-pipeline.yml` accepts virus parameter via `-e "srsilo_virus=rsva"`
+2. ✅ Created wrapper playbook to run all enabled viruses using `include_tasks` loop
+3. ✅ Virus-specific configuration loaded from `srsilo_virus_config` in group_vars
+4. ✅ Systemd timer updated to run all enabled viruses via `setup-timer.yml`
 
-**Testing:** Run full pipeline for both COVID and RSV-A
+**Critical Fix (Jan 9, 2026):**
+- **Problem:** Initial implementation used `import_playbook` with `vars:`, which Ansible doesn't support
+- **Symptom:** Both iterations processed COVID; output showed `'Organism: covid'` for both runs
+- **Solution:** Rewrote to use `include_tasks` with loop pattern (Option C from design)
+- **Implementation:** Created `_tasks/run-single-virus-pipeline.yml` that properly sets virus context
 
-**Estimated effort:** Medium (4-6 hours)
+**Testing:** ✅ Run full pipeline for both COVID and RSV-A
+- ✅ Verified correct organism parameters passed to Rust tools
+- ✅ Each virus queries correct API endpoints
+- ✅ Sequential processing with proper variable isolation
+
+**Actual effort:** Medium (4-6 hours)
+
+**Branch:** `172-pr-7-multi-virus-playbook-support`
 
 ---
 
@@ -585,152 +595,53 @@ srsilo-update.timer    →  triggers daily
 3. Stagger schedules (e.g., 30-60 min apart) to avoid memory contention
 4. Update monitoring to track per-virus timers
 
-### 2. Playbook Strategy
+### 2. Playbook Architecture (Implemented)
 
-With 7 viruses, the playbook structure matters for maintainability:
+#### How the Three Playbook Files Work Together
 
-#### Option A: Parameterized Single Playbook
-```yaml
-# Run with: ansible-playbook update-pipeline.yml -e "srsilo_virus=rsva"
-- hosts: srsilo
-  vars:
-    srsilo_virus: "{{ target_virus | default('covid') }}"
+```
+update-all-viruses.yml          ← Entry point for ALL viruses
+        │
+        │ loops over srsilo_enabled_viruses (covid, rsva, ...)
+        │
+        ▼
+_tasks/run-single-virus-pipeline.yml   ← Sets virus context & runs full pipeline
+        │
+        │ includes role tasks (prerequisites, check_new_data, fetch_data, etc.)
+        │
+        ▼
+   roles/srsilo/tasks/*.yml    ← Individual pipeline phases
+
+
+update-pipeline.yml             ← Entry point for SINGLE virus (legacy/debug)
+        │
+        │ uses srsilo_virus variable directly
+        │
+        ▼
+   roles/srsilo/tasks/*.yml    ← Individual pipeline phases
 ```
 
-| Pros | Cons |
-|------|------|
-| Single playbook to maintain | Must pass variable each time |
-| DRY - no duplication | Easy to forget/mistype virus name |
-| Easy to add new viruses | |
+| File | Purpose | Usage |
+|------|---------|-------|
+| `update-all-viruses.yml` | Run pipeline for **all enabled viruses** sequentially | `ansible-playbook update-all-viruses.yml` |
+| `_tasks/run-single-virus-pipeline.yml` | **Internal** task file that sets virus context and runs all phases | Called via `include_tasks` (never run directly) |
+| `update-pipeline.yml` | Run pipeline for a **single virus** | `ansible-playbook update-pipeline.yml -e "srsilo_virus=rsva"` |
 
-#### Option B: Per-Virus Playbooks
-```
-playbooks/srsilo/update-pipeline-covid.yml
-playbooks/srsilo/update-pipeline-rsva.yml
-playbooks/srsilo/update-pipeline-rsvb.yml
-... (7 playbooks)
-```
+#### Key Design Points
 
-| Pros | Cons |
-|------|------|
-| Explicit, no variables needed | 7 files with mostly identical content |
-| Tab-completion friendly | Changes must be made in all files |
-| Clear what's being run | Adding virus = adding file |
-
-#### Option C: Loop Wrapper + Parameterized Core (Recommended)
-
-| Pros | Cons |
-|------|------|
-| Single core playbook (DRY) | Slightly more complex structure |
-| Easy to run all or single virus | |
-| Per-virus vars in separate files | |
-| Clean separation of concerns | |
-
-**Decision: Option C** - Clean, maintainable, scales to 7+ viruses
-
----
-
-### Playbook Architecture (Option C - Detailed)
+1. **`_tasks/` prefix** indicates internal/private files not meant to be run directly
+2. **`include_tasks` with loop** properly isolates variables per virus iteration
+3. **`import_playbook` with `vars:` does NOT work** in Ansible - this was a critical bug we fixed
 
 #### Directory Structure
 ```
 playbooks/srsilo/
-├── update-pipeline.yml              # Core pipeline logic (parameterized)
-├── update-all-viruses.yml           # Entry point: loops over enabled viruses
-├── setup.yml                        # One-time setup (existing)
-├── setup-timer.yml                  # Timer setup (existing, update for multi-virus)
-│
-├── _tasks/                          # Reusable task includes (private, prefixed with _)
-│   └── run-single-virus-pipeline.yml
-│
+├── update-pipeline.yml              # Single virus entry point
+├── update-all-viruses.yml           # Multi-virus entry point
+├── _tasks/                          # Internal task includes
+│   └── run-single-virus-pipeline.yml  # Full pipeline for one virus (341 lines)
 └── vars/
-    ├── common.yml                   # Shared settings across all viruses
-    ├── covid.yml                    # COVID-specific overrides
-    ├── rsva.yml                     # RSV-A specific overrides
-    ├── rsvb.yml                     # RSV-B specific overrides
-    ├── flu_h1.yml                   # Flu H1 specific overrides
-    ├── flu_n1.yml                   # Flu N1 specific overrides
-    ├── flu_h3.yml                   # Flu H3 specific overrides
-    └── flu_n2.yml                   # Flu N2 specific overrides
-```
-
-#### Entry Point: `update-all-viruses.yml`
-```yaml
----
-# Entry point for updating all enabled viruses sequentially
-# Usage: ansible-playbook playbooks/srsilo/update-all-viruses.yml
-#
-# To run a single virus instead:
-#   ansible-playbook playbooks/srsilo/update-pipeline.yml -e "srsilo_virus=rsva"
-
-- name: srSILO Multi-Virus Update Pipeline
-  hosts: srsilo
-  gather_facts: yes
-
-  vars_files:
-    - vars/common.yml
-
-  pre_tasks:
-    - name: Display enabled viruses
-      debug:
-        msg: "Will process {{ srsilo_enabled_viruses | length }} virus(es): {{ srsilo_enabled_viruses | join(', ') }}"
-
-    - name: Validate enabled viruses exist in registry
-      assert:
-        that:
-          - item in srsilo_viruses
-        fail_msg: "Unknown virus '{{ item }}' - not in srsilo_viruses registry"
-      loop: "{{ srsilo_enabled_viruses }}"
-
-  tasks:
-    - name: Process each enabled virus sequentially
-      include_tasks: _tasks/run-single-virus-pipeline.yml
-      loop: "{{ srsilo_enabled_viruses }}"
-      loop_control:
-        loop_var: current_virus
-        label: "{{ current_virus }}"
-
-  post_tasks:
-    - name: Summary of all virus updates
-      debug:
-        msg: "Completed processing {{ srsilo_enabled_viruses | length }} virus(es)"
-```
-
-#### Task Include: `_tasks/run-single-virus-pipeline.yml`
-```yaml
----
-# Runs the pipeline for a single virus
-# Called from update-all-viruses.yml with current_virus set
-
-- name: Set virus context and merge config
-  set_fact:
-    srsilo_virus: "{{ current_virus }}"
-    srsilo_fetch_days: "{{ srsilo_virus_config[current_virus].fetch_days | default(90) }}"
-    srsilo_lapis_port: "{{ srsilo_viruses[current_virus].lapis_port }}"
-    srsilo_organism: "{{ srsilo_viruses[current_virus].organism }}"
-    srsilo_virus_path: "{{ srsilo_base_path }}/{{ current_virus }}"
-    # ... other virus-specific paths and config
-
-- name: Run the core pipeline for this virus
-  include_role:
-    name: srsilo
-    tasks_from: "{{ pipeline_task }}"
-  loop: [prerequisites, check_new_data, cleanup_indexes, fetch_data, sort_and_merge, silo_preprocessing, finalize_processing]
-  loop_control:
-    loop_var: pipeline_task
-```
-
-#### Single Virus Entry: `update-pipeline.yml`
-```yaml
----
-# Usage: ansible-playbook playbooks/srsilo/update-pipeline.yml -e "srsilo_virus=rsva"
-- name: srSILO Single Virus Update Pipeline
-  hosts: srsilo
-  vars_files: [vars/common.yml]
-  tasks:
-    - include_tasks: _tasks/run-single-virus-pipeline.yml
-      vars:
-        current_virus: "{{ srsilo_virus }}"
+    └── common.yml                   # Shared settings
 ```
 
 #### Usage Examples
@@ -800,31 +711,6 @@ defaults/main.yml → group_vars/srsilo/main.yml → playbooks/vars/*.yml → CL
 │   └── ...
 ```
 
-#### Migration Steps (PR 3)
-```bash
-# 1. Stop current pipeline
-systemctl stop srsilo-update.timer
-
-# 2. Create new directory structure
-mkdir -p /opt/srsilo/covid/{input,output,config,sorted_chunks,tmp}
-
-# 3. Move existing data
-mv /opt/srsilo/input/* /opt/srsilo/covid/input/
-mv /opt/srsilo/output/* /opt/srsilo/covid/output/
-mv /opt/srsilo/sorted.ndjson.zst /opt/srsilo/covid/
-mv /opt/srsilo/.last_update /opt/srsilo/covid/
-mv /opt/srsilo/.next_timestamp /opt/srsilo/covid/
-
-# 4. Deploy new configs
-ansible-playbook playbooks/srsilo/update-configs.yml
-
-# 5. Verify COVID still works
-ansible-playbook playbooks/srsilo/update-pipeline.yml -e "srsilo_virus=covid" --check
-
-# 6. Restart timer
-systemctl start srsilo-update.timer
-```
-
 #### Backward Compatibility Period
 - Keep symlinks from old paths to new paths during transition
 - Remove symlinks after 2 successful pipeline runs
@@ -839,22 +725,22 @@ Week 1: Foundation ✅ COMPLETE
 └── PR 3: Config reorganization (2-3h) ✅
     └── Milestone: COVID works with new structure ✅
 
-Week 2: Infrastructure (IN PROGRESS - PR 4 ✅)
-├── PR 4: Parameterize templates (3-4h) ✅ Ready for merge
-└── PR 5: Update all tasks (4-6h) ← Next
-    └── Milestone: Multi-virus infrastructure complete
+Week 2: Infrastructure ✅ COMPLETE
+├── PR 4: Parameterize templates (3-4h) ✅ Merged
+└── PR 5: Update all tasks (4-6h) ✅ Deployed
+    └── Milestone: Multi-virus infrastructure complete ✅
 
-Week 2-3: RSV-A
-└── PR 6: RSV-A configs (4-6h)
-    └── Milestone: RSV-A pipeline works end-to-end ✓
+Week 2-3: RSV-A ✅ COMPLETE
+└── PR 6: RSV-A configs (4-6h) ✅ Deployed to production
+    └── Milestone: RSV-A pipeline works end-to-end ✅
 
-Week 3: Integration
-└── PR 7: Multi-virus playbooks (4-6h)
-    └── Milestone: Can run all viruses with single command ✓
+Week 3: Integration ✅ COMPLETE
+└── PR 7: Multi-virus playbooks (4-6h) ✅ Implemented (Jan 9, 2026)
+    └── Milestone: Can run all viruses with single command ✅
 
-Week 3-4: Polish
-└── PR 8: Documentation (3-4h)
-    └── Milestone: Epic complete, ready for production ✓
+Week 4: Polish (IN PROGRESS)
+└── PR 8: Documentation (3-4h) ← Next
+    └── Milestone: Epic complete, ready for production
 ```
 
 ### Dependencies Graph
@@ -865,13 +751,14 @@ PR 1 (Rust tools) ────────────────────�
 PR 2 (Variables) ───┬─── PR 4 (Templates) ───┐     │
           ✅         │            ✅           │     │
 PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼─── PR 7 (Playbooks) ─── PR 8 (Docs)
-          ✅         │         ← Next         │
+          ✅         │            ✅           │            ✅                ← Next
                     └─── PR 6 (RSV-A) ────────┘
+                               ✅
 ```
 
-**Critical path**: PR 2 ✅ → PR 4 ✅ → PR 5 (next) → PR 7
+**Critical path**: PR 2 ✅ → PR 4 ✅ → PR 5 ✅ → PR 7 ✅ → PR 8 (final)
 
-**Status**: Foundation complete, PR 4 ready for merge, PR 5 is next on critical path
+**Status**: All implementation PRs complete, PR 8 (documentation) is final step
 
 ---
 
@@ -895,14 +782,14 @@ PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼
 | PR 1: Rust tools | Small | None | 1 | ✅ Merged |
 | PR 2: Variables | Small | None | 1 | ✅ Merged |
 | PR 3: Config reorg | Small | PR 2 | 1 | ✅ Merged |
-| PR 4: Templates | Medium | PR 2, PR 3 | 2 | ✅ Ready for merge |
-| PR 5: Tasks | Medium | PR 2, PR 3, PR 4 | 2 | ← Next |
-| PR 6: RSV-A configs | Medium | PR 3, reference genome | 2-3 | Pending |
-| PR 7: Playbooks | Medium | PR 4, PR 5 | 3 | Pending |
-| PR 8: Documentation | Medium | All PRs | 3-4 | Pending |
+| PR 4: Templates | Medium | PR 2, PR 3 | 2 | ✅ Merged |
+| PR 5: Tasks | Medium | PR 2, PR 3, PR 4 | 2 | ✅ Deployed |
+| PR 6: RSV-A configs | Medium | PR 3, reference genome | 2-3 | ✅ Deployed (Jan 7) |
+| PR 7: Playbooks | Medium | PR 4, PR 5 | 3 | ✅ Implemented (Jan 9) |
+| PR 8: Documentation | Medium | All PRs | 4 | ← Next |
 
-**Total estimated timeline: 3-4 weeks**
-**Progress: Week 2 - 50% complete (4/8 PRs done)**
+**Total timeline: 4 weeks (completed on schedule)**
+**Progress: Week 4 - 87.5% complete (7/8 PRs done)**
 
 ---
 

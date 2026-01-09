@@ -70,10 +70,14 @@ Generalize the `srsilo` Ansible role to support multiple viruses beyond SARS-CoV
   - **Production deployment:** ✅ Complete (Jan 7, 2026)
   - **Bugfixes:** Critical Docker Compose fixes deployed (see below)
 
-- [ ] **PR 7: Multi-Virus Playbook Support** (Medium, 4-6h)
+- [x] **PR 7: Multi-Virus Playbook Support** (Medium, 4-6h) ✅ Complete
   - Create wrapper playbook to run all enabled viruses
   - Parameterize `update-pipeline.yml` to accept virus parameter
   - Dependencies: PR 4, PR 5
+  - **Branch:** `172-pr-7-multi-virus-playbook-support`
+  - **Status:** ✅ Implemented and tested (Jan 9, 2026)
+  - **Key Fix:** Replaced broken `import_playbook` with `include_tasks` loop pattern
+  - **Testing:** ✅ Verified both COVID and RSV-A process correctly with proper organism parameters
 
 - [ ] **PR 8: Documentation Update** (Medium, 3-4h)
   - Update ARCHITECTURE.md and deployment docs
@@ -110,7 +114,7 @@ PR 3 (Configs) ─────┴─── PR 5 (Tasks) ───────┼
 - [x] RSV-A pipeline runs end-to-end ✅
 - [x] All enabled viruses run sequentially without interference ✅
 - [x] Adding a new virus requires only config files (no code changes) ✅
-- [ ] Single command updates all enabled viruses (PR 7)
+- [x] Single command updates all enabled viruses ✅
 
 ## Timeline
 
@@ -203,12 +207,62 @@ COVID:  169M sequences | Ports 8081 (SILO), 8083 (LAPIS) | Healthy ✅
 RSV-A:  171K sequences | Ports 8082 (SILO), 8084 (LAPIS) | Healthy ✅
 ```
 
+### PR 7 Implementation Details (Jan 9, 2026) ✅
+
+**Critical Bug Fixed:**
+The initial implementation of `update-all-viruses.yml` used `import_playbook` with `vars:`, which is not supported by Ansible. This caused both iterations to process COVID instead of COVID then RSV-A.
+
+**Evidence of Bug:**
+```yaml
+# Original (broken):
+- import_playbook: update-pipeline.yml
+  vars:
+    srsilo_virus: rsva  # This doesn't actually set the variable!
+  when: "'rsva' in hostvars[groups['srsilo'][0]].srsilo_enabled_viruses"
+```
+
+Output showed: `'Organism: covid'` in both pipeline runs, confirming the variable wasn't being passed.
+
+**Solution Implemented:**
+Rewrote to use `include_tasks` with a loop pattern (Option C from MULTI_VIRUS_PLAN.md):
+
+```yaml
+# New (working):
+tasks:
+  - name: Process each enabled virus sequentially
+    include_tasks: _tasks/run-single-virus-pipeline.yml
+    loop: "{{ srsilo_enabled_viruses }}"
+    loop_control:
+      loop_var: current_virus
+```
+
+**Files Changed:**
+1. `playbooks/srsilo/update-all-viruses.yml` - Main entry point using include_tasks loop
+2. `playbooks/srsilo/_tasks/run-single-virus-pipeline.yml` - Complete pipeline for single virus (341 lines)
+3. `roles/srsilo/defaults/main.yml` - Enabled rsva in srsilo_enabled_viruses
+
+**Testing Results:**
+- ✅ Both COVID and RSV-A validated in enabled viruses list
+- ✅ Correct sequential iteration over each virus
+- ✅ Each virus receives proper organism-specific variables
+- ✅ Rust tools get correct `--organism` parameters (covid/rsva)
+- ✅ Each virus queries correct API endpoints
+
+**Usage:**
+```bash
+# Update all enabled viruses
+ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini
+
+# Update single virus (still works)
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini -e "srsilo_virus=rsva"
+```
+
 ### Future PR Deployment Considerations
 
 - **PR 4**: ✅ Zero downtime deployment - templates deploy to new paths, old containers keep running
 - **PR 5**: ✅ Deployed successfully - full pipeline migration to virus-specific paths complete
 - **PR 6**: ✅ RSV-A deployed - bugfixes ensure proper multi-virus isolation
-- **PR 7**: Multi-virus wrapper playbook - will simplify running all viruses sequentially
+- **PR 7**: ✅ Multi-virus wrapper playbook - working correctly with proper variable passing
 
 ## Future Enhancements (Post-Epic)
 
