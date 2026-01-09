@@ -2,12 +2,22 @@
 proxy_http_version 1.1;
 
 # Upstream definitions for backend services
-upstream lapis-wasap {
-    server 127.0.0.1:{{ nginx_lapis_port }};
+# LAPIS instances per virus
+upstream lapis-covid {
+    server 127.0.0.1:{{ nginx_lapis_covid_port }};
 }
 
-upstream silo-wasap {
-    server 127.0.0.1:{{ nginx_silo_port }};
+upstream lapis-rsva {
+    server 127.0.0.1:{{ nginx_lapis_rsva_port }};
+}
+
+# SILO instances per virus
+upstream silo-covid {
+    server 127.0.0.1:{{ nginx_silo_covid_port }};
+}
+
+upstream silo-rsva {
+    server 127.0.0.1:{{ nginx_silo_rsva_port }};
 }
 
 # Default HTTP to HTTPS redirect

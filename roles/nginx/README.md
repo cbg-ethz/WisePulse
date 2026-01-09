@@ -2,11 +2,46 @@
 
 This role installs and configures Nginx as a reverse proxy for the WisePulse application suite (Loculus, Lapis, Silo, Wasap-Scout).
 
+## Multi-Virus Path-Based Routing
+
+LAPIS and SILO support multiple virus instances via path-based routing:
+
+| URL Pattern | Backend | Port |
+|-------------|---------|------|
+| `lapis.{domain}/covid/*` | LAPIS COVID | 8083 |
+| `lapis.{domain}/rsva/*` | LAPIS RSVA | 8084 |
+| `silo.{domain}/covid/*` | SILO COVID | 8081 |
+| `silo.{domain}/rsva/*` | SILO RSVA | 8082 |
+
+### Path Stripping
+
+The `/covid` and `/rsva` prefixes are stripped before proxying to backends. For example:
+- `https://lapis.wasap.genspectrum.org/covid/sample/info` → backend receives `/sample/info`
+
+This is achieved using nginx rewrite rules:
+```nginx
+location /covid {
+    rewrite ^/covid(.*)$ $1 break;
+    proxy_pass http://127.0.0.1:8083;
+}
+```
+
+### Backward Compatibility
+
+For backward compatibility with existing API consumers, requests to root paths are proxied directly to the COVID backend (not redirected). This preserves CORS preflight behavior for cross-origin requests:
+- `https://lapis.wasap.genspectrum.org/sample/info` → proxies to COVID LAPIS backend
+
+Using proxy instead of redirect avoids breaking CORS preflight (OPTIONS) requests, which don't follow redirects properly.
+
 ## Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `nginx_domain_name` | `wasap.genspectrum.org` | The base domain name for the deployment. Subdomains (db., lapis., silo.) are derived from this. |
+| `nginx_lapis_covid_port` | `8083` | Port for COVID LAPIS instance |
+| `nginx_lapis_rsva_port` | `8084` | Port for RSVA LAPIS instance |
+| `nginx_silo_covid_port` | `8081` | Port for COVID SILO instance |
+| `nginx_silo_rsva_port` | `8082` | Port for RSVA SILO instance |
 | `nginx_ssl_certificate_path` | `/etc/letsencrypt/live/{{ nginx_domain_name }}/fullchain.pem` | Path to the SSL certificate. |
 | `nginx_ssl_certificate_key_path` | `/etc/letsencrypt/live/{{ nginx_domain_name }}/privkey.pem` | Path to the SSL private key. |
 | `nginx_dhparam_path` | `/etc/letsencrypt/ssl-dhparams.pem` | Path to the Diffie-Hellman parameters file. |
@@ -47,3 +82,59 @@ ansible-playbook -i inventory.ini playbooks/setup_nginx.yml -e "generate_self_si
 - `templates/`: Nginx configuration templates (sites, snippets, conf.d).
 - `handlers/`: Service reload/restart handlers.
 - `defaults/`: Default variable definitions.
+
+## Testing
+
+### Local Testing Considerations
+
+When testing nginx configurations locally (e.g., on a VM or development machine), be aware of these complexities:
+
+1. **DNS Resolution**: Public domain names (e.g., `lapis.wasap.genspectrum.org`) resolve to production IPs, not your local machine. Use `/etc/hosts` overrides or test via `127.0.0.1` with appropriate `Host` headers.
+
+2. **SSL/SNI**: Self-signed certificates in staging may not match the expected hostnames. When multiple server blocks listen on port 443, nginx uses SNI to select the correct block. Mismatched certificates can cause requests to hit the wrong server block.
+
+3. **Server Block Priority**: If testing via `127.0.0.1`, ensure no other server block (e.g., monitoring) listens specifically on `127.0.0.1:443`, as nginx prefers more specific listeners.
+
+### Verifying Path-Based Routing
+
+To test that path stripping works correctly without SSL complications:
+
+```bash
+# Create a test server on an unused port
+cat > /tmp/test.conf << 'EOF'
+server {
+    listen 9999;
+    location /covid {
+        rewrite ^/covid(.*)$ $1 break;
+        proxy_pass http://127.0.0.1:8083;
+    }
+}
+EOF
+
+sudo cp /tmp/test.conf /etc/nginx/sites-available/test
+sudo ln -sf /etc/nginx/sites-available/test /etc/nginx/sites-enabled/test
+sudo nginx -t && sudo systemctl reload nginx
+
+# Test - should return valid JSON from LAPIS backend
+curl -s http://127.0.0.1:9999/covid/sample/info | head -3
+
+# Cleanup
+sudo rm /etc/nginx/sites-enabled/test
+sudo systemctl reload nginx
+```
+
+### Production Verification
+
+After deploying to the actual production/staging server:
+
+```bash
+# Test COVID endpoint (new path)
+curl -s https://lapis.wasap.genspectrum.org/covid/sample/info | head -3
+
+# Test RSVA endpoint (new path)
+curl -s https://lapis.wasap.genspectrum.org/rsva/sample/info | head -3
+
+# Test backward compatibility (proxied to COVID, not redirected)
+curl -s https://lapis.wasap.genspectrum.org/sample/info | head -3
+# Expected: HTTP/2 200, JSON response from COVID LAPIS
+```
