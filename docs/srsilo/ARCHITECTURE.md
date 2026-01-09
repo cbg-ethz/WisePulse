@@ -59,6 +59,10 @@ ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini
 # Update single virus (debug)
 ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini -e "srsilo_virus=rsva"
 
+# Test with reduced resources (8GB RAM)
+ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini \
+  -e "@playbooks/srsilo/vars/test_vars.yml"
+
 # Setup systemd timer (daily at 2 AM)
 ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
 ```
