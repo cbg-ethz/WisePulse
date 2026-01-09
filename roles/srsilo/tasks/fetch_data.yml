@@ -16,8 +16,8 @@
   assert:
     that:
       - fetch_start_date is defined and fetch_start_date | length > 0
-      - srsilo_fetch_days is defined and srsilo_fetch_days > 0
-      - srsilo_fetch_max_reads is defined and srsilo_fetch_max_reads > 0
+      - srsilo_fetch_days is defined and srsilo_fetch_days | int > 0
+      - srsilo_fetch_max_reads is defined and srsilo_fetch_max_reads | int > 0
     fail_msg: "Required variables not defined: fetch_start_date, srsilo_fetch_days, srsilo_fetch_max_reads"
 
 - name: Display fetch configuration

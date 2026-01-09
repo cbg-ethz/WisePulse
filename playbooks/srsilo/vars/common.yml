@@ -1,0 +1,10 @@
+---
+# Common variables shared across all srsilo viruses
+# Per-virus config (fetch_days, memory, etc.) is in group_vars/srsilo/main.yml
+
+# API endpoint (shared across all viruses)
+srsilo_api_base_url: https://api.db.wasap.genspectrum.org
+
+# Retention policy (shared across all viruses)
+srsilo_retention_days: 7
+srsilo_retention_min_keep: 2

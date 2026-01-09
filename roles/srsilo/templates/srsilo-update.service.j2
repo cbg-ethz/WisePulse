@@ -10,9 +10,9 @@ Type=oneshot
 User=root
 WorkingDirectory={{ wisepulse_repo_path }}
 
-# Run the update pipeline with production configuration
+# Run the multi-virus update pipeline (processes all enabled viruses)
 ExecStart=/usr/bin/ansible-playbook \
-    {{ wisepulse_repo_path }}/playbooks/srsilo/update-pipeline.yml \
+    {{ wisepulse_repo_path }}/playbooks/srsilo/update-all-viruses.yml \
     -i {{ wisepulse_repo_path }}/inventory.ini
 
 # Logging
