@@ -1,0 +1,42 @@
+---
+# Entry point for updating all enabled viruses sequentially
+# Usage: ansible-playbook playbooks/srsilo/update-all-viruses.yml
+#
+# To run a single virus instead:
+#   ansible-playbook playbooks/srsilo/update-pipeline.yml -e "srsilo_virus=rsva"
+
+- name: srSILO Multi-Virus Update Pipeline
+  hosts: srsilo
+  gather_facts: yes
+
+  vars_files:
+    - vars/common.yml
+
+  pre_tasks:
+    # Load role defaults to access srsilo_viruses registry
+    - name: Load srsilo role defaults
+      include_vars:
+        file: "{{ playbook_dir }}/../../roles/srsilo/defaults/main.yml"
+
+    - name: Display enabled viruses
+      debug:
+        msg: "Will process {{ srsilo_enabled_viruses | length }} virus(es): {{ srsilo_enabled_viruses | join(', ') }}"
+
+    - name: Validate enabled viruses exist in registry
+      assert:
+        that: item in srsilo_viruses
+        fail_msg: "Unknown virus '{{ item }}' - not in srsilo_viruses registry"
+      loop: "{{ srsilo_enabled_viruses }}"
+
+  tasks:
+    - name: Process each enabled virus sequentially
+      include_tasks: _tasks/run-single-virus-pipeline.yml
+      loop: "{{ srsilo_enabled_viruses }}"
+      loop_control:
+        loop_var: current_virus
+        label: "{{ current_virus }}"
+
+  post_tasks:
+    - name: Summary of all virus updates
+      debug:
+        msg: "Completed processing {{ srsilo_enabled_viruses | length }} virus(es)"

@@ -38,38 +38,6 @@ srsilo_virus_config:
     docker_memory_limit: 50g
 
 # =============================================================================
-# API Configuration (Global Defaults)
-# =============================================================================
-# NOTE: These serve as fallback defaults until PR7 implements per-virus
-# config merging. Per-virus overrides in srsilo_virus_config are not yet
-# automatically applied - that requires the set_fact merging logic from PR7.
-
-srsilo_api_base_url: https://api.db.wasap.genspectrum.org
-srsilo_fetch_days: 45
-srsilo_fetch_max_reads: 172500000   # 172.5M reads for production
-
-# =============================================================================
-# Retention Policy
-# =============================================================================
-
-srsilo_retention_days: 7
-srsilo_retention_min_keep: 2
-
-# =============================================================================
-# Processing Configuration (Global Defaults)
-# =============================================================================
-# NOTE: These serve as fallback defaults until PR7 implements per-virus
-# config merging. Per-virus overrides in srsilo_virus_config are not yet
-# automatically applied - that requires the set_fact merging logic from PR7.
-# TODO PR7: Remove these once virus-specific config merging is implemented.
-
-# Chunk size for splitting reads - 377GB RAM server
-srsilo_chunk_size: 1000000
-
-# Docker memory limits - 90% of 377GB RAM
-srsilo_docker_memory_limit: 340g
-
-# =============================================================================
 # Repository Path
 # =============================================================================
 

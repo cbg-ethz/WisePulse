@@ -1,0 +1,341 @@
+---
+# Runs the pipeline for a single virus
+# Called from update-all-viruses.yml with current_virus set
+
+- name: "======== Processing virus: {{ current_virus }} ========"
+  debug:
+    msg:
+      - "Virus: {{ current_virus }}"
+      - "Organism: {{ srsilo_viruses[current_virus].organism }}"
+      - "LAPIS Port: {{ srsilo_viruses[current_virus].lapis_port }}"
+      - "SILO Port: {{ srsilo_viruses[current_virus].silo_port }}"
+
+- name: "Set virus-specific variables for {{ current_virus }}"
+  set_fact:
+    srsilo_virus: "{{ current_virus }}"
+    srsilo_fetch_days: "{{ srsilo_virus_config[current_virus].fetch_days }}"
+    srsilo_fetch_max_reads: "{{ srsilo_virus_config[current_virus].fetch_max_reads }}"
+    srsilo_chunk_size: "{{ srsilo_virus_config[current_virus].chunk_size }}"
+    srsilo_docker_memory_limit: "{{ srsilo_virus_config[current_virus].docker_memory_limit }}"
+    srsilo_virus_path: "{{ srsilo_base_path }}/{{ current_virus }}"
+    srsilo_virus_input: "{{ srsilo_base_path }}/{{ current_virus }}/input"
+    srsilo_virus_output: "{{ srsilo_base_path }}/{{ current_virus }}/output"
+    srsilo_virus_sorted_chunks: "{{ srsilo_base_path }}/{{ current_virus }}/sorted_chunks"
+    srsilo_virus_tmp: "{{ srsilo_base_path }}/{{ current_virus }}/tmp"
+    srsilo_virus_config_path: "{{ srsilo_base_path }}/{{ current_virus }}/config"
+    srsilo_virus_last_update: "{{ srsilo_base_path }}/{{ current_virus }}/.last_update"
+    srsilo_virus_next_timestamp: "{{ srsilo_base_path }}/{{ current_virus }}/.next_timestamp"
+    srsilo_virus_sorted_file: "{{ srsilo_base_path }}/{{ current_virus }}/sorted.ndjson.zst"
+    srsilo_current_virus: "{{ srsilo_viruses[current_virus] }}"
+    srsilo_current_organism: "{{ srsilo_viruses[current_virus].organism }}"
+    srsilo_current_instance_name: "{{ srsilo_viruses[current_virus].instance_name }}"
+    srsilo_current_lapis_port: "{{ srsilo_viruses[current_virus].lapis_port }}"
+    srsilo_current_silo_port: "{{ srsilo_viruses[current_virus].silo_port }}"
+
+- name: "Log pipeline start for {{ current_virus }}"
+  shell: |
+    systemd-cat -t srsilo-pipeline -p info <<EOF
+    Pipeline started for {{ current_virus }}
+    User: $(whoami)
+    Fetch days: {{ srsilo_fetch_days }}
+    Retention days: {{ srsilo_retention_days }}
+    EOF
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+
+- name: "Display pipeline configuration for {{ current_virus }}"
+  debug:
+    msg:
+      - "=== srSILO Update Pipeline ==="
+      - "Virus: {{ srsilo_virus }}"
+      - "Organism: {{ srsilo_current_organism }}"
+      - "Base path: {{ srsilo_base_path }}"
+      - "Virus path: {{ srsilo_virus_path }}"
+      - "API: {{ srsilo_api_base_url }}"
+      - "Fetch days: {{ srsilo_fetch_days }}"
+      - "Fetch max reads: {{ srsilo_fetch_max_reads }}"
+      - "Retention days: {{ srsilo_retention_days }}"
+
+# PHASE 1: Pre-flight Checks
+- name: "PHASE 1: Setup prerequisites for {{ current_virus }}"
+  include_role:
+    name: srsilo
+    tasks_from: prerequisites
+
+- name: "PHASE 1: Build Rust tools for {{ current_virus }}"
+  include_role:
+    name: srsilo
+    tasks_from: build_tools
+
+- name: "PHASE 1: Deploy configuration files for {{ current_virus }}"
+  include_role:
+    name: srsilo
+    tasks_from: deploy_configs
+
+- name: "PHASE 1: Pre-flight checks complete for {{ current_virus }}"
+  debug:
+    msg: "✓ Phase 1 complete - Prerequisites verified, tools built, and configs deployed"
+
+# PHASE 2: Check for New Data
+- name: "PHASE 2: Check for new data for {{ current_virus }}"
+  include_role:
+    name: srsilo
+    tasks_from: check_new_data
+
+# Exit gracefully if no new data
+- name: "PHASE 2: Handle no new data for {{ current_virus }}"
+  block:
+    - name: Display no new data message
+      debug:
+        msg:
+          - "=== Pipeline Complete for {{ current_virus }} ==="
+          - "No new data available - skipping remaining phases"
+          - "This is normal and saves resources"
+    
+    - name: Skip remaining phases
+      meta: end_host
+  when: not srsilo_has_new_data
+
+- name: "PHASE 2: New data detected for {{ current_virus }} - pipeline will continue"
+  debug:
+    msg:
+      - "=== New Data Detected for {{ current_virus }} ==="
+      - "✓ Phase 2 complete - New data available"
+      - "Proceeding to Phase 3: Cleanup old indexes"
+  when: srsilo_has_new_data
+
+# PHASE 3: Pre-processing Cleanup
+- name: "PHASE 3: Run retention policy for {{ current_virus }}"
+  include_role:
+    name: srsilo
+    tasks_from: cleanup_indexes
+  when: srsilo_has_new_data
+
+- name: "PHASE 3: Check for orphaned preprocessing indexes for {{ current_virus }}"
+  block:
+    - name: Check if preprocessing_in_progress marker exists
+      stat:
+        path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
+      register: preprocessing_marker
+
+    - name: Read orphaned index timestamp
+      slurp:
+        path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
+      register: orphaned_timestamp
+      when: preprocessing_marker.stat.exists
+
+    - name: Delete orphaned preprocessing index
+      file:
+        path: "{{ srsilo_virus_output }}/{{ orphaned_timestamp.content | b64decode | trim }}"
+        state: absent
+      become: yes
+      when:
+        - preprocessing_marker.stat.exists
+        - orphaned_timestamp.content is defined
+      register: orphan_deletion
+
+    - name: Remove preprocessing marker
+      file:
+        path: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
+        state: absent
+      become: yes
+      when: preprocessing_marker.stat.exists
+    
+    - name: Display orphan cleanup result
+      debug:
+        msg: "✓ Cleaned up orphaned preprocessing from previous failed run"
+      when: preprocessing_marker.stat.exists
+  when: srsilo_has_new_data
+
+- name: "PHASE 3: Clean old downloaded data for {{ current_virus }}"
+  block:
+    - name: Find old input files
+      find:
+        path: "{{ srsilo_virus_input }}"
+        patterns: "*.ndjson.zst"
+        age: "1d"
+      register: old_input_files
+    
+    - name: Remove old input files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_input_files.files }}"
+      become: yes
+      when: old_input_files.matched > 0
+    
+    - name: Display input cleanup result
+      debug:
+        msg: "✓ Removed {{ old_input_files.matched }} old input file(s)"
+      when: old_input_files.matched > 0
+  when: srsilo_has_new_data
+
+- name: "PHASE 3: Reset working directories for {{ current_virus }}"
+  block:
+    - name: Clean sorted chunks directory
+      file:
+        path: "{{ srsilo_virus_sorted_chunks }}"
+        state: absent
+      become: yes
+
+    - name: Recreate sorted chunks directory
+      file:
+        path: "{{ srsilo_virus_sorted_chunks }}"
+        state: directory
+        owner: "{{ srsilo_user }}"
+        group: "{{ srsilo_group }}"
+        mode: '0755'
+      become: yes
+
+    - name: Clean tmp directory
+      file:
+        path: "{{ srsilo_virus_tmp }}"
+        state: absent
+      become: yes
+
+    - name: Recreate tmp directory
+      file:
+        path: "{{ srsilo_virus_tmp }}"
+        state: directory
+        owner: "{{ srsilo_user }}"
+        group: "{{ srsilo_group }}"
+        mode: '0755'
+      become: yes
+  when: srsilo_has_new_data
+
+- name: "PHASE 3: Cleanup complete for {{ current_virus }}"
+  debug:
+    msg:
+      - "✓ Phase 3 complete - Cleanup finished"
+      - "Proceeding to Phase 4: Fetch data"
+  when: srsilo_has_new_data
+
+# PHASE 4: Fetch Data
+- name: "PHASE 4: Fetch data for {{ current_virus }}"
+  include_role:
+    name: srsilo
+    tasks_from: fetch_data
+  vars:
+    fetch_start_date: "{{ ansible_date_time.date }}"
+  when: srsilo_has_new_data
+
+- name: "PHASE 4: Fetch complete for {{ current_virus }}"
+  debug:
+    msg:
+      - "=== Phase 4 Complete ==="
+      - "✓ Data fetched successfully"
+      - "Proceeding to Phase 5: Prepare for processing"
+  when: srsilo_has_new_data
+
+# PHASE 5: Prepare for Processing
+- name: "PHASE 5: Create preprocessing marker for {{ current_virus }}"
+  block:
+    - name: Get current timestamp
+      set_fact:
+        preprocessing_timestamp: "{{ ansible_date_time.epoch }}"
+    
+    - name: Create preprocessing_in_progress marker
+      copy:
+        content: "{{ preprocessing_timestamp }}"
+        dest: "{{ srsilo_virus_output }}/.preprocessing_in_progress"
+        owner: "{{ srsilo_user }}"
+        group: "{{ srsilo_group }}"
+        mode: '0644'
+      become: yes
+    
+    - name: Display marker created
+      debug:
+        msg: "✓ Created preprocessing marker: {{ preprocessing_timestamp }}"
+  when: srsilo_has_new_data
+
+- name: "PHASE 5: Stop SILO API for {{ current_virus }}"
+  include_role:
+    name: srsilo
+    tasks_from: manage_api
+  vars:
+    api_action: stop
+  when: srsilo_has_new_data
+
+- name: "PHASE 5: Preparation complete for {{ current_virus }}"
+  debug:
+    msg:
+      - "✓ Phase 5 complete - Ready for processing"
+      - "API stopped, resources freed"
+      - "Preprocessing marker created"
+      - "Proceeding to Phase 6: Process data"
+  when: srsilo_has_new_data
+
+# PHASES 6-7: Process Data and Finalize (with Error Handling)
+- name: "PHASES 6-7: Process data for {{ current_virus }} with automatic rollback on failure"
+  block:
+    - name: "PHASE 6: Sort and merge reads for {{ current_virus }}"
+      include_role:
+        name: srsilo
+        tasks_from: sort_and_merge
+    
+    - name: "PHASE 6: Run SILO preprocessing for {{ current_virus }}"
+      include_role:
+        name: srsilo
+        tasks_from: silo_preprocessing
+    
+    - name: "PHASE 6: Processing complete for {{ current_virus }}"
+      debug:
+        msg:
+          - "=== Phase 6 Complete ==="
+          - "✓ Data processed successfully"
+          - "✓ Sorted and merged reads"
+          - "✓ SILO preprocessing finished"
+    
+    - name: "PHASE 7: Finalize processing and start API for {{ current_virus }}"
+      include_role:
+        name: srsilo
+        tasks_from: finalize_processing
+    
+    - name: "PHASE 7: Pipeline complete for {{ current_virus }}"
+      debug:
+        msg:
+          - "=== Full Pipeline Complete for {{ current_virus }} ==="
+          - "✓ All phases executed successfully"
+          - "✓ API running with latest index"
+          - "✓ Ready for queries"
+  
+  rescue:
+    - name: "RESCUE: Handle processing failure for {{ current_virus }}"
+      debug:
+        msg:
+          - "=== Processing Failed for {{ current_virus }} - Initiating Rollback ==="
+          - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
+    
+    - name: "RESCUE: Run cleanup and rollback for {{ current_virus }}"
+      include_role:
+        name: srsilo
+        tasks_from: finalize_processing
+      vars:
+        force_rollback: true
+    
+    - name: "RESCUE: Log failure to journal for {{ current_virus }}"
+      shell: 'echo "Pipeline FAILED for {{ current_virus }} during processing - rollback complete" | systemd-cat -t srsilo-pipeline -p err'
+      become: yes
+      become_user: "{{ srsilo_user }}"
+      changed_when: false
+    
+    - name: "RESCUE: Fail with error message for {{ current_virus }}"
+      fail:
+        msg: "Pipeline failed for {{ current_virus }} during processing. Rollback completed. Check logs for details."
+  
+  when: srsilo_has_new_data
+
+- name: "Log pipeline completion for {{ current_virus }}"
+  shell: echo "Pipeline completed successfully for {{ current_virus }}" | systemd-cat -t srsilo-pipeline -p info
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+  when: srsilo_has_new_data is defined and srsilo_has_new_data
+
+- name: "Log pipeline completion (no new data) for {{ current_virus }}"
+  shell: echo "Pipeline completed for {{ current_virus }} - no new data" | systemd-cat -t srsilo-pipeline -p info
+  become: yes
+  become_user: "{{ srsilo_user }}"
+  changed_when: false
+  when: srsilo_has_new_data is defined and not srsilo_has_new_data

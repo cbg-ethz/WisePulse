@@ -48,6 +48,7 @@ srsilo_viruses:
 # This controls which viruses are actually processed - override in group_vars
 srsilo_enabled_viruses:
   - covid
+  - rsva
 
 # =============================================================================
 # Derived Virus-Specific Paths (New Multi-Virus Structure)
@@ -85,15 +86,18 @@ srsilo_current_lapis_port: "{{ srsilo_current_virus.lapis_port }}"
 srsilo_current_silo_port: "{{ srsilo_current_virus.silo_port }}"
 
 # =============================================================================
-# API Configuration (Global Defaults)
+# API Configuration
 # =============================================================================
-# NOTE: These serve as fallback defaults until PR7 implements per-virus
-# config merging. Per-virus overrides in srsilo_virus_config are not yet
-# automatically applied - that requires the set_fact merging logic from PR7.
 
+# API base URL (shared across all viruses)
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
-srsilo_fetch_days: 90
-srsilo_fetch_max_reads: 125000000
+
+# Per-virus settings - REQUIRED in group_vars/srsilo/main.yml
+# Must be defined in srsilo_virus_config for each enabled virus:
+#   - fetch_days: Number of days to fetch (e.g., 90)
+#   - fetch_max_reads: Max reads per batch (e.g., 172500000 for COVID)
+#   - chunk_size: Chunk size for processing (e.g., 1000000 for high RAM)
+#   - docker_memory_limit: Container memory limit (e.g., 200g for COVID)
 
 # =============================================================================
 # Retention Policy
@@ -103,27 +107,12 @@ srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
 # =============================================================================
-# Processing Configuration (Global Defaults)
+# Processing Configuration
 # =============================================================================
-# NOTE: These serve as fallback defaults until PR7 implements per-virus
-# config merging. Per-virus overrides in srsilo_virus_config are not yet
-# automatically applied - that requires the set_fact merging logic from PR7.
-# TODO PR7: Remove these once virus-specific config merging is implemented.
 
-# Chunk size for splitting reads - adjust based on available RAM
-# Default: 100000 (works with ~8GB RAM)
-# For 4GB RAM: use 50000
-# For 16GB+ RAM: can use 500000 or more
-# MUST be set in group_vars/srsilo/main.yml
-# srsilo_chunk_size: REQUIRED
-
-# Docker memory limits
-# SILO preprocessing and API memory limits
-# MUST be set in group_vars/srsilo/main.yml based on available RAM
-# Production (377GB RAM): 340g
-# Test (8GB RAM): 7g
-# Use test_vars.yml to override for constrained testing
-# srsilo_docker_memory_limit: REQUIRED
+# Per-virus configuration is loaded from group_vars/srsilo/main.yml
+# See srsilo_virus_config dictionary for per-virus settings
+# No defaults here - fails loudly if config missing
 
 # Repository path (for development/deployment)
 # This can be overridden in host_vars if the repo is cloned elsewhere
