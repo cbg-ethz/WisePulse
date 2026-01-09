@@ -21,7 +21,7 @@
 
 ### Current Features
 - Loculus instance for easy data sharing and collaboration
-- srSILO API for querying amplicon sequence data
+- Multi-virus srSILO API for querying amplicon sequence data (SARS-CoV-2, RSV-A)
 
 #### Data Processing Pipeline (external)
 Upstream data processing is handled separately:
@@ -36,55 +36,48 @@ Upstream data processing is handled separately:
 
 ```bash
 # One-time setup (user, directories, build tools)
-ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become  --ask-become-pass
+ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become --ask-become-pass
 
-# Run automated update pipeline (checks for new data, processes, updates API)
-ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini \
-  --become --ask-become-pass \
+# Run automated update pipeline for all enabled viruses
+ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini --become --ask-become-pass
+
+# Or update a single virus
+ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini -e "srsilo_virus=rsva"
+
+# Test with reduced resources (8GB RAM)
+ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini \
   -e "@playbooks/srsilo/vars/test_vars.yml"
 
 # Setup daily automated runs at 2 AM
 ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
 
 # Check API status
-curl http://localhost:8083/sample/info
+curl http://localhost:8083/sample/info  # COVID
+curl http://localhost:8084/sample/info  # RSV-A
 ```
 
-API available at: http://localhost:8083/swagger-ui/index.html
+API Swagger UI:
+- COVID: http://localhost:8083/swagger-ui/index.html
+- RSV-A: http://localhost:8084/swagger-ui/index.html
 
 ## Architecture
 
 ### srSILO Pipeline
 
-The srSILO pipeline is now **fully managed by Ansible** with:
--  **Low Downtime** (API managed automatically)
--  **Self-healing** (automatic rollback on failures)
--  **Smart execution** (exits early if no new data)
--  **Retention policy** (automatic cleanup of old indexes)
+Multi-virus genomic data pipeline **fully managed by Ansible** with:
+- **Multi-virus support** (SARS-CoV-2, RSV-A; RSV-B and Influenza planned)
+- **Low Downtime** (API managed automatically)
+- **Self-healing** (automatic rollback on failures)
+- **Smart execution** (exits early if no new data)
+- **Retention policy** (automatic cleanup of old indexes)
 
 **Full documentation**: See [`docs/srsilo/ARCHITECTURE.md`](docs/srsilo/ARCHITECTURE.md)
 
 **Playbooks**:
 - `playbooks/srsilo/setup.yml` - One-time server setup
-- `playbooks/srsilo/update-pipeline.yml` - Full automated update (7 phases)
-- Future: `playbooks/srsilo/rollback.yml` - Manual rollback to previous index
-
-**Example Usage**:
-```bash
-# Full automated update (recommended)
-ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini
-
-# With custom configuration
-ansible-playbook playbooks/srsilo/update-pipeline.yml \
-  -i inventory.ini \
-  -e "srsilo_retention_days=7" \
-  -e "srsilo_fetch_days=30"
-
-# Test specific phase (e.g., check for new data only)
-ansible-playbook playbooks/srsilo/update-pipeline.yml \
-  -i inventory.ini \
-  --tags phase2
-```
+- `playbooks/srsilo/update-all-viruses.yml` - Update all enabled viruses (production)
+- `playbooks/srsilo/update-pipeline.yml` - Update single virus (debug/testing)
+- `playbooks/srsilo/setup-timer.yml` - Configure daily automated runs
 
 ### Loculus Deployment
 
@@ -110,23 +103,26 @@ See [`docs/nginx/README.md`](docs/nginx/README.md) for details.
 
 ## Configuration
 
-Key configuration in `group_vars/srsilo/main.yml`:
-
+Enable viruses in `roles/srsilo/defaults/main.yml`:
 ```yaml
-# Data retention
-srsilo_retention_days: 7               # Delete indexes older than 7 days
-srsilo_retention_min_keep: 2           # Always keep at least 2 indexes
-
-# Fetch configuration  
-srsilo_fetch_days: 90                  # Fetch last 90 days of data
-srsilo_fetch_max_reads: 172500000      # 172.5M reads for production
-
-# Processing (Production: 377GB RAM server)
-srsilo_chunk_size: 1000000             # Large chunks for high-memory environment
-srsilo_docker_memory_limit: 340g       # 90% of 377GB RAM
-
-# For testing with constrained resources (8GB RAM):
-# Use: -e "@playbooks/srsilo/vars/test_vars.yml"
+srsilo_enabled_viruses:
+  - covid
+  - rsva
 ```
 
-See [`docs/srsilo/ARCHITECTURE.md`](docs/srsilo/ARCHITECTURE.md) for complete configuration reference.
+Per-virus configuration in `group_vars/srsilo/main.yml`:
+```yaml
+srsilo_virus_config:
+  covid:
+    fetch_days: 90
+    fetch_max_reads: 172500000
+    chunk_size: 1000000
+    docker_memory_limit: 340g
+  rsva:
+    fetch_days: 90
+    fetch_max_reads: 50000000
+    chunk_size: 500000
+    docker_memory_limit: 340g
+```
+
+See [`docs/srsilo/ARCHITECTURE.md`](docs/srsilo/ARCHITECTURE.md) for complete configuration reference and adding new viruses.
