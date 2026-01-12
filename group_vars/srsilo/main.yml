@@ -21,18 +21,18 @@ srsilo_group: srsilo
 # Add viruses here as they become ready for production
 srsilo_enabled_viruses:
   - covid
-  - rsva    # ✅ Enabled in PR6
+  - rsva
 
 # Per-virus configuration overrides
 # Use this to override global defaults for specific viruses
 srsilo_virus_config:
   covid:
-    fetch_days: 90
-    fetch_max_reads: 172500000    # 172.5M reads - high volume
+    fetch_days: 120
+    fetch_max_reads: 235000000    # 235M reads - high volume
     chunk_size: 1000000           # Large chunks for production
     docker_memory_limit: 200g
   rsva:
-    fetch_days: 90
+    fetch_days: 120
     fetch_max_reads: 50000000     # 50M reads - lower volume expected
     chunk_size: 500000            # Smaller chunks
     docker_memory_limit: 50g
