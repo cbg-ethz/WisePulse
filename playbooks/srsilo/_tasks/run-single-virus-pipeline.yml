@@ -148,31 +148,23 @@
       when: preprocessing_marker.stat.exists
   when: srsilo_has_new_data
 
-- name: "PHASE 3: Clean old downloaded data for {{ current_virus }}"
-  block:
-    - name: Find old input files
-      find:
-        path: "{{ srsilo_virus_input }}"
-        patterns: "*.ndjson.zst"
-        age: "1d"
-      register: old_input_files
-    
-    - name: Remove old input files
-      file:
-        path: "{{ item.path }}"
-        state: absent
-      loop: "{{ old_input_files.files }}"
-      become: yes
-      when: old_input_files.matched > 0
-    
-    - name: Display input cleanup result
-      debug:
-        msg: "✓ Removed {{ old_input_files.matched }} old input file(s)"
-      when: old_input_files.matched > 0
-  when: srsilo_has_new_data
-
 - name: "PHASE 3: Reset working directories for {{ current_virus }}"
   block:
+    - name: Clean input directory (prevent accumulation from previous runs)
+      file:
+        path: "{{ srsilo_virus_input }}"
+        state: absent
+      become: yes
+
+    - name: Recreate input directory
+      file:
+        path: "{{ srsilo_virus_input }}"
+        state: directory
+        owner: "{{ srsilo_user }}"
+        group: "{{ srsilo_group }}"
+        mode: '0755'
+      become: yes
+
     - name: Clean sorted chunks directory
       file:
         path: "{{ srsilo_virus_sorted_chunks }}"
