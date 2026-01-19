@@ -69,12 +69,15 @@
     mode: '0755'
   tags: [grafana]
 
-- name: Deploy Lapis dashboard
+- name: Deploy Lapis dashboards
   ansible.builtin.copy:
-    src: dashboards/lapis-dashboard.json
-    dest: /var/lib/grafana/dashboards/lapis-dashboard.json
+    src: "dashboards/{{ item }}"
+    dest: "/var/lib/grafana/dashboards/{{ item }}"
     owner: grafana
     group: grafana
     mode: '0644'
+  loop:
+    - lapis-dashboard.json
+    - lapis-rsva-dashboard.json
   notify: restart grafana
   tags: [grafana]
