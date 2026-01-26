@@ -1205,7 +1205,7 @@
       },
       "targets": [
         {
-          "expr": "lapis_system_load_average_1m",
+          "expr": "lapis_system_load_average_1m{lapis_instance=\"covid\"}",
           "legendFormat": "Load 1m",
           "refId": "A"
         }
