@@ -69,12 +69,22 @@
     mode: '0755'
   tags: [grafana]
 
-- name: Deploy Lapis dashboard
+- name: Remove old lapis-dashboard.json (renamed to lapis-covid-dashboard.json)
+  ansible.builtin.file:
+    path: /var/lib/grafana/dashboards/lapis-dashboard.json
+    state: absent
+  notify: restart grafana
+  tags: [grafana]
+
+- name: Deploy Lapis dashboards
   ansible.builtin.copy:
-    src: dashboards/lapis-dashboard.json
-    dest: /var/lib/grafana/dashboards/lapis-dashboard.json
+    src: "dashboards/{{ item }}"
+    dest: "/var/lib/grafana/dashboards/{{ item }}"
     owner: grafana
     group: grafana
     mode: '0644'
+  loop:
+    - lapis-covid-dashboard.json
+    - lapis-rsva-dashboard.json
   notify: restart grafana
   tags: [grafana]

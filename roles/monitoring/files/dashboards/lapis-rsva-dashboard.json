@@ -29,7 +29,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "id": 1,
       "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
-      "targets": [{ "expr": "lapis_health__value{status=\"UP\"} or lapis_health__value * 0", "legendFormat": "Health", "refId": "A" }],
+      "targets": [{ "expr": "lapis_health__value{lapis_instance=\"rsva\",status=\"UP\"} or lapis_health__value{lapis_instance=\"rsva\"} * 0", "legendFormat": "Health", "refId": "A" }],
       "title": "Health Status",
       "type": "stat"
     },
@@ -39,7 +39,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
       "id": 2,
       "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_process_uptime_seconds", "legendFormat": "Uptime", "refId": "A" }],
+      "targets": [{ "expr": "lapis_process_uptime_seconds{lapis_instance=\"rsva\"}", "legendFormat": "Uptime", "refId": "A" }],
       "title": "Uptime",
       "type": "stat"
     },
@@ -49,7 +49,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
       "id": 3,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_cache_size", "legendFormat": "Cache Size", "refId": "A" }],
+      "targets": [{ "expr": "lapis_cache_size{lapis_instance=\"rsva\"}", "legendFormat": "Cache Size", "refId": "A" }],
       "title": "Cache Size",
       "type": "stat"
     },
@@ -59,7 +59,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
       "id": 4,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_http_requests_active", "legendFormat": "Active Requests", "refId": "A" }],
+      "targets": [{ "expr": "lapis_http_requests_active{lapis_instance=\"rsva\"}", "legendFormat": "Active Requests", "refId": "A" }],
       "title": "Active HTTP Requests",
       "type": "stat"
     },
@@ -69,7 +69,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
       "id": 5,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_process_cpu_usage", "legendFormat": "Process CPU", "refId": "A" }],
+      "targets": [{ "expr": "lapis_process_cpu_usage{lapis_instance=\"rsva\"}", "legendFormat": "Process CPU", "refId": "A" }],
       "title": "Process CPU Usage",
       "type": "stat"
     },
@@ -79,7 +79,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
       "id": 6,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_system_cpu_usage", "legendFormat": "System CPU", "refId": "A" }],
+      "targets": [{ "expr": "lapis_system_cpu_usage{lapis_instance=\"rsva\"}", "legendFormat": "System CPU", "refId": "A" }],
       "title": "System CPU Usage",
       "type": "stat"
     },
@@ -96,7 +96,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
       "id": 10,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
-      "targets": [{ "expr": "lapis_cache_size", "legendFormat": "Cache Size", "refId": "A" }],
+      "targets": [{ "expr": "lapis_cache_size{lapis_instance=\"rsva\"}", "legendFormat": "Cache Size", "refId": "A" }],
       "title": "Cache Size Over Time",
       "type": "timeseries"
     },
@@ -107,8 +107,8 @@
       "id": 11,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "expr": "lapis_http_requests_value{statistic=\"COUNT\"}", "legendFormat": "Request Count", "refId": "A" },
-        { "expr": "lapis_http_requests_active", "legendFormat": "Active Requests", "refId": "B" }
+        { "expr": "lapis_http_requests_value{lapis_instance=\"rsva\",statistic=\"COUNT\"}", "legendFormat": "Request Count", "refId": "A" },
+        { "expr": "lapis_http_requests_active{lapis_instance=\"rsva\"}", "legendFormat": "Active Requests", "refId": "B" }
       ],
       "title": "HTTP Requests",
       "type": "timeseries"
@@ -126,7 +126,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 15 },
       "id": 20,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_jvm_memory_used_bytes", "legendFormat": "Used", "refId": "A" }],
+      "targets": [{ "expr": "lapis_jvm_memory_used_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Used", "refId": "A" }],
       "title": "JVM Memory Used",
       "type": "stat"
     },
@@ -136,7 +136,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 15 },
       "id": 21,
       "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_jvm_memory_committed_bytes", "legendFormat": "Committed", "refId": "A" }],
+      "targets": [{ "expr": "lapis_jvm_memory_committed_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Committed", "refId": "A" }],
       "title": "JVM Memory Committed",
       "type": "stat"
     },
@@ -146,7 +146,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 15 },
       "id": 22,
       "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_jvm_memory_max_bytes", "legendFormat": "Max", "refId": "A" }],
+      "targets": [{ "expr": "lapis_jvm_memory_max_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Max", "refId": "A" }],
       "title": "JVM Memory Max",
       "type": "stat"
     },
@@ -156,7 +156,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 15 },
       "id": 23,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_jvm_gc_overhead", "legendFormat": "GC Overhead", "refId": "A" }],
+      "targets": [{ "expr": "lapis_jvm_gc_overhead{lapis_instance=\"rsva\"}", "legendFormat": "GC Overhead", "refId": "A" }],
       "title": "GC Overhead",
       "type": "stat"
     },
@@ -167,9 +167,9 @@
       "id": 24,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "expr": "lapis_jvm_memory_used_bytes", "legendFormat": "Used", "refId": "A" },
-        { "expr": "lapis_jvm_memory_committed_bytes", "legendFormat": "Committed", "refId": "B" },
-        { "expr": "lapis_jvm_memory_max_bytes", "legendFormat": "Max", "refId": "C" }
+        { "expr": "lapis_jvm_memory_used_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Used", "refId": "A" },
+        { "expr": "lapis_jvm_memory_committed_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Committed", "refId": "B" },
+        { "expr": "lapis_jvm_memory_max_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Max", "refId": "C" }
       ],
       "title": "JVM Memory Over Time",
       "type": "timeseries"
@@ -181,8 +181,8 @@
       "id": 25,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "expr": "lapis_jvm_gc_pause_value{statistic=\"COUNT\"}", "legendFormat": "GC Pause Count", "refId": "A" },
-        { "expr": "lapis_jvm_gc_pause_value{statistic=\"TOTAL_TIME\"}", "legendFormat": "GC Pause Time (s)", "refId": "B" }
+        { "expr": "lapis_jvm_gc_pause_value{lapis_instance=\"rsva\",statistic=\"COUNT\"}", "legendFormat": "GC Pause Count", "refId": "A" },
+        { "expr": "lapis_jvm_gc_pause_value{lapis_instance=\"rsva\",statistic=\"TOTAL_TIME\"}", "legendFormat": "GC Pause Time (s)", "refId": "B" }
       ],
       "title": "GC Activity",
       "type": "timeseries"
@@ -200,7 +200,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 28 },
       "id": 30,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_jvm_threads_live", "legendFormat": "Live", "refId": "A" }],
+      "targets": [{ "expr": "lapis_jvm_threads_live{lapis_instance=\"rsva\"}", "legendFormat": "Live", "refId": "A" }],
       "title": "Live Threads",
       "type": "stat"
     },
@@ -210,7 +210,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 28 },
       "id": 31,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_jvm_threads_peak", "legendFormat": "Peak", "refId": "A" }],
+      "targets": [{ "expr": "lapis_jvm_threads_peak{lapis_instance=\"rsva\"}", "legendFormat": "Peak", "refId": "A" }],
       "title": "Peak Threads",
       "type": "stat"
     },
@@ -220,7 +220,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 28 },
       "id": 32,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_jvm_threads_daemon", "legendFormat": "Daemon", "refId": "A" }],
+      "targets": [{ "expr": "lapis_jvm_threads_daemon{lapis_instance=\"rsva\"}", "legendFormat": "Daemon", "refId": "A" }],
       "title": "Daemon Threads",
       "type": "stat"
     },
@@ -230,7 +230,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 28 },
       "id": 33,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_executor_active", "legendFormat": "Active", "refId": "A" }],
+      "targets": [{ "expr": "lapis_executor_active{lapis_instance=\"rsva\"}", "legendFormat": "Active", "refId": "A" }],
       "title": "Executor Active",
       "type": "stat"
     },
@@ -240,7 +240,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 16, "y": 28 },
       "id": 34,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_executor_pool_size", "legendFormat": "Pool Size", "refId": "A" }],
+      "targets": [{ "expr": "lapis_executor_pool_size{lapis_instance=\"rsva\"}", "legendFormat": "Pool Size", "refId": "A" }],
       "title": "Executor Pool Size",
       "type": "stat"
     },
@@ -250,7 +250,7 @@
       "gridPos": { "h": 4, "w": 4, "x": 20, "y": 28 },
       "id": 35,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_executor_queue_remaining", "legendFormat": "Queue Remaining", "refId": "A" }],
+      "targets": [{ "expr": "lapis_executor_queue_remaining{lapis_instance=\"rsva\"}", "legendFormat": "Queue Remaining", "refId": "A" }],
       "title": "Executor Queue Remaining",
       "type": "stat"
     },
@@ -261,9 +261,9 @@
       "id": 36,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "expr": "lapis_jvm_threads_live", "legendFormat": "Live Threads", "refId": "A" },
-        { "expr": "lapis_jvm_threads_peak", "legendFormat": "Peak Threads", "refId": "B" },
-        { "expr": "lapis_jvm_threads_daemon", "legendFormat": "Daemon Threads", "refId": "C" }
+        { "expr": "lapis_jvm_threads_live{lapis_instance=\"rsva\"}", "legendFormat": "Live Threads", "refId": "A" },
+        { "expr": "lapis_jvm_threads_peak{lapis_instance=\"rsva\"}", "legendFormat": "Peak Threads", "refId": "B" },
+        { "expr": "lapis_jvm_threads_daemon{lapis_instance=\"rsva\"}", "legendFormat": "Daemon Threads", "refId": "C" }
       ],
       "title": "JVM Threads Over Time",
       "type": "timeseries"
@@ -281,7 +281,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 41 },
       "id": 40,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_system_load_average_1m", "legendFormat": "Load 1m", "refId": "A" }],
+      "targets": [{ "expr": "lapis_system_load_average_1m{lapis_instance=\"rsva\"}", "legendFormat": "Load 1m", "refId": "A" }],
       "title": "System Load (1m)",
       "type": "stat"
     },
@@ -291,7 +291,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 41 },
       "id": 41,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_disk_free_bytes", "legendFormat": "Disk Free", "refId": "A" }],
+      "targets": [{ "expr": "lapis_disk_free_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Disk Free", "refId": "A" }],
       "title": "Disk Free",
       "type": "stat"
     },
@@ -301,7 +301,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 41 },
       "id": 42,
       "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "lapis_disk_total_bytes", "legendFormat": "Disk Total", "refId": "A" }],
+      "targets": [{ "expr": "lapis_disk_total_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Disk Total", "refId": "A" }],
       "title": "Disk Total",
       "type": "stat"
     },
@@ -311,7 +311,7 @@
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 41 },
       "id": 43,
       "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
-      "targets": [{ "expr": "1 - (lapis_disk_free_bytes / on(instance) lapis_disk_total_bytes)", "legendFormat": "Disk Used %", "refId": "A" }],
+      "targets": [{ "expr": "1 - (lapis_disk_free_bytes{lapis_instance=\"rsva\"} / on(instance) lapis_disk_total_bytes{lapis_instance=\"rsva\"})", "legendFormat": "Disk Used %", "refId": "A" }],
       "title": "Disk Usage %",
       "type": "stat"
     },
@@ -322,8 +322,8 @@
       "id": 44,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "expr": "lapis_process_cpu_usage", "legendFormat": "Process CPU", "refId": "A" },
-        { "expr": "lapis_system_cpu_usage", "legendFormat": "System CPU", "refId": "B" }
+        { "expr": "lapis_process_cpu_usage{lapis_instance=\"rsva\"}", "legendFormat": "Process CPU", "refId": "A" },
+        { "expr": "lapis_system_cpu_usage{lapis_instance=\"rsva\"}", "legendFormat": "System CPU", "refId": "B" }
       ],
       "title": "CPU Usage Over Time",
       "type": "timeseries"
@@ -335,8 +335,8 @@
       "id": 45,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "expr": "lapis_disk_free_bytes", "legendFormat": "Disk Free", "refId": "A" },
-        { "expr": "lapis_disk_total_bytes", "legendFormat": "Disk Total", "refId": "B" }
+        { "expr": "lapis_disk_free_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Disk Free", "refId": "A" },
+        { "expr": "lapis_disk_total_bytes{lapis_instance=\"rsva\"}", "legendFormat": "Disk Total", "refId": "B" }
       ],
       "title": "Disk Space Over Time",
       "type": "timeseries"
@@ -345,7 +345,7 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["lapis", "covid"],
+  "tags": ["lapis", "rsva"],
   "templating": {
     "list": [
       {
@@ -365,7 +365,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "Lapis Covid",
-  "uid": "lapis-api-monitoring",
+  "title": "Lapis RSV-A",
+  "uid": "lapis-rsva-monitoring",
   "version": 1
 }

@@ -19,7 +19,9 @@ prometheus_base_scrape_configs:
 # Lapis instances to monitor (add more entries as needed)
 lapis_instances:
   - name: covid
-    url: https://lapis.wasap.genspectrum.org
+    url: https://lapis.wasap.genspectrum.org/covid
+  - name: rsva
+    url: https://lapis.wasap.genspectrum.org/rsva
 
 # Metrics collected from each Lapis instance
 lapis_metrics:

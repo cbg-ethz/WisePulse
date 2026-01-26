@@ -2,7 +2,7 @@
 
 ## Overview
 
-We are currently monitoring the general server resource usage, as well as the LAPIS (covid) instance. Monitoring is done using Grafana and Prometheus at the top.
+We are currently monitoring the general server resource usage, as well as the LAPIS instances (COVID, RSV-A). Monitoring is done using Grafana and Prometheus at the top.
 
 | Component | Role | Purpose |
 |-----------|------|---------|
@@ -49,7 +49,8 @@ Services are bound to `127.0.0.1` (localhost) for security. Use SSH tunneling to
 - **Host**: Node Exporter runs on all monitoring hosts.
 
 **Dashboards**:
-- **Lapis Covid**: Custom dashboard for API health & metrics.
+- **Lapis COVID**: Custom dashboard for COVID LAPIS API health & metrics.
+- **Lapis RSV-A**: Custom dashboard for RSV-A LAPIS API health & metrics.
 - **Node Exporter Full**: System resource usage (CPU, RAM, Disk).
 
 **Retention**:
