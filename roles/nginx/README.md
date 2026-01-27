@@ -18,13 +18,26 @@ LAPIS and SILO support multiple virus instances via path-based routing:
 The `/covid` and `/rsva` prefixes are stripped before proxying to backends. For example:
 - `https://lapis.wasap.genspectrum.org/covid/sample/info` → backend receives `/sample/info`
 
-This is achieved using nginx rewrite rules:
+This is achieved using nginx's `proxy_pass` with a trailing slash, which automatically strips the matched location prefix:
+
 ```nginx
-location /covid {
-    rewrite ^/covid(.*)$ $1 break;
-    proxy_pass http://127.0.0.1:8083;
+# Upstream definitions (in conf.d/wasap.conf)
+upstream lapis-covid {
+    server 127.0.0.1:8083;
+}
+
+# Location block (in sites-available/lapis.j2)
+location /covid/ {
+    proxy_pass http://lapis-covid/;  # trailing slash strips /covid/ prefix
+    proxy_set_header X-Forwarded-Prefix /covid/;
 }
 ```
+
+Key implementation details:
+- **Trailing slash in `proxy_pass`**: When both the location and proxy_pass end with `/`, nginx strips the location prefix from the request URI
+- **Upstream blocks**: Defined in `conf.d/wasap.conf.j2` for cleaner configuration and future load balancing support
+- **X-Forwarded-Prefix header**: Tells backends the original path prefix for proper URL generation in responses
+- **Trailing slash redirects**: Requests to `/covid` (without trailing slash) return 301 to `/covid/` for consistent behavior
 
 ### Backward Compatibility
 
@@ -102,11 +115,20 @@ To test that path stripping works correctly without SSL complications:
 ```bash
 # Create a test server on an unused port
 cat > /tmp/test.conf << 'EOF'
+upstream test-backend {
+    server 127.0.0.1:8083;
+}
+
 server {
     listen 9999;
-    location /covid {
-        rewrite ^/covid(.*)$ $1 break;
-        proxy_pass http://127.0.0.1:8083;
+
+    location = /covid {
+        return 301 /covid/;
+    }
+
+    location /covid/ {
+        proxy_pass http://test-backend/;
+        proxy_set_header X-Forwarded-Prefix /covid/;
     }
 }
 EOF
