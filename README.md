@@ -99,7 +99,7 @@ Deploy Nginx as a reverse proxy with SSL termination for all services:
 ```bash
 ansible-playbook playbooks/setup_nginx.yml -i inventory.ini --ask-become-pass
 ```
-See [`docs/nginx/README.md`](docs/nginx/README.md) for details.
+See [`roles/nginx/README.md`](roles/nginx/README.md) for details.
 
 ## Configuration
 
