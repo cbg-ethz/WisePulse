@@ -22,7 +22,7 @@ services:
 
   silo:
     container_name: {{ srsilo_current_instance_name }}-silo
-    image: ghcr.io/genspectrum/lapis-silo:pr-1072
+    image: ghcr.io/genspectrum/lapis-silo:v0.9.5
     mem_limit: {{ srsilo_docker_memory_limit }}
     restart: unless-stopped
     ports:
