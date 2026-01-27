@@ -1,0 +1,68 @@
+site_name: WisePulse Documentation
+site_description: End-to-end infrastructure for viral wastewater surveillance
+site_url: https://cbg-ethz.github.io/WisePulse/
+repo_url: https://github.com/cbg-ethz/WisePulse
+repo_name: cbg-ethz/WisePulse
+
+theme:
+  name: material
+  logo: assets/wasap-logo.png
+  favicon: assets/wasap-logo.png
+  palette:
+    - scheme: default
+      primary: red
+      accent: red
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: red
+      accent: red
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quick-start.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - srSILO Pipeline: architecture/srsilo-pipeline.md
+  - Deployment:
+      - srSILO: deployment/srsilo.md
+      - Loculus: deployment/loculus.md
+      - Monitoring: deployment/monitoring.md
+      - Nginx: deployment/nginx.md
+  - Operations:
+      - Logging: operations/logging.md
+      - Troubleshooting: operations/troubleshooting.md
+      - Recovery: operations/recovery.md
+  - Configuration:
+      - Reference: configuration/reference.md
+  - Incidents:
+      - 2025-11-20 Service Outage: incidents/2025-11-20-service-outage.md
