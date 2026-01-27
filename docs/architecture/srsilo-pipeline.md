@@ -1,4 +1,4 @@
-# srSILO Pipeline - Architecture
+# srSILO Pipeline Architecture
 
 Automated multi-virus genomic data processing: monitors LAPIS API for new sequences, downloads, processes, and indexes data with self-healing rollback on failures.
 
@@ -30,15 +30,16 @@ Automated multi-virus genomic data processing: monitors LAPIS API for new sequen
 
 ## Components
 
-**Playbooks**:
+**Playbooks:**
+
 - `update-all-viruses.yml` - Run pipeline for all enabled viruses (production)
 - `update-pipeline.yml` - Run pipeline for single virus (debug/testing)
 - `setup.yml` - Initial setup
 - `setup-timer.yml` - Configure systemd timer
 
-**Rust Tools**: `check_new_data`, `fetch_silo_data`, `split_into_sorted_chunks`, `merge_sorted_chunks`, `add_offset`
+**Rust Tools:** `check_new_data`, `fetch_silo_data`, `split_into_sorted_chunks`, `merge_sorted_chunks`, `add_offset`
 
-**Docker**: SILO (genspectrum/lapis-silo), LAPIS API (genspectrum/lapis)
+**Docker:** SILO (genspectrum/lapis-silo), LAPIS API (genspectrum/lapis)
 
 ## 7-Phase Pipeline
 
@@ -50,57 +51,13 @@ Automated multi-virus genomic data processing: monitors LAPIS API for new sequen
 6. **Process** (block/rescue): Split, merge, SILO preprocessing
 7. **Finalize**: Start API with new index, update `.last_update`, cleanup markers
 
-## Usage
+## State Files
 
-```bash
-# Update all enabled viruses (production)
-ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini
-
-# Update single virus (debug)
-ansible-playbook playbooks/srsilo/update-pipeline.yml -i inventory.ini -e "srsilo_virus=rsva"
-
-# Test with reduced resources (8GB RAM)
-ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini \
-  -e "@playbooks/srsilo/vars/test_vars.yml"
-
-# Setup systemd timer (daily at 2 AM)
-ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
-```
-
-## Configuration
-
-### Enable Viruses
-
-In `roles/srsilo/defaults/main.yml`:
-```yaml
-srsilo_enabled_viruses:
-  - covid
-  - rsva
-```
-
-### Per-Virus Configuration
-
-In `group_vars/srsilo/main.yml`:
-```yaml
-srsilo_virus_config:
-  covid:
-    fetch_days: 90
-    fetch_max_reads: 172500000
-    chunk_size: 1000000
-    docker_memory_limit: 340g
-  rsva:
-    fetch_days: 90
-    fetch_max_reads: 50000000
-    chunk_size: 500000
-    docker_memory_limit: 340g
-```
-
-### Global Settings
-
-```yaml
-srsilo_retention_days: 3        # Delete indexes older than N days
-srsilo_retention_min_keep: 2    # Always keep at least M indexes
-```
+| File | Purpose |
+|------|---------|
+| `.last_update` | Unix timestamp of last successful run (persistent) |
+| `.next_timestamp` | Temp timestamp for current update (ephemeral) |
+| `output/.preprocessing_in_progress` | Orphan detection marker |
 
 ## Adding a New Virus
 
@@ -110,24 +67,18 @@ srsilo_retention_min_keep: 2    # Always keep at least M indexes
    - `reference_genomes.json`
 
 2. Register in `roles/srsilo/defaults/main.yml`:
-```yaml
-srsilo_viruses:
-  new_virus:
-    organism: new-virus      # LAPIS API path segment
-    instance_name: wise-new-virus
-    lapis_port: 8086
-    silo_port: 8087
-```
+   ```yaml
+   srsilo_viruses:
+     new_virus:
+       organism: new-virus      # LAPIS API path segment
+       instance_name: wise-new-virus
+       lapis_port: 8086
+       silo_port: 8087
+   ```
 
 3. Add per-virus config in `group_vars/srsilo/main.yml`
 
 4. Enable: add `new_virus` to `srsilo_enabled_viruses`
-
-## State Files
-
-- **`.last_update`**: Unix timestamp of last successful run (persistent)
-- **`.next_timestamp`**: Temp timestamp for current update (ephemeral)
-- **`output/.preprocessing_in_progress`**: Orphan detection marker
 
 ## Monitoring
 
@@ -142,3 +93,5 @@ systemctl status srsilo-update.timer
 curl http://localhost:8083/sample/info  # COVID
 curl http://localhost:8084/sample/info  # RSV-A
 ```
+
+See [Logging Guide](../operations/logging.md) for detailed log commands.
