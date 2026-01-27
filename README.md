@@ -73,8 +73,8 @@ curl http://localhost:8084/sample/info  # RSV-A
 ```
 
 API Swagger UI:
-- COVID: https://lapis.wasap.genspectrum.org/covid/swagger-ui/index.html
-- RSV-A: https://lapis.wasap.genspectrum.org/rsva/swagger-ui/index.html
+- [COVID](https://lapis.wasap.genspectrum.org/covid/swagger-ui/index.html)
+- [RSV-A](https://lapis.wasap.genspectrum.org/rsva/swagger-ui/index.html)
 
 ## Architecture
 
