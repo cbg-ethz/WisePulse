@@ -7,7 +7,6 @@
 ### WISE Loculus with V-Pipe – Infrastructure for start-to-end viral wastewater analysis
 
 ![Status: Public Beta](https://img.shields.io/badge/status-public%20beta-blue)
-![GitHub release](https://img.shields.io/github/v/release/cbg-ethz/WisePulse)
 ![Platform: Linux](https://img.shields.io/badge/platform-linux-lightgrey)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
