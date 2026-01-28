@@ -1,7 +1,7 @@
 services:
   siloPreprocessing:
     container_name: {{ srsilo_current_instance_name }}-preprocessing
-    image: ghcr.io/genspectrum/lapis-silo:v0.9.5
+    image: ghcr.io/genspectrum/lapis-silo:0.9.5
     command: preprocessing
     mem_limit: {{ srsilo_docker_memory_limit }}
     volumes:
