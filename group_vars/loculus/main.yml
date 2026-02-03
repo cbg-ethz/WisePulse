@@ -42,7 +42,7 @@ s3:
     bucket: wasap
 
 organisms:
-   covid:
+  covid:
     schema:
       organismName: 'SARS-CoV-2'
       image: 'https://db.wasap.genspectrum.org/static/images/covid-virus.png'
@@ -115,7 +115,7 @@ organisms:
           - "--watch"
           - "--disableConsensusSequences"
     referenceGenomes: []
-   rsva:
+  rsva:
     schema:
       organismName: 'RSV-A'
       image: 'https://db.wasap.genspectrum.org/static/images/rsv-virus.png'
