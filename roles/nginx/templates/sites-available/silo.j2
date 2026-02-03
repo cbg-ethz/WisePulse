@@ -31,6 +31,21 @@ server {
         proxy_set_header X-Forwarded-Prefix /rsva/;
     }
 
+    # Redirect /rsvb without trailing slash
+    location = /rsvb {
+        return 301 /rsvb/;
+    }
+
+    # RSVB instance - proxy with path stripped via trailing slash
+    location /rsvb/ {
+        proxy_pass http://silo-rsvb/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Prefix /rsvb/;
+    }
+
     # Backward compatibility: proxy all other requests to COVID backend
     # This catches /, /info, etc. and proxies directly (no redirect)
     # Using proxy instead of redirect to preserve CORS preflight behavior

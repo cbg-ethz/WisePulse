@@ -17,8 +17,10 @@ nginx_loculus_ssl_certificate_key_path: "/etc/letsencrypt/live/db.{{ nginx_domai
 # Upstream Service Ports - Per-virus LAPIS/SILO instances
 nginx_lapis_covid_port: 8083
 nginx_lapis_rsva_port: 8084
+nginx_lapis_rsvb_port: 8085
 nginx_silo_covid_port: 8081
 nginx_silo_rsva_port: 8082
+nginx_silo_rsvb_port: 8086
 nginx_wasap_scout_port: 9001
 nginx_loculus_port: 9000
 nginx_loculus_auth_port: 9083
