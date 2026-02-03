@@ -25,6 +25,11 @@ srsilo_virus_config:
     fetch_max_reads: 2000000        # Limit to 2M reads instead of 50M
     chunk_size: 30000               # Reduced for 8GB RAM test environment
     docker_memory_limit: 7g         # 90% of 8GB RAM
+  rsvb:
+    fetch_days: 45                  # Fetch only 45 days instead of 90
+    fetch_max_reads: 2000000        # Limit to 2M reads instead of 50M
+    chunk_size: 30000               # Reduced for 8GB RAM test environment
+    docker_memory_limit: 7g         # 90% of 8GB RAM
 
 # Shared configuration (same as production)
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
