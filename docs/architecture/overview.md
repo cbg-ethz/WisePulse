@@ -28,6 +28,24 @@ WisePulse consists of four main components, all managed by Ansible playbooks.
      :8080                  :8081-8084                 :3000, :9090
 ```
 
+## Data flow
+
+```
+┌──────────────┐    sr2silo     ┌──────────────┐    srSILO pipeline     ┌──────────────┐
+│   BAM files  │ ─────────────▶ │   Loculus    │ ─────────────────────▶ │ srSILO /     │
+│              │                │    (S3)      │                        │ LAPIS        │
+│              │                │ Sequence mgmt│                        │              │
+│              │                │ & storage    │                        │              │
+└──────────────┘                └──────────────┘                        └──────────────┘
+
+```
+
+1. BAM files are created by V-pipe.
+2. [sr2silo](https://github.com/cbg-ethz/sr2silo) is used to convert the files and upload them to Loculus.
+3. Loculus stores the data (using S3 under the hood to do so).
+4. the [srSILO pipeline](srsilo-pipeline.md) fetches the data from Loculus and ingest them into the short-read SILO instance (srSILO).
+5. Amplicon sequences are available in SILO/LAPIS to be queried.
+
 ## srSILO Pipeline
 
 Multi-virus genomic data pipeline **fully managed by Ansible** with:

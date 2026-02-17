@@ -53,6 +53,7 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - srSILO Pipeline: architecture/srsilo-pipeline.md
+      - Loculus External Dependencies: architecture/loculus-external-dependencies.md
   - Deployment:
       - srSILO: deployment/srsilo.md
       - Loculus: deployment/loculus.md

@@ -73,6 +73,7 @@ In `group_vars/loculus/main.yml`:
 - Application name, host, organisms
 - URL configurations
 - Feature flags
+- S3 bucket configuration
 
 ### Secrets
 
