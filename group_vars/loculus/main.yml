@@ -1,6 +1,9 @@
 name: 'W-ASAP'
 host: 'db.wasap.genspectrum.org'
 
+# Pin the Loculus version
+loculus_commit_sha: 4948577ed8a054341e155b5c6f593996290a3320
+
 logo:
   url: 'https://db.wasap.genspectrum.org/static/images/wasap-logo.png'
   width: 200
@@ -111,10 +114,7 @@ organisms:
         args:
           - "--watch"
           - "--disableConsensusSequences"
-    referenceGenomes:
-      singleReference:
-        nucleotideSequences: []
-        genes: []
+    referenceGenomes: []
    rsva:
     schema:
       organismName: 'RSV-A'
@@ -187,10 +187,7 @@ organisms:
         args:
           - "--watch"
           - "--disableConsensusSequences"
-    referenceGenomes:
-      singleReference:
-        nucleotideSequences: []
-        genes: []
+    referenceGenomes: []
 
 dataUseTerms:
   enabled: false
