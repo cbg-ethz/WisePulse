@@ -12,7 +12,7 @@ env:
 
 jobs:
   rust-checks:
-    name: srSILO Rust Tools - Quality Checks
+    name: srSILO Updater - Quality Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,35 +26,35 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('roles/srsilo/files/tools/**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('srsilo-updater/**/Cargo.lock') }}
       
       - name: Cache cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('roles/srsilo/files/tools/**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('srsilo-updater/**/Cargo.lock') }}
       
       - name: Cache cargo build
         uses: actions/cache@v4
         with:
-          path: roles/srsilo/files/tools/target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('roles/srsilo/files/tools/**/Cargo.lock') }}
+          path: srsilo-updater/target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('srsilo-updater/**/Cargo.lock') }}
       
       - name: Check formatting
         run: cargo fmt --all -- --check
-        working-directory: roles/srsilo/files/tools
+        working-directory: srsilo-updater
       
       - name: Run clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
-        working-directory: roles/srsilo/files/tools
+        working-directory: srsilo-updater
       
       - name: Build
         run: cargo build --release --workspace
-        working-directory: roles/srsilo/files/tools
+        working-directory: srsilo-updater
       
       - name: Test
         run: cargo test --workspace
-        working-directory: roles/srsilo/files/tools
+        working-directory: srsilo-updater
 
   # srsilo-integration:
   #   name: srSILO Pipeline - Integration Test

@@ -68,9 +68,9 @@
     mode: '0750'
   become: yes
 
-- name: Copy tools directory from repository to base path
+- name: Copy srsilo-updater from repository to deployment path
   copy:
-    src: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools/"
+    src: "{{ wisepulse_repo_path }}/srsilo-updater/"
     dest: "{{ srsilo_tools_path }}/"
     remote_src: yes
   become: yes
