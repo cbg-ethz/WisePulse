@@ -17,3 +17,5 @@ collections:
 roles:
   - src: gantsign.helm
     version: "2.13.0"
+  - name: geerlingguy.nginx
+    version: "3.1.4"
