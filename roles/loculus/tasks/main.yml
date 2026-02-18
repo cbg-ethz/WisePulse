@@ -52,6 +52,7 @@
     update: true
     force: true
   register: loculus_checkout
+  become: yes
 
 - name: Display checked out commit
   debug:
