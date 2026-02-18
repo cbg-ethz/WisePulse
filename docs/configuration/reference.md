@@ -57,15 +57,6 @@ srsilo_viruses:
 
 ## Loculus Configuration
 
-### Required Variables
-
-Set in `host_vars/` or `group_vars/`:
-
-| Variable | Description |
-|----------|-------------|
-| `kubectl_context` | kubectl context name |
-| `helm_chart_path` | Path to Loculus Helm chart |
-
 ### Application Settings
 
 In `group_vars/loculus/main.yml`:

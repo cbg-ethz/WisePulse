@@ -5,8 +5,6 @@
 # Loculus Deployment Configuration
 # ============================================================================
 host: 'db.wasap.genspectrum.org'
-kubectl_context: 'k3d-loculusCluster'
-helm_chart_path: '/opt/loculus/loculus/kubernetes/loculus'
 cleanup_temp_files: true
 
 # ============================================================================

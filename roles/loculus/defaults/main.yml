@@ -13,6 +13,13 @@ loculus_cleanup_temp_files: true
 # Note: Run playbook without sudo (use --ask-become-pass instead)
 loculus_kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
 
+# Loculus repository configuration
+loculus_repo_path: "/opt/loculus/loculus"
+loculus_commit_sha: "main"  # Default, should be overridden in group_vars
+
+# Derived path to Helm chart (subdirectory within the repo)
+loculus_helm_chart_path: "{{ loculus_repo_path }}/kubernetes/loculus"
+
 # Static images to deploy
 # Add new virus images here as needed
 virus_images:

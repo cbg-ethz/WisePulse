@@ -1,5 +1,8 @@
 name: '{{ name }}'
 host: '{{ host }}'
+{% if loculus_commit_sha is defined %}
+sha: '{{ loculus_commit_sha[:7] }}'
+{% endif %}
 environment: '{{ loculus_environment }}' # Do not change this: this setup uses a "local" environment as the public traffic is proxied through nginx.
 
 runDevelopmentMainDatabase: {{ runDevelopmentMainDatabase | lower }}
@@ -138,9 +141,7 @@ organisms:
 {% endfor %}
 {% endfor %}
     referenceGenomes:
-      singleReference:
-        nucleotideSequences: {{ organism_config.referenceGenomes.singleReference.nucleotideSequences }}
-        genes: {{ organism_config.referenceGenomes.singleReference.genes }}
+      {{ organism_config.referenceGenomes }}
 {% endfor %}
 
 dataUseTerms:

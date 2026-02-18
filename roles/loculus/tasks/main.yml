@@ -1,10 +1,4 @@
 ---
-- name: Ensure temp directory exists
-  file:
-    path: "{{ loculus_temp_dir }}"
-    state: directory
-    mode: '0750'
-
 # TODO: Add nginx configuration automation for static file serving in future
 # This should include adding location /static/ block to nginx config
 
@@ -37,29 +31,53 @@
   become: yes
   loop: "{{ static_images }}"
 
+- name: Install Helm
+  ansible.builtin.include_role:
+    name: gantsign.helm
+
+# Loculus deployment
+- name: Ensure temp directory exists
+  file:
+    path: "{{ loculus_temp_dir }}"
+    state: directory
+    mode: '0750'
+
+- name: Ensure loculus repository parent directory exists
+  file:
+    path: "{{ loculus_repo_path | dirname }}"
+    state: directory
+    mode: '0755'
+
+- name: Checkout Loculus Repository at specific commit
+  ansible.builtin.git:
+    repo: 'https://github.com/loculus-project/loculus.git'
+    dest: "{{ loculus_repo_path }}"
+    version: "{{ loculus_commit_sha }}"
+    update: true
+    force: true
+  register: loculus_checkout
+  become: yes
+
+- name: Display checked out commit
+  debug:
+    msg: "Loculus checked out at commit {{ loculus_commit_sha }}"
+
 - name: Generate values file from template
   template:
     src: values.yaml.j2
     dest: "{{ loculus_temp_dir }}/values.yaml"
     mode: '0640'
 
-- name: Verify kubectl context is available
-  shell: kubectl config get-contexts {{ kubectl_context }}
-  register: kubectl_context_check
-  environment:
-    KUBECONFIG: "{{ loculus_kubeconfig_path }}"
-
-- name: Apply Helm chart with values to loculus cluster
-  shell: |
-    kubectl config use-context {{ kubectl_context }}
-    helm upgrade --install my-loculus {{ helm_chart_path }} -f {{ loculus_temp_dir }}/values.yaml
-  register: helm_output
-  environment:
-    KUBECONFIG: "{{ loculus_kubeconfig_path }}"
-
-- name: Display Helm output
-  debug:
-    var: helm_output.stdout_lines
+- name: Deploy Loculus via Helm
+  kubernetes.core.helm:
+    release_name: my-loculus
+    release_namespace: loculus
+    create_namespace: true
+    chart_ref: "{{ loculus_helm_chart_path }}"
+    values_files:
+      - "{{ loculus_helm_chart_path }}/values.yaml"
+      - "{{ loculus_temp_dir }}/values.yaml"
+    kubeconfig: "{{ loculus_kubeconfig_path }}"
 
 - name: Clean up temporary files
   file:

@@ -20,13 +20,6 @@ Ansible role for deploying Loculus (pathogen sequence sharing platform) to Kuber
 | `loculus_cleanup_temp_files` | Clean up temp files after deployment (default: `true`) |
 | `loculus_kubeconfig_path` | Path to kubeconfig file |
 
-**Required** (set in `host_vars/` or `group_vars/`):
-
-| Variable | Description |
-|----------|-------------|
-| `kubectl_context` | kubectl context name |
-| `helm_chart_path` | Path to Loculus Helm chart |
-
 **Configuration** (`group_vars/loculus/main.yml`):
 
 - Application settings (name, host, organisms, URLs, etc.)
