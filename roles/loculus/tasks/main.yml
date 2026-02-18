@@ -74,11 +74,6 @@
       - "{{ loculus_helm_chart_path }}/values.yaml"
       - "{{ loculus_temp_dir }}/values.yaml"
     kubeconfig: "{{ loculus_kubeconfig_path }}"
-  register: helm_output
-
-- name: Display Helm output
-  debug:
-    var: helm_output
 
 - name: Clean up temporary files
   file:
