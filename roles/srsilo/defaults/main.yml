@@ -117,3 +117,7 @@ srsilo_retention_min_keep: 2
 # Repository path (for development/deployment)
 # This can be overridden in host_vars if the repo is cloned elsewhere
 wisepulse_repo_path: /opt/WisePulse
+
+# I'm adding this here, as it's needed already in the prerequisites when we're templating
+# the docker stuff. But it probably shouldn't be like that?
+srsilo_docker_memory_limit: 4g

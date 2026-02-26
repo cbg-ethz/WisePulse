@@ -51,6 +51,11 @@ Upstream data processing is handled separately:
 - Raw data submission & V-pipe pipeline integration
 - On-demand exploratory analysis tools
 
+## Config structure
+
+TODO - this needs to be documented.
+I'd like to see a section about: "This is how you set up your config with your viruses etc. And now run the setup script."
+
 ## Quick Start
 
 ```bash
