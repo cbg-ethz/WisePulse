@@ -1,24 +1,6 @@
 ---
 # Prerequisites: Create user, directories, and set permissions
 
-- name: Ensure Docker is installed
-  apt:
-    name:
-      - docker.io
-      - docker-compose
-    state: present
-  become: yes
-  register: docker_install
-  failed_when: false
-
-- name: Start and enable Docker service
-  systemd:
-    name: docker
-    state: started
-    enabled: yes
-  become: yes
-  when: docker_install is succeeded
-
 - name: Ensure srsilo group exists
   group:
     name: "{{ srsilo_group }}"
