@@ -83,6 +83,8 @@
     mode: '0755'
   become: yes
 
+# TODO - in my opinion this shouldn't be here, instead there should be a role for 
+# silo preprocessing and one for silo/lapis where the docker compose is handled.
 - name: Template docker-compose files with virus-specific paths
   template:
     src: "{{ item.src }}"

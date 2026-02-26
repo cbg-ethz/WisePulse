@@ -12,7 +12,6 @@
           - "Group: {{ srsilo_group }}"
           - "Base path: {{ srsilo_base_path }}"
           - "Tools path: {{ srsilo_tools_path }}"
-          - "API: {{ srsilo_api_base_url }}"
 
           # TODO srsilo_docker_memory_limit needs to be defined
           # It's templated in in this step:
