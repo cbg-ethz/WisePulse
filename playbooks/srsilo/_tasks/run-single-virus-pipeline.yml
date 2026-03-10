@@ -90,11 +90,7 @@
       debug:
         msg:
           - "=== Pipeline Complete for {{ current_virus }} ==="
-          - "No new data available - skipping remaining phases"
-          - "This is normal and saves resources"
-    
-    - name: Skip remaining phases
-      meta: end_host
+          - "No new data available - remaining phases should be skipped"
   when: not srsilo_has_new_data
 
 - name: "PHASE 2: New data detected for {{ current_virus }} - pipeline will continue"
