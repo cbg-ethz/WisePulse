@@ -13,6 +13,7 @@ Automated multi-virus genomic data processing: monitors LAPIS API for new sequen
 
 ## Directory Structure
 
+**Deployment:**
 ```
 /opt/srsilo/
 ├── covid/                    # SARS-CoV-2 instance
@@ -24,8 +25,24 @@ Automated multi-virus genomic data processing: monitors LAPIS API for new sequen
 │   ├── .last_update         # Timestamp checkpoint
 │   └── sorted.ndjson.zst    # Merged data
 ├── rsva/                     # RSV-A instance (same structure)
-└── tools/                    # Shared Rust binaries
+└── tools/                    # Deployed Rust binaries (from srsilo-updater)
     └── target/release/
+```
+
+**Repository:**
+```
+WisePulse/
+├── srsilo-updater/          # Rust workspace - data pipeline tools
+│   ├── src/
+│   │   ├── add_offset/
+│   │   ├── check_new_data/
+│   │   ├── fetch_silo_data/
+│   │   ├── merge_sorted_chunks/
+│   │   └── split_into_sorted_chunks/
+│   ├── Cargo.toml
+│   └── Cargo.lock
+├── roles/srsilo/            # Ansible role
+└── playbooks/srsilo/        # Ansible playbooks
 ```
 
 ## Components
@@ -37,7 +54,7 @@ Automated multi-virus genomic data processing: monitors LAPIS API for new sequen
 - `setup.yml` - Initial setup
 - `setup-timer.yml` - Configure systemd timer
 
-**Rust Tools:** `check_new_data`, `fetch_silo_data`, `split_into_sorted_chunks`, `merge_sorted_chunks`, `add_offset`
+**Rust Tools (srsilo-updater):** `check_new_data`, `fetch_silo_data`, `split_into_sorted_chunks`, `merge_sorted_chunks`, `add_offset`
 
 **Docker:** SILO (genspectrum/lapis-silo), LAPIS API (genspectrum/lapis)
 
