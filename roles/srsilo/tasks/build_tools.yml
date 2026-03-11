@@ -62,7 +62,6 @@
     - split_into_sorted_chunks
     - merge_sorted_chunks
     - fetch_silo_data
-    - add_offset
     - check_new_data
   become: yes
 

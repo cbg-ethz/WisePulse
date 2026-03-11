@@ -37,7 +37,7 @@ Automated multi-virus genomic data processing: monitors LAPIS API for new sequen
 - `setup.yml` - Initial setup
 - `setup-timer.yml` - Configure systemd timer
 
-**Rust Tools:** `check_new_data`, `fetch_silo_data`, `split_into_sorted_chunks`, `merge_sorted_chunks`, `add_offset`
+**Rust Tools:** `check_new_data`, `fetch_silo_data`, `split_into_sorted_chunks`, `merge_sorted_chunks`
 
 **Docker:** SILO (genspectrum/lapis-silo), LAPIS API (genspectrum/lapis)
 
