@@ -43,6 +43,11 @@ srsilo_viruses:
     instance_name: wise-rsva
     lapis_port: 8084
     silo_port: 8082
+  rsvb:
+    organism: rsvb
+    instance_name: wise-rsvb
+    lapis_port: 8085
+    silo_port: 8086
 
 # List of enabled viruses (for multi-virus playbooks)
 # This controls which viruses are actually processed - override in group_vars
