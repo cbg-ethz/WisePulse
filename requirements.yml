@@ -19,3 +19,5 @@ roles:
     version: "2.13.0"
   - name: geerlingguy.nginx
     version: "3.1.4"
+  - src: geerlingguy.docker
+    version: "8.0.0"
