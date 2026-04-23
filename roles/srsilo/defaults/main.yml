@@ -54,6 +54,7 @@ srsilo_viruses:
 srsilo_enabled_viruses:
   - covid
   - rsva
+  - rsvb
 
 # =============================================================================
 # Derived Virus-Specific Paths (New Multi-Virus Structure)
