@@ -1,0 +1,12 @@
+---
+# The Docker version that "apt install docker.io" yields is quite old
+# (docker compose is not yet available - only docker-compose),
+# so we use this role to install a recent version.
+- name: Install Docker
+  ansible.builtin.include_role:
+    name: geerlingguy.docker
+  vars:
+    docker_apt_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+    docker_install_compose_plugin: true
+    docker_compose_package: docker-compose-plugin
+    docker_compose_package_state: present
