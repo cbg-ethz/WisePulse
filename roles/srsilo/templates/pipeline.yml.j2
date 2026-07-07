@@ -1,0 +1,26 @@
+# srSILO updater configuration — managed by Ansible, do not edit manually.
+
+base_path: {{ srsilo_base_path }}
+tools_path: {{ srsilo_tools_path }}
+api_base_url: {{ srsilo_api_base_url }}
+
+retention_days: {{ srsilo_retention_days }}
+retention_min_keep: {{ srsilo_retention_min_keep }}
+
+enabled_viruses:
+{% for v in srsilo_enabled_viruses %}
+  - {{ v }}
+{% endfor %}
+
+viruses:
+{% for virus_name, virus_meta in srsilo_viruses.items() %}
+  {{ virus_name }}:
+    organism: {{ virus_meta.organism }}
+    instance_name: {{ virus_meta.instance_name }}
+    lapis_port: {{ virus_meta.lapis_port }}
+    silo_port: {{ virus_meta.silo_port }}
+    fetch_days: {{ srsilo_virus_config[virus_name].fetch_days }}
+    fetch_max_reads: {{ srsilo_virus_config[virus_name].fetch_max_reads }}
+    chunk_size: {{ srsilo_virus_config[virus_name].chunk_size }}
+    docker_memory_limit: {{ srsilo_virus_config[virus_name].docker_memory_limit }}
+{% endfor %}

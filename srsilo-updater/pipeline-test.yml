@@ -1,0 +1,42 @@
+# Test configuration — reduced resource limits for local dev runs.
+# Used by: python -m pipeline --config srsilo-updater/pipeline-test.yml
+
+base_path: /opt/srsilo
+tools_path: /opt/srsilo/tools
+api_base_url: https://api.db.wasap.genspectrum.org
+
+retention_days: 3
+retention_min_keep: 2
+
+enabled_viruses:
+  - covid
+  - rsva
+
+viruses:
+  covid:
+    organism: covid
+    instance_name: wise-sarsCoV2
+    lapis_port: 8083
+    silo_port: 8081
+    fetch_days: 120
+    fetch_max_reads: 20000000
+    chunk_size: 30000
+    docker_memory_limit: 7g
+  rsva:
+    organism: rsva
+    instance_name: wise-rsva
+    lapis_port: 8084
+    silo_port: 8082
+    fetch_days: 120
+    fetch_max_reads: 20000000
+    chunk_size: 30000
+    docker_memory_limit: 7g
+  rsvb:
+    organism: rsvb
+    instance_name: wise-rsvb
+    lapis_port: 8085
+    silo_port: 8086
+    fetch_days: 120
+    fetch_max_reads: 20000000
+    chunk_size: 30000
+    docker_memory_limit: 7g

@@ -2,7 +2,15 @@
 - name: srSILO Setup - Initial Setup and Configuration
   hosts: srsilo
   gather_facts: yes
-  
+
+  vars_files:
+    - vars/common.yml
+
+  pre_tasks:
+    - name: Load srsilo role defaults
+      include_vars:
+        file: "{{ playbook_dir }}/../../roles/srsilo/defaults/main.yml"
+
   tasks:
     - name: Display configuration
       debug:
@@ -13,26 +21,22 @@
           - "Base path: {{ srsilo_base_path }}"
           - "Tools path: {{ srsilo_tools_path }}"
           - "API: {{ srsilo_api_base_url }}"
-          - "Fetch days: {{ srsilo_fetch_days }}"
-    
-    - name: Setup prerequisites (user, directories, permissions)
-      include_role:
-        name: srsilo
-        tasks_from: prerequisites
-      tags: [prerequisites]
-    
-    - name: Build Rust tools
+          - "Enabled viruses: {{ srsilo_enabled_viruses | join(', ') }}"
+
+    - name: Build Rust tools (once, shared across viruses)
       include_role:
         name: srsilo
         tasks_from: build_tools
       tags: [build]
-    
-    - name: Deploy configuration files
-      include_role:
-        name: srsilo
-        tasks_from: deploy_configs
-      tags: [config]
-    
+
+    - name: Setup per-virus prerequisites and configs
+      include_tasks: _tasks/setup-single-virus.yml
+      loop: "{{ srsilo_enabled_viruses }}"
+      loop_control:
+        loop_var: current_virus
+        label: "{{ current_virus }}"
+      tags: [prerequisites, config]
+
     - name: Display setup complete message
       debug:
         msg:
@@ -40,7 +44,6 @@
           - "Binaries: {{ srsilo_tools_path }}/target/release/"
           - "Data will be stored in: {{ srsilo_base_path }}"
           - "Logs: Use 'sudo journalctl -t srsilo-pipeline' to view logs"
-          - "Ansible logs: /var/log/ansible/ansible.log"
           - ""
           - "Next steps:"
           - "  - Run playbooks/srsilo/update-pipeline.yml to process data"

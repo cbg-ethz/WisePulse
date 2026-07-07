@@ -68,9 +68,9 @@
     mode: '0750'
   become: yes
 
-- name: Copy tools directory from repository to base path
+- name: Copy Rust tools from repository to base path
   copy:
-    src: "{{ wisepulse_repo_path }}/roles/srsilo/files/tools/"
+    src: "{{ wisepulse_repo_path }}/srsilo-updater/rust/"
     dest: "{{ srsilo_tools_path }}/"
     remote_src: yes
   become: yes
@@ -113,6 +113,32 @@
     - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
     - { src: 'docker-compose-preprocessing.yml.j2', dest: 'docker-compose-preprocessing.yml' }
 
+- name: Ensure python3-venv is installed
+  apt:
+    name: python3-venv
+    state: present
+  become: yes
+
+- name: Create Python virtualenv for srsilo-updater
+  command:
+    cmd: python3 -m venv "{{ srsilo_base_path }}/venv"
+    creates: "{{ srsilo_base_path }}/venv/bin/python"
+  become: yes
+
+- name: Install srsilo-updater package into venv
+  pip:
+    name: "{{ wisepulse_repo_path }}/srsilo-updater"
+    virtualenv: "{{ srsilo_base_path }}/venv"
+  become: yes
+
+- name: Set ownership of virtualenv
+  file:
+    path: "{{ srsilo_base_path }}/venv"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    recurse: yes
+  become: yes
+
 - name: Display prerequisites complete message
   debug:
     msg:
@@ -120,4 +146,5 @@
       - "  User/Group: {{ srsilo_user }}:{{ srsilo_group }}"
       - "  Base path: {{ srsilo_base_path }}"
       - "  Tools path: {{ srsilo_tools_path }}"
+      - "  Venv: {{ srsilo_base_path }}/venv"
       - "  Docker compose files rendered with absolute paths"

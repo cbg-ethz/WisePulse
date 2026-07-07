@@ -16,17 +16,17 @@ srsilo_enabled_viruses:
 # Per-virus configuration overrides for test environment (8GB RAM)
 srsilo_virus_config:
   covid:
-    fetch_days: 45                  # Fetch only 45 days instead of 90
-    fetch_max_reads: 5000000        # Limit to 5M reads instead of 172.5M
+    fetch_days: 120
+    fetch_max_reads: 20000000       # 20M reads (single day can be ~5M; prod is 172.5M)
     chunk_size: 30000               # Reduced for 8GB RAM test environment
     docker_memory_limit: 7g         # 90% of 8GB RAM
   rsva:
-    fetch_days: 45                  # Fetch only 45 days instead of 90
+    fetch_days: 120
     fetch_max_reads: 2000000        # Limit to 2M reads instead of 50M
     chunk_size: 30000               # Reduced for 8GB RAM test environment
     docker_memory_limit: 7g         # 90% of 8GB RAM
   rsvb:
-    fetch_days: 45                  # Fetch only 45 days instead of 90
+    fetch_days: 120
     fetch_max_reads: 2000000        # Limit to 2M reads instead of 50M
     chunk_size: 30000               # Reduced for 8GB RAM test environment
     docker_memory_limit: 7g         # 90% of 8GB RAM
