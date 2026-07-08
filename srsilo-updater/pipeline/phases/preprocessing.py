@@ -7,7 +7,14 @@ log = logging.getLogger(__name__)
 
 
 def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
-    """Phase 6b: run SILO preprocessing container."""
+    """Phase 6b: run SILO preprocessing container.
+
+    SILO reads sorted.ndjson.zst plus the virus schema and reference genome
+    files and builds a binary index directory under output/<timestamp>/. This
+    is the longest phase — SILO processes every record and computes its
+    internal data structures upfront. The payoff is that loading the finished
+    index into the running SILO instance (phase 7) is near-instant.
+    """
     if not paths.sorted_file.exists():
         raise RuntimeError(f"Sorted file not found: {paths.sorted_file}")
 
