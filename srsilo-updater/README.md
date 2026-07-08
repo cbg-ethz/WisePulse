@@ -1,6 +1,6 @@
 # srsilo-updater
 
-Python pipeline that keeps the srSILO genomic database up to date. It fetches new sequence data from the upstream Loculus/LAPIS API, preprocesses it through SILO, and hot-swaps the running index with zero downtime.
+Python pipeline that keeps the srSILO genomic database up to date. It fetches new sequence data from the upstream Loculus/LAPIS API and preprocesses it through SILO. SILO continuously scans its output directory and loads new indexes automatically, so no API restart is needed.
 
 ## Structure
 
@@ -15,8 +15,6 @@ srsilo-updater/
       fetch.py           # Phase 4: download .ndjson.zst files
       sort_and_merge.py  # Phase 6a: chunk, sort, merge reads
       preprocessing.py   # Phase 6b: run SILO preprocessing container
-      finalize.py        # Phase 7: swap index, update timestamp, start API
-      api.py             # Docker compose start/stop + health check
   rust/                  # Rust binaries (built by Ansible, called by pipeline)
     src/
       check_new_data/
@@ -41,9 +39,7 @@ srsilo-updater/
 | 4 | `fetch_silo_data` binary downloads `.ndjson.zst` files from the API |
 | 6a | `split_into_sorted_chunks` + `merge_sorted_chunks` produce `sorted.ndjson.zst` |
 | 6b | SILO preprocessing Docker container builds the index |
-| 7 | New index swapped in, API restarted, timestamp updated |
-
-On any failure in phases 6–7 the rollback path in `finalize.py` deletes the partial index and restarts the API with the previous good index.
+| 7 | `.next_timestamp` promoted to `.last_update`; SILO picks up the new index automatically |
 
 ## Running locally
 
