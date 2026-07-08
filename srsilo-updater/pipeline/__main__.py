@@ -44,7 +44,6 @@ def run_virus(virus_name: str, config: PipelineConfig) -> bool:
             str(int(__import__("time").time()))
         )
 
-        api.stop(virus_name, paths)
         sort_and_merge.run(config, virus, paths)
         preprocessing.run(config, virus, paths)
         finalize.run(virus_name, config, virus, paths)
