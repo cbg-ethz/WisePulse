@@ -6,11 +6,12 @@ Usage:
 
 import argparse
 import logging
+import shutil
 import sys
 from pathlib import Path
 
 from pipeline.config import PipelineConfig
-from pipeline.phases import check_new_data, cleanup, fetch, finalize, preprocessing, sort_and_merge
+from pipeline.phases import check_new_data, cleanup, fetch, preprocessing, sort_and_merge
 
 
 def setup_logging() -> None:
@@ -40,7 +41,11 @@ def run_virus(virus_name: str, config: PipelineConfig) -> bool:
         fetch.run(config, virus, paths)
         sort_and_merge.run(config, virus, paths)
         preprocessing.run(config, virus, paths)
-        finalize.run(virus_name, config, virus, paths)
+
+        # promote timestamp
+        if paths.next_timestamp.exists():
+            shutil.copy2(paths.next_timestamp, paths.last_update)
+            paths.next_timestamp.unlink()
 
     except Exception as exc:
         log.error("Pipeline failed for %s: %s", virus_name, exc)
