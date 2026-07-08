@@ -4,21 +4,12 @@ import time
 
 import requests
 
-from pipeline.config import PipelineConfig, VirusConfig, VirusPaths
+from pipeline.config import VirusConfig, VirusPaths
 
 log = logging.getLogger(__name__)
 
 _HEALTH_RETRIES = 12
 _HEALTH_DELAY = 5
-
-
-def stop(virus_name: str, paths: VirusPaths) -> None:
-    log.info("Stopping SILO API for %s", virus_name)
-    subprocess.run(
-        ["docker", "compose", "-p", virus_name, "down"],
-        cwd=paths.config,
-        capture_output=True,
-    )
 
 
 def start(virus_name: str, virus: VirusConfig, paths: VirusPaths) -> None:

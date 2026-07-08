@@ -9,10 +9,9 @@ log = logging.getLogger(__name__)
 
 
 def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
-    """Phase 3: retention policy, orphan cleanup, reset working dirs."""
+    """Phase 3: retention policy, reset working dirs."""
     log.info("PHASE 3: Cleanup")
     _apply_retention(paths, config.retention_days, config.retention_min_keep)
-    _cleanup_orphan(paths)
     _reset_working_dirs(paths)
     log.info("PHASE 3: Cleanup complete")
 
@@ -38,22 +37,6 @@ def _apply_retention(paths: VirusPaths, retention_days: int, min_keep: int) -> N
 
     if not deletable:
         log.info("Retention: nothing to delete")
-
-
-def _cleanup_orphan(paths: VirusPaths) -> None:
-    marker = paths.preprocessing_marker
-    if not marker.exists():
-        return
-
-    orphan_ts = marker.read_text().strip()
-    log.warning("Found orphaned preprocessing marker (ts=%s) — cleaning up", orphan_ts)
-
-    orphan_dir = paths.output / orphan_ts
-    if orphan_dir.exists():
-        shutil.rmtree(orphan_dir)
-        log.info("Deleted orphaned index %s", orphan_ts)
-
-    marker.unlink()
 
 
 def _reset_working_dirs(paths: VirusPaths) -> None:

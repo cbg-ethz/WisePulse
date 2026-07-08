@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from pipeline.config import PipelineConfig
-from pipeline.phases import api, check_new_data, cleanup, fetch, finalize, preprocessing, sort_and_merge
+from pipeline.phases import check_new_data, cleanup, fetch, finalize, preprocessing, sort_and_merge
 
 
 def setup_logging() -> None:
@@ -38,22 +38,13 @@ def run_virus(virus_name: str, config: PipelineConfig) -> bool:
     try:
         cleanup.run(config, virus, paths)
         fetch.run(config, virus, paths)
-
-        # Write preprocessing marker before we touch the output dir
-        paths.preprocessing_marker.write_text(
-            str(int(__import__("time").time()))
-        )
-
         sort_and_merge.run(config, virus, paths)
         preprocessing.run(config, virus, paths)
         finalize.run(virus_name, config, virus, paths)
 
     except Exception as exc:
         log.error("Pipeline failed for %s: %s", virus_name, exc)
-        try:
-            finalize.rollback(virus_name, config, virus, paths)
-        except Exception as rb_exc:
-            log.error("Rollback also failed: %s", rb_exc)
+        paths.next_timestamp.unlink(missing_ok=True)
         return False
 
     return True

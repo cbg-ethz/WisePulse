@@ -100,7 +100,3 @@ class VirusPaths:
     @property
     def sorted_file(self) -> Path:
         return self.base / "sorted.ndjson.zst"
-
-    @property
-    def preprocessing_marker(self) -> Path:
-        return self.output / ".preprocessing_in_progress"
