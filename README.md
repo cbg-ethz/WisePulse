@@ -54,12 +54,17 @@ Upstream data processing is handled separately:
 ## Quick Start
 
 ```bash
-# One-time setup
+# One-time setup: install dependencies, build Rust tools, deploy configs, create venv
 ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become --ask-become-pass
 
-# Run pipeline
-ansible-playbook playbooks/srsilo/update-all-viruses.yml -i inventory.ini --become --ask-become-pass
+# Set up the daily systemd timer
+ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini --become --ask-become-pass
+
+# Run the pipeline manually
+/opt/srsilo/venv/bin/python -m pipeline --config /opt/srsilo/pipeline.yml
 ```
+
+The data pipeline lives in [`srsilo-updater/`](srsilo-updater/README.md) — a Python package that wraps the Rust fetch/sort/merge binaries and manages the SILO Docker containers. See its README for local dev instructions.
 
 ## Documentation
 
