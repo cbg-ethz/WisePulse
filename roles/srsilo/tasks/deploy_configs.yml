@@ -23,6 +23,15 @@
     - { src: 'viruses/{{ srsilo_virus }}/preprocessing_config.yaml', dest: 'preprocessing_config.yaml' }
     - { src: 'viruses/{{ srsilo_virus }}/reference_genomes.json', dest: 'reference_genomes.json' }
 
+- name: Deploy pipeline.yml config for srsilo-updater
+  template:
+    src: pipeline.yml.j2
+    dest: "{{ srsilo_base_path }}/pipeline.yml"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+  become: yes
+
 - name: Display config deployment complete message
   debug:
     msg:

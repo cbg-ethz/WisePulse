@@ -1,0 +1,44 @@
+# srSILO updater configuration
+# Deployed by Ansible from group_vars/srsilo/main.yml values.
+# Edit group_vars, not this file directly.
+
+base_path: /opt/srsilo
+tools_path: /opt/srsilo/tools
+api_base_url: https://api.db.wasap.genspectrum.org
+
+retention_days: 7
+retention_min_keep: 2
+
+enabled_viruses:
+  - covid
+  - rsva
+  - rsvb
+
+viruses:
+  covid:
+    organism: covid
+    instance_name: wise-sarsCoV2
+    lapis_port: 8083
+    silo_port: 8081
+    fetch_days: 90
+    fetch_max_reads: 172500000
+    chunk_size: 1000000
+    docker_memory_limit: 200g
+  rsva:
+    organism: rsva
+    instance_name: wise-rsva
+    lapis_port: 8084
+    silo_port: 8082
+    fetch_days: 90
+    fetch_max_reads: 50000000
+    chunk_size: 500000
+    docker_memory_limit: 100g
+  rsvb:
+    organism: rsvb
+    instance_name: wise-rsvb
+    lapis_port: 8085
+    silo_port: 8086
+    fetch_days: 90
+    fetch_max_reads: 50000000
+    chunk_size: 500000
+    docker_memory_limit: 100g
