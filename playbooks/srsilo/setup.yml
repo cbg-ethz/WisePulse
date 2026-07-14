@@ -3,9 +3,6 @@
   hosts: srsilo
   gather_facts: yes
 
-  vars_files:
-    - vars/common.yml
-
   pre_tasks:
     - name: Load srsilo role defaults
       include_vars:

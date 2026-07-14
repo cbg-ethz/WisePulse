@@ -50,6 +50,15 @@ srsilo_virus_config:
 wisepulse_repo_path: /opt/WisePulse
 
 # =============================================================================
+# API & Retention
+# =============================================================================
+
+srsilo_api_base_url: https://api.db.wasap.genspectrum.org
+
+srsilo_retention_days: 7
+srsilo_retention_min_keep: 2
+
+# =============================================================================
 # Testing Notes
 # =============================================================================
 # For testing with constrained resources (8GB RAM), override with:
