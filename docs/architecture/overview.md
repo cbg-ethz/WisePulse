@@ -48,7 +48,7 @@ WisePulse consists of four main components, all managed by Ansible playbooks.
 
 ## srSILO Pipeline
 
-Multi-virus genomic data pipeline **fully managed by Ansible** with:
+Multi-virus genomic data pipeline **fully managed by Ansible** with: NO LONGER
 
 - **Multi-virus support** (SARS-CoV-2, RSV-A; RSV-B and Influenza planned)
 - **Low downtime** (API managed automatically)
@@ -63,8 +63,6 @@ See [srSILO Pipeline Architecture](srsilo-pipeline.md) for detailed documentatio
 | Playbook | Purpose |
 |----------|---------|
 | `playbooks/srsilo/setup.yml` | One-time server setup |
-| `playbooks/srsilo/update-all-viruses.yml` | Update all enabled viruses (production) |
-| `playbooks/srsilo/update-pipeline.yml` | Update single virus (debug/testing) |
 | `playbooks/srsilo/setup-timer.yml` | Configure daily automated runs |
 
 ## Loculus

@@ -46,5 +46,5 @@
           - "Logs: Use 'sudo journalctl -t srsilo-pipeline' to view logs"
           - ""
           - "Next steps:"
-          - "  - Run playbooks/srsilo/update-pipeline.yml to process data"
+          - "  - Run playbooks/srsilo/update-pipeline.yml to process data" // TODO REMOVE
           - "  - Setup systemd timer for automated runs"
