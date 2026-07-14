@@ -1,7 +1,7 @@
 services:
   lapisOpen:
     container_name: {{ srsilo_current_instance_name }}-lapis
-    image: ghcr.io/genspectrum/lapis:0.6.6
+    image: ghcr.io/genspectrum/lapis:0.8.3
     restart: unless-stopped
     ports:
       - {{ srsilo_current_lapis_port }}:8080
@@ -22,7 +22,7 @@ services:
 
   silo:
     container_name: {{ srsilo_current_instance_name }}-silo
-    image: ghcr.io/genspectrum/lapis-silo:0.9.5
+    image: ghcr.io/genspectrum/lapis-silo:0.11.2
     mem_limit: {{ srsilo_virus_config[srsilo_virus].docker_memory_limit }}
     restart: unless-stopped
     ports:
