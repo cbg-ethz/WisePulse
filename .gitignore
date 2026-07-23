@@ -20,3 +20,4 @@ Thumbs.db
 # Downloaded Ansible roles/collections (install via requirements.yml)
 ansible/roles/
 ansible.log
+inventory.test.ini

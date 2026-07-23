@@ -36,6 +36,18 @@
     mode: '0755'
   become: yes
 
+- name: Copy Rust source files to tools path
+  copy:
+    src: "{{ inventory_dir }}/srsilo-updater/rust/{{ item }}"
+    dest: "{{ srsilo_tools_path }}/"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+  become: yes
+  loop:
+    - Cargo.toml
+    - Cargo.lock
+    - src
+
 - name: Build Rust utilities
   command: cargo build --release
   args:
