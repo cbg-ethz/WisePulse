@@ -1,0 +1,7 @@
+---
+# geerlingguy.nginx is pulled in via a dynamic include_role in roles/nginx,
+# so its own defaults/main.yml loads after (and overrides) role defaults set
+# in roles/nginx/defaults/main.yml at that same precedence tier. Group vars
+# outrank both, so set it here to reliably remove Ubuntu's stock default
+# vhost, which otherwise conflicts with our default_server site.
+nginx_remove_default_vhost: true
