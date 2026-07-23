@@ -68,21 +68,6 @@
     mode: '0750'
   become: yes
 
-- name: Copy Rust tools from repository to base path
-  copy:
-    src: "{{ wisepulse_repo_path }}/srsilo-updater/rust/"
-    dest: "{{ srsilo_tools_path }}/"
-    remote_src: yes
-  become: yes
-
-- name: Set ownership of tools directory
-  file:
-    path: "{{ srsilo_tools_path }}"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    recurse: yes
-  become: yes
-
 - name: Ensure virus config directory exists
   file:
     path: "{{ srsilo_virus_config_path }}"
@@ -125,9 +110,18 @@
     creates: "{{ srsilo_base_path }}/venv/bin/python"
   become: yes
 
+- name: Copy srsilo-updater package source to remote host
+  copy:
+    src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
+    dest: "{{ srsilo_base_path }}/srsilo-updater-src/"
+  become: yes
+  loop:
+    - pyproject.toml
+    - pipeline
+
 - name: Install srsilo-updater package into venv
   pip:
-    name: "{{ wisepulse_repo_path }}/srsilo-updater"
+    name: "{{ srsilo_base_path }}/srsilo-updater-src"
     virtualenv: "{{ srsilo_base_path }}/venv"
   become: yes
 

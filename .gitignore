@@ -4,7 +4,6 @@
 
 # Ansible
 .vault_pass
-ansible/roles/geerlingguy.nginx/
 
 # IDEs
 .vscode/
@@ -18,5 +17,7 @@ ansible/roles/geerlingguy.nginx/
 Thumbs.db
 
 # Downloaded Ansible roles/collections (install via requirements.yml)
-ansible/roles/
+roles/gantsign.helm/
+roles/geerlingguy.nginx/
 ansible.log
+inventory.test.ini

@@ -20,12 +20,6 @@
           - "API: {{ srsilo_api_base_url }}"
           - "Enabled viruses: {{ srsilo_enabled_viruses | join(', ') }}"
 
-    - name: Build Rust tools (once, shared across viruses)
-      include_role:
-        name: srsilo
-        tasks_from: build_tools
-      tags: [build]
-
     - name: Setup per-virus prerequisites and configs
       include_tasks: _tasks/setup-single-virus.yml
       loop: "{{ srsilo_enabled_viruses }}"
@@ -33,6 +27,12 @@
         loop_var: current_virus
         label: "{{ current_virus }}"
       tags: [prerequisites, config]
+
+    - name: Build Rust tools (once, shared across viruses)
+      include_role:
+        name: srsilo
+        tasks_from: build_tools
+      tags: [build]
 
     - name: Display setup complete message
       debug:
