@@ -1,5 +1,5 @@
 name: '{{ name }}'
-host: '{{ host }}'
+host: '{{ inventory_hostname }}'
 {% if loculus_commit_sha is defined %}
 sha: '{{ loculus_commit_sha[:7] }}'
 {% endif %}
