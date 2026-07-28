@@ -45,7 +45,20 @@ Edit `inventory.ini` to point at your target host and deploy user:
 ansible-galaxy collection install -r requirements.yml
 ```
 
-### 4. Configure Variables
+### 4. Set Up the Vault Password
+
+`group_vars/loculus/vault.yml` and `group_vars/monitoring/vault.yml` hold secrets encrypted
+with Ansible Vault. Decrypting them (and running any playbook) requires a `.vault_pass` file
+in the repo root containing the vault password.
+
+This file is not checked into git. Ask a project maintainer for the password, then create it:
+
+```bash
+echo '<vault password>' > .vault_pass
+chmod 600 .vault_pass
+```
+
+### 5. Configure Variables
 
 Edit the group variables for your environment:
 
@@ -61,7 +74,7 @@ vim group_vars/loculus/vault.yml  # Encrypted secrets
 vim group_vars/monitoring/main.yml
 ```
 
-### 5. Run Setup Playbook
+### 6. Run Setup Playbook
 
 ```bash
 # One-time setup (creates user, directories, builds tools)
