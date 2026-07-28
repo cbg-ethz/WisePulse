@@ -1,11 +1,25 @@
 # Installation
 
+Ansible runs from your own machine (the control machine) and configures the target server
+over SSH — it is not run on the server itself.
+
 ## Prerequisites
 
+On your control machine:
 - **Ansible** 2.16+
+
+On the target server:
 - **Docker** and **Docker Compose**
 - **Kubernetes** (for Loculus), kubectl configured
 - **Linux** (Ubuntu 20.04+, Debian 11+)
+- A deploy user with SSH access and passwordless sudo (or sudo via `--ask-become-pass`)
+- Your control machine's SSH key in that user's `~/.ssh/authorized_keys`
+
+Verify SSH access before proceeding:
+
+```bash
+ssh <deploy_user>@<target_host>
+```
 
 ## Setup
 
@@ -18,9 +32,11 @@ cd WisePulse
 
 ### 2. Configure Inventory
 
-```bash
-cp inventory.ini.example inventory.ini
-vim inventory.ini  # Set your target hosts
+Edit `inventory.ini` to point at your target host and deploy user:
+
+```ini
+[wisepulse_server]
+<target_host> ansible_user=<deploy_user>
 ```
 
 ### 3. Install Ansible Collections

@@ -2,6 +2,9 @@
 
 WisePulse consists of four main components, all managed by Ansible playbooks.
 
+Playbooks are run from a control machine (e.g. your laptop) and configure the target server
+over SSH — see [Installation](../getting-started/installation.md) for the SSH prerequisites.
+
 ## Components
 
 ```
