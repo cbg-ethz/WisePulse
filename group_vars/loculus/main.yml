@@ -1,5 +1,4 @@
 name: 'W-ASAP'
-host: 'db.wasap.genspectrum.org'
 
 # Pin the Loculus version
 loculus_commit_sha: 4948577ed8a054341e155b5c6f593996290a3320

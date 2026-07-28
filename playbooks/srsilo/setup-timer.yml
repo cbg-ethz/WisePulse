@@ -22,7 +22,7 @@
         group: root
         mode: '0644'
       vars:
-        role_path: "{{ wisepulse_repo_path }}/roles/srsilo"
+        role_path: "{{ inventory_dir }}/roles/srsilo"
       notify: reload systemd
       tags: [timer]
 
@@ -34,7 +34,7 @@
         group: root
         mode: '0644'
       vars:
-        role_path: "{{ wisepulse_repo_path }}/roles/srsilo"
+        role_path: "{{ inventory_dir }}/roles/srsilo"
       notify: reload systemd
       tags: [timer]
 

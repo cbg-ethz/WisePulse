@@ -47,6 +47,7 @@
     path: "{{ loculus_repo_path | dirname }}"
     state: directory
     mode: '0755'
+  become: yes
 
 - name: Checkout Loculus Repository at specific commit
   ansible.builtin.git:
