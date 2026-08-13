@@ -29,7 +29,7 @@ srsilo_enabled_viruses:
 srsilo_virus_config:
   covid:
     fetch_days: 365
-    fetch_max_reads: 1_100_000_000  # >1B reads
+    fetch_max_reads: 600_000_000  # 600M reads
     chunk_size: 1_000_000         # Large chunks for production
     docker_memory_limit: 250g
   rsva:
