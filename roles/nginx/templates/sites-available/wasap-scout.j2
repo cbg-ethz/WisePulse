@@ -16,6 +16,26 @@ server {
         proxy_read_timeout 86400;
     }
 
+    location = /eccb-poster-2026/figure1 {
+        return 302 "https://staging.genspectrum.org/swiss-wastewater/covid?locationName=Z%C3%BCrich+%28ZH%29&samplingDate=2026-04-14--2026-07-12&granularity=day&analysisMode=variant&sequenceType=nucleotide&signatureType=computed&variant=XFG*&minProportion=0.8&minCount=15&minJaccard=0.75&timeFrame=all&";
+    }
+
+    location = /eccb-poster-2026/figure2 {
+        return 302 "https://wasap.genspectrum.org/abundance?abundance_selected_variants=BA.3.2%2CXFG%2CNB.1.8.1%2CLP.8%2CXEC%2CKP.2%2CKP.3";
+    }
+
+    location = /eccb-poster-2026/figure2b {
+        return 302 "https://wasap.genspectrum.org/primer-probe-checker?demo=cdc";
+    }
+
+    location = /eccb-poster-2026/figure3 {
+        return 302 "https://genspectrum.org/swiss-wastewater/covid?locationName=Z%C3%BCrich+%28ZH%29&samplingDate=2026-04-14--2026-07-12&granularity=day&analysisMode=resistance&resistanceSet=Spike&";
+    }
+
+    location = /eccb-poster-2026/figure4 {
+        return 302 "https://wastewater-analytics.previews.chaoran.name/#/positions?pos=23012";
+    }
+
     listen 443 ssl http2;
     ssl_certificate {{ nginx_ssl_certificate_path }};
     ssl_certificate_key {{ nginx_ssl_certificate_key_path }};   
