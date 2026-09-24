@@ -1,6 +1,13 @@
 server {
     server_name silo.{{ nginx_domain_name }};
 
+    # RhyDB's result-ordering response header grows 62 bytes per orderBy()
+    # column and can exceed nginx's default 4k/8k proxy buffers, causing
+    # nginx to drop the response (see issue #266).
+    proxy_buffer_size 64k;
+    proxy_buffers 4 64k;
+    proxy_busy_buffers_size 128k;
+
     # Redirect /covid without trailing slash
     location = /covid {
         return 301 /covid/;
