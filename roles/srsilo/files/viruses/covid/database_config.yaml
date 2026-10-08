@@ -12,6 +12,9 @@ schema:
     - name: samplingDate
       type: date
       generateIndex: false
+    - name: date
+      type: string
+      generateIndex: true
     - name: locationName
       type: string
       generateIndex: true
