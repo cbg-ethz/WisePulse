@@ -1,0 +1,24 @@
+---
+- name: Configure firewalld
+  hosts: wisepulse_server
+  become: true
+  tasks:
+    - name: Install firewalld
+      apt:
+        name: firewalld
+        state: present
+
+    - name: Open firewall services and ports
+      ansible.posix.firewalld:
+        zone: "{{ item.zone }}"
+        service: "{{ item.service | default(omit) }}"
+        port: "{{ item.port | default(omit) }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      loop:
+        - { zone: public, service: ssh }
+        - { zone: public, service: https }
+        - { zone: public, port: 8000-9080/tcp }
+        - { zone: docker, service: https }
+        - { zone: docker, port: 8000-9500/tcp }

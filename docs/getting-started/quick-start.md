@@ -58,6 +58,13 @@ ansible-playbook playbooks/monitoring/full.yml -i inventory.ini --ask-become-pas
 ansible-playbook playbooks/setup_nginx.yml -i inventory.ini --ask-become-pass
 ```
 
+## Firewall
+
+```bash
+# Install firewalld and open the required ports
+ansible-playbook playbooks/setup_firewall.yml -i inventory.ini --ask-become-pass
+```
+
 ## Next Steps
 
 - [Architecture Overview](../architecture/overview.md) – Understand the system design
