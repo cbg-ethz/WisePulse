@@ -38,6 +38,7 @@ srsilo-updater/
 | 3 | Retention cleanup of old indexes; reset working directories |
 | 4 | `fetch_silo_data` binary downloads `.ndjson.zst` files from the API |
 | 6a | `split_into_sorted_chunks` + `merge_sorted_chunks` produce `sorted.ndjson.zst` |
+| 6a | Records get a `date` field copied from `samplingDate`, but only for viruses whose `database_config.yaml` declares `date` (Loculus does not send it) |
 | 6b | SILO preprocessing Docker container builds the index |
 | 7 | `.next_timestamp` promoted to `.last_update`; SILO picks up the new index automatically |
 

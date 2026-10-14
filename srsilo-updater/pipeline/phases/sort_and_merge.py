@@ -1,12 +1,39 @@
 import logging
 import subprocess
-from pathlib import Path
+
+import yaml
 
 from pipeline.config import PipelineConfig, VirusConfig, VirusPaths
 
 log = logging.getLogger(__name__)
 
 SORT_FIELD = "/main/offset"
+
+# Loculus does not send a `date` field — SILO needs one for viruses whose schema
+# declares it (see database_config.yaml), so we duplicate `samplingDate` into it
+# while streaming the downloaded records. Plain text substitution rather than a
+# JSON round-trip: this runs over every single read, and the chunker downstream
+# already pays for parsing. Drop this stage once Loculus emits `date` itself.
+COPY_SAMPLING_DATE = [
+    "sed",
+    "-E",
+    "-e", r's/"samplingDate":"([^"]*)"/"samplingDate":"\1","date":"\1"/',
+    "-e", r's/"samplingDate":null/"samplingDate":null,"date":null/',
+]
+
+
+def _declares_date_field(paths: VirusPaths) -> bool:
+    """True if the virus schema declares a `date` metadata field."""
+    db_config = paths.config / "database_config.yaml"
+    if not db_config.exists():
+        log.warning("No database_config.yaml at %s — skipping `date` injection", db_config)
+        return False
+
+    with db_config.open() as f:
+        schema = yaml.safe_load(f) or {}
+
+    metadata = (schema.get("schema") or {}).get("metadata") or []
+    return any(field.get("name") == "date" for field in metadata)
 
 
 def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
@@ -18,6 +45,10 @@ def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
     log.info("PHASE 6a: Splitting %d file(s) into sorted chunks (chunk_size=%d)",
              len(input_files), virus.chunk_size)
 
+    copy_sampling_date = _declares_date_field(paths)
+    if copy_sampling_date:
+        log.info("PHASE 6a: Schema declares `date` — copying samplingDate into it")
+
     chunks_list = paths.sorted_chunks / "chunks.list"
     chunks_list.unlink(missing_ok=True)
 
@@ -27,11 +58,22 @@ def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
         chunk_output = paths.sorted_chunks / input_file.name
         chunk_output.mkdir(parents=True, exist_ok=True)
 
-        # zstdcat <file> | split_into_sorted_chunks --output-path <dir> ...
-        zstdcat = subprocess.Popen(
+        # zstdcat <file> [| sed (copy date)] | split_into_sorted_chunks --output-path <dir> ...
+        stages = [("zstdcat", subprocess.Popen(
             ["zstdcat", str(input_file)],
             stdout=subprocess.PIPE,
-        )
+        ))]
+
+        if copy_sampling_date:
+            upstream = stages[-1][1].stdout
+            stages.append(("sed", subprocess.Popen(
+                COPY_SAMPLING_DATE,
+                stdin=upstream,
+                stdout=subprocess.PIPE,
+            )))
+            # Only sed needs the read end now, so if it dies zstdcat sees EPIPE
+            upstream.close()
+
         subprocess.run(
             [
                 str(bins / "split_into_sorted_chunks"),
@@ -39,13 +81,14 @@ def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
                 "--chunk-size", str(virus.chunk_size),
                 "--sort-field-path", SORT_FIELD,
             ],
-            stdin=zstdcat.stdout,
+            stdin=stages[-1][1].stdout,
             cwd=paths.base,
             check=True,
         )
-        zstdcat.wait()
-        if zstdcat.returncode != 0:
-            raise RuntimeError(f"zstdcat failed for {input_file.name}")
+        for name, proc in stages:
+            proc.wait()
+            if proc.returncode != 0:
+                raise RuntimeError(f"{name} failed for {input_file.name}")
 
         # Append chunk paths to the list file
         chunk_files = sorted(chunk_output.glob("chunk_*.ndjson.zst"))
