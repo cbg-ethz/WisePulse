@@ -28,4 +28,4 @@ schema:
   features:
     - name: generalizedAdvancedQuery
   primaryKey: readId
-siloClientThreadCount: 96
+rhydbClientThreadCount: 96
