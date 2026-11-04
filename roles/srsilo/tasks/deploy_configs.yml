@@ -20,7 +20,6 @@
   become: yes
   loop:
     - { src: 'viruses/{{ srsilo_virus }}/database_config.yaml', dest: 'database_config.yaml' }
-    - { src: 'viruses/{{ srsilo_virus }}/preprocessing_config.yaml', dest: 'preprocessing_config.yaml' }
     - { src: 'viruses/{{ srsilo_virus }}/reference_genomes.json', dest: 'reference_genomes.json' }
     - { src: 'viruses/{{ srsilo_virus }}/schema.rhyql', dest: 'schema.rhyql' }
 
@@ -38,7 +37,6 @@
     msg:
       - "✓ Configuration files deployed for {{ srsilo_virus }}"
       - "  database_config.yaml"
-      - "  preprocessing_config.yaml"
       - "  reference_genomes.json"
       - "  schema.rhyql"
       - "  Destination: {{ srsilo_virus_config_path }}/"

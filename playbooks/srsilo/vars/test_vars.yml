@@ -29,6 +29,8 @@ srsilo_virus_config:
     chunk_size: 30000               # Reduced for 8GB RAM test environment
     docker_memory_limit: 7g         # 90% of 8GB RAM
 
+srsilo_pipeline_memory_max: 7G
+
 # Shared configuration (same as production)
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 

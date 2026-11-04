@@ -14,7 +14,7 @@ srsilo-updater/
       cleanup.py         # Phase 3: retention policy + reset working dirs
       fetch.py           # Phase 4: download .ndjson.zst files
       sort_and_merge.py  # Phase 6a: chunk, sort, merge reads
-      preprocessing.py   # Phase 6b: run SILO preprocessing container
+      build_state.py     # Phase 6b: build the RhyDB state (Python bindings)
   rust/                  # Rust binaries (built by Ansible, called by pipeline)
     src/
       check_new_data/
@@ -39,7 +39,7 @@ srsilo-updater/
 | 4 | `fetch_silo_data` binary downloads `.ndjson.zst` files from the API |
 | 6a | `split_into_sorted_chunks` + `merge_sorted_chunks` produce `sorted.ndjson.zst` |
 | 6a | Records get a `date` field copied from `samplingDate`, but only for viruses whose `database_config.yaml` declares `date` (Loculus does not send it) |
-| 6b | SILO preprocessing Docker container builds the index |
+| 6b | `build_state` runs `schema.rhyql`, appends `sorted.ndjson.zst` to `data` and saves the state (RhyDB Python bindings) |
 | 7 | `.next_timestamp` promoted to `.last_update`; SILO picks up the new index automatically |
 
 ## Running locally
