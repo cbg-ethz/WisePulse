@@ -2,11 +2,9 @@
 # Test variables for srSILO update pipeline
 # These override group_vars/srsilo/main.yml for safe testing with reduced resources
 #
-# Usage (single virus):
-#   ansible-playbook update-pipeline.yml -e "srsilo_virus=covid" -e "@playbooks/srsilo/vars/test_vars.yml"
-#
-# Usage (all viruses):
-#   ansible-playbook update-all-viruses.yml -e "@playbooks/srsilo/vars/test_vars.yml"
+# Usage (writes a reduced-resource /opt/srsilo/pipeline.yml):
+#   ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become --ask-become-pass \
+#     -e "@playbooks/srsilo/vars/test_vars.yml"
 
 # Enabled viruses for testing (can be overridden to test single virus)
 srsilo_enabled_viruses:
