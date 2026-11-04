@@ -110,6 +110,12 @@
     creates: "{{ srsilo_base_path }}/venv/bin/python"
   become: yes
 
+- name: Remove previous srsilo-updater package source (copy does not delete removed modules)
+  file:
+    path: "{{ srsilo_base_path }}/srsilo-updater-src/pipeline"
+    state: absent
+  become: yes
+
 - name: Copy srsilo-updater package source to remote host
   copy:
     src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
