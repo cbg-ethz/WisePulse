@@ -10,6 +10,7 @@
       - "api.db.{{ nginx_domain_name }}"
       - "lapis.{{ nginx_domain_name }}"
       - "silo.{{ nginx_domain_name }}"
+      - "rhydb.{{ nginx_domain_name }}"
       - "{{ nginx_domain_name }}"
   pre_tasks:
     - name: Ensure Let's Encrypt directories exist
