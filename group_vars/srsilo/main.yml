@@ -31,17 +31,14 @@ srsilo_virus_config:
     fetch_days: 365
     fetch_max_reads: 600_000_000  # 600M reads
     chunk_size: 1_000_000         # Large chunks for production
-    docker_memory_limit: 250g
   rsva:
     fetch_days: 365
     fetch_max_reads: 50_000_000   # 50M reads
     chunk_size: 500_000           # Smaller chunks
-    docker_memory_limit: 50g
   rsvb:
     fetch_days: 365
     fetch_max_reads: 50_000_000     # 50M reads
     chunk_size: 500_000            # Smaller chunks
-    docker_memory_limit: 50g
 
 # =============================================================================
 # API & Retention
@@ -49,7 +46,10 @@ srsilo_virus_config:
 
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 
-# Memory cap of the pipeline service, which builds the RhyDB state in-process (systemd MemoryMax)
+# Memory cap of the shared RhyDB container that serves all viruses
+srsilo_rhydb_memory_limit: 250g
+
+# Memory cap of the pipeline service, which builds the RhyDB state of all viruses in-process (systemd MemoryMax)
 srsilo_pipeline_memory_max: 250G
 
 srsilo_retention_days: 7

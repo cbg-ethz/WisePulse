@@ -1,11 +1,11 @@
 """End-to-end pipeline test with a mock LAPIS HTTP server.
 
-Covers the full run_virus() path:
+Covers the full run_virus() + build() path:
   check_new_data (real Rust binary, mock HTTP)
   → cleanup (Python, no external deps)
   → fetch_silo_data (real Rust binary, mock HTTP + file download)
   → split_into_sorted_chunks + merge_sorted_chunks (real Rust binaries, no network)
-  → build_state (RhyDB Python bindings, covid config from this repo)
+  → build_state from all sorted data (RhyDB Python bindings, shared schema from this repo)
   → timestamp promotion (__main__.py logic)
 
 Requires:
@@ -20,21 +20,23 @@ from pathlib import Path
 import pytest
 from werkzeug import Request, Response
 
-from pipeline.__main__ import run_virus
+from pipeline.__main__ import build, run_virus
 from pipeline.config import PipelineConfig, VirusConfig
 
 TEST_DATA = Path(__file__).parent / "data"
 _TEST_FILE = "sampleId-D1_10_2025_07_06.ndjson.zst"
 _FAKE_TIMESTAMP = 1751500000
 
-COVID_CONFIG = Path(__file__).parent.parent.parent / "roles" / "srsilo" / "files" / "viruses" / "covid"
+FILES = Path(__file__).parent.parent.parent / "roles" / "srsilo" / "files"
 
 
 @pytest.fixture
 def virus_dir(tmp_path):
     base = tmp_path / "covid"
-    for d in ("input", "sorted_chunks", "tmp", "output", "config"):
+    for d in ("input", "sorted_chunks", "tmp", "config"):
         (base / d).mkdir(parents=True)
+    (tmp_path / "rhydb").mkdir()
+    shutil.copy2(FILES / "rhydb" / "schema.rhyql", tmp_path / "rhydb")
     return base
 
 
@@ -43,8 +45,8 @@ def test_pipeline_e2e(httpserver, rust_bins, virus_dir):
     file_bytes = (TEST_DATA / _TEST_FILE).read_bytes()
 
     pytest.importorskip("rhydb")
-    for fname in ("schema.rhyql", "database_config.yaml"):  # database_config.yaml: `date` injection
-        shutil.copy2(COVID_CONFIG / fname, virus_dir / "config" / fname)
+    # database_config.yaml: `date` injection
+    shutil.copy2(FILES / "viruses" / "covid" / "database_config.yaml", virus_dir / "config")
 
     # Serve the .ndjson.zst file that fetch_silo_data will download
     httpserver.expect_request(f"/files/{_TEST_FILE}").respond_with_data(
@@ -95,19 +97,16 @@ def test_pipeline_e2e(httpserver, rust_bins, virus_dir):
         enabled_viruses=["covid"],
         viruses={"covid": VirusConfig(
             organism="covid",
-            instance_name="covid",
-            lapis_port=8080,
-            silo_port=8081,
+            table="data",
             fetch_days=2,           # keep small: limits fetch loop iterations + 100ms sleeps
             fetch_max_reads=10_000_000,
             chunk_size=30_000,
-            docker_memory_limit="4g",
         )},
     )
 
-    ok = run_virus("covid", config)
-
-    assert ok, "run_virus() returned False — check logs above"
+    staged = []
+    assert run_virus("covid", config, staged), "run_virus() returned False — check logs above"
+    assert build(config, staged), "build() returned False — check logs above"
 
     paths = config.virus_paths("covid")
     assert paths.last_update.exists(), ".last_update was not written"
@@ -116,13 +115,14 @@ def test_pipeline_e2e(httpserver, rust_bins, virus_dir):
     assert paths.sorted_file.stat().st_size > 0, "sorted.ndjson.zst is empty"
     assert paths.last_update.read_text().strip() == str(_FAKE_TIMESTAMP)
 
-    # The builder should have written one RhyDB state under output/
-    index_dirs = [d for d in paths.output.iterdir() if d.is_dir()]
-    assert len(index_dirs) == 1, "expected exactly one RhyDB state in output/"
+    # The builder should have written one shared RhyDB state under rhydb/output/
+    output = config.rhydb_paths().output
+    index_dirs = [d for d in output.iterdir() if d.is_dir()]
+    assert len(index_dirs) == 1, "expected exactly one RhyDB state in rhydb/output/"
     assert (index_dirs[0] / "data_version.silo").exists(), "RhyDB state is incomplete"
 
     from rhydb import Database
-    db = Database(str(paths.output))
+    db = Database(str(output))
     rows = db.query("data.group(by := {}, aggs := {n := count()})").column("n")[0].as_py()
     assert rows > 0, "data table is empty"
     dates = db.query("data.filter(isNotNull(date)).project({readId})").num_rows

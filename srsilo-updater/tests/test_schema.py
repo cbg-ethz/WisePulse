@@ -7,7 +7,11 @@ import yaml
 
 from pipeline import schema
 
-VIRUSES = Path(__file__).parent.parent.parent / "roles" / "srsilo" / "files" / "viruses"
+FILES = Path(__file__).parent.parent.parent / "roles" / "srsilo" / "files"
+VIRUSES = FILES / "viruses"
+SCHEMA = FILES / "rhydb" / "schema.rhyql"
+# virus -> table, as in srsilo_viruses (roles/srsilo/defaults/main.yml)
+TABLES = {"covid": "data", "rsva": "rsva", "rsvb": "rsvb"}
 
 # RhyDB schema() type -> (LAPIS database_config type, generateIndex)
 LAPIS_TYPES = {
@@ -44,19 +48,29 @@ def test_statements_end_with_semicolon_at_end_of_line(tmp_path):
         schema.primary_key(statements, "other")
 
 
-@pytest.mark.parametrize("virus", ["covid", "rsva", "rsvb"])
-def test_lapis_config_matches_schema(virus):
-    """LAPIS keeps its own copy of the `data` table until the configs are consolidated."""
+@pytest.fixture(scope="module")
+def shared_db():
     pytest.importorskip("rhydb")
-    statements = schema.load(VIRUSES / virus / "schema.rhyql")
-    db = schema.create_database(statements)
-    assert "data" in db.query("tables()").to_pydict()["tableName"]
+    statements = schema.load(SCHEMA)
+    return statements, schema.create_database(statements)
+
+
+def test_schema_has_a_table_per_virus(shared_db):
+    _, db = shared_db
+    assert set(TABLES.values()) <= set(db.query("tables()").to_pydict()["tableName"])
+
+
+@pytest.mark.parametrize("virus", TABLES)
+def test_lapis_config_matches_schema(virus, shared_db):
+    """LAPIS keeps its own copy of each virus' table until the configs are consolidated."""
+    statements, db = shared_db
+    table = TABLES[virus]
 
     metadata, nucleotides, genes = set(), {}, {}
-    for col, rhydb_type in zip(*db.query("data.schema()").to_pydict().values()):
-        if nuc := db.get_nucleotide_reference_sequence("data", col):
+    for col, rhydb_type in zip(*db.query(f"{table}.schema()").to_pydict().values()):
+        if nuc := db.get_nucleotide_reference_sequence(table, col):
             nucleotides[col] = nuc
-        elif aa := db.get_amino_acid_reference_sequence("data", col):
+        elif aa := db.get_amino_acid_reference_sequence(table, col):
             genes[col] = aa
         else:
             metadata.add((col, *LAPIS_TYPES[rhydb_type]))
@@ -64,7 +78,7 @@ def test_lapis_config_matches_schema(virus):
     config = yaml.safe_load((VIRUSES / virus / "database_config.yaml").read_text())["schema"]
     pk = config["primaryKey"]
     assert metadata == {(m["name"], m["type"], bool(m.get("generateIndex")) and m["name"] != pk) for m in config["metadata"]}
-    assert schema.primary_key(statements, "data") == pk
+    assert schema.primary_key(statements, table) == pk
 
     refs = json.loads((VIRUSES / virus / "reference_genomes.json").read_text())
     assert nucleotides == {r["name"]: r["sequence"] for r in refs["nucleotideSequences"]}

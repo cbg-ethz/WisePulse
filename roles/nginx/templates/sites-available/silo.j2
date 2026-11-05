@@ -13,9 +13,11 @@ server {
         return 301 /covid/;
     }
 
-    # COVID instance - proxy with path stripped via trailing slash
+    # Shared RhyDB instance - proxy with path stripped via trailing slash.
+    # RSV is served by the same instance in the tables `rsva` and `rsvb`;
+    # /rsva/ and /rsvb/ (separate instances until all viruses were merged) are gone.
     location /covid/ {
-        proxy_pass http://silo-covid/;
+        proxy_pass http://rhydb/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -26,47 +28,11 @@ server {
         add_header Access-Control-Allow-Headers * always;
     }
 
-    # Redirect /rsva without trailing slash
-    location = /rsva {
-        return 301 /rsva/;
-    }
-
-    # RSVA instance - proxy with path stripped via trailing slash
-    location /rsva/ {
-        proxy_pass http://silo-rsva/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Prefix /rsva/;
-        add_header Access-Control-Allow-Origin * always;
-        add_header Access-Control-Allow-Methods * always;
-        add_header Access-Control-Allow-Headers * always;
-    }
-
-    # Redirect /rsvb without trailing slash
-    location = /rsvb {
-        return 301 /rsvb/;
-    }
-
-    # RSVB instance - proxy with path stripped via trailing slash
-    location /rsvb/ {
-        proxy_pass http://silo-rsvb/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Prefix /rsvb/;
-        add_header Access-Control-Allow-Origin * always;
-        add_header Access-Control-Allow-Methods * always;
-        add_header Access-Control-Allow-Headers * always;
-    }
-
-    # Backward compatibility: proxy all other requests to COVID backend
+    # Backward compatibility: proxy all other requests to the shared RhyDB instance
     # This catches /, /info, etc. and proxies directly (no redirect)
     # Using proxy instead of redirect to preserve CORS preflight behavior
     location / {
-        proxy_pass http://silo-covid;
+        proxy_pass http://rhydb;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

@@ -15,17 +15,9 @@ upstream lapis-rsvb {
     server 127.0.0.1:{{ nginx_lapis_rsvb_port }};
 }
 
-# SILO instances per virus
-upstream silo-covid {
-    server 127.0.0.1:{{ nginx_silo_covid_port }};
-}
-
-upstream silo-rsva {
-    server 127.0.0.1:{{ nginx_silo_rsva_port }};
-}
-
-upstream silo-rsvb {
-    server 127.0.0.1:{{ nginx_silo_rsvb_port }};
+# Shared RhyDB instance, one table per virus (covid: data, rsva: rsva, rsvb: rsvb)
+upstream rhydb {
+    server 127.0.0.1:{{ nginx_rhydb_port }};
 }
 
 # Default HTTP to HTTPS redirect

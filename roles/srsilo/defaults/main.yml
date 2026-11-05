@@ -24,30 +24,34 @@ srsilo_virus: covid
 # Virus registry - defines all supported viruses and their configurations
 # Keys are used for directory names and Ansible variable references
 # The 'organism' field is the exact value passed to the LAPIS API
+# The 'table' field is the virus' table in the shared RhyDB instance
+# The 'instance_name' field names the virus' LAPIS container (<instance_name>-lapis)
 #
 # To add a new virus:
-#   1. Add entry here with organism, instance_name, and ports
-#   2. Create config files in roles/srsilo/files/viruses/<virus>/
-#   3. Add to srsilo_enabled_viruses in group_vars when ready
+#   1. Add entry here with organism, table, instance_name and lapis_port
+#   2. Create LAPIS config files in roles/srsilo/files/viruses/<virus>/
+#   3. Add its references and table to roles/srsilo/files/rhydb/schema.rhyql
+#      (prefix reference names with '<virus>_', they are global to the instance)
+#   4. Add to srsilo_enabled_viruses in group_vars when ready
 #
 # Note: For viruses with hyphens in API name (e.g., flu-h1), use underscore
 # for the key (flu_h1) and set organism to the API value (flu-h1)
 srsilo_viruses:
   covid:
     organism: covid           # API endpoint identifier
+    table: data               # LAPIS' default table, kept for existing RhyDB API users
     instance_name: wise-sarsCoV2
     lapis_port: 8083
-    silo_port: 8081
   rsva:
     organism: rsva
+    table: rsva
     instance_name: wise-rsva
     lapis_port: 8084
-    silo_port: 8082
   rsvb:
     organism: rsvb
+    table: rsvb
     instance_name: wise-rsvb
     lapis_port: 8085
-    silo_port: 8086
 
 # List of enabled viruses (for multi-virus playbooks)
 # This controls which viruses are actually processed - override in group_vars
@@ -57,10 +61,22 @@ srsilo_enabled_viruses:
   - rsvb
 
 # =============================================================================
+# Shared RhyDB Instance
+# =============================================================================
+# One RhyDB instance serves all viruses, one table each (see schema.rhyql).
+# Its state is built by the pipeline from every virus' sorted data.
+
+srsilo_rhydb_path: "{{ srsilo_base_path }}/rhydb"
+srsilo_rhydb_output: "{{ srsilo_rhydb_path }}/output"
+srsilo_rhydb_container_name: wise-rhydb
+srsilo_rhydb_port: 8081
+# srsilo_rhydb_memory_limit: REQUIRED in group_vars (container memory limit, e.g. 250g)
+
+# =============================================================================
 # Derived Virus-Specific Paths (New Multi-Virus Structure)
 # =============================================================================
 # These paths follow the new per-virus directory structure:
-#   /opt/srsilo/{virus}/input, /opt/srsilo/{virus}/output, etc.
+#   /opt/srsilo/{virus}/input, /opt/srsilo/{virus}/sorted.ndjson.zst, etc.
 # Tasks will be migrated to use these in PR5.
 
 # Virus-specific base path (e.g., /opt/srsilo/covid)
@@ -71,7 +87,6 @@ srsilo_virus_config_path: "{{ srsilo_virus_path }}/config"
 
 # Virus-specific data directories
 srsilo_virus_input: "{{ srsilo_virus_path }}/input"
-srsilo_virus_output: "{{ srsilo_virus_path }}/output"
 srsilo_virus_sorted_chunks: "{{ srsilo_virus_path }}/sorted_chunks"
 srsilo_virus_tmp: "{{ srsilo_virus_path }}/tmp"
 
@@ -89,7 +104,6 @@ srsilo_current_virus: "{{ srsilo_viruses[srsilo_virus] }}"
 srsilo_current_organism: "{{ srsilo_current_virus.organism }}"
 srsilo_current_instance_name: "{{ srsilo_current_virus.instance_name }}"
 srsilo_current_lapis_port: "{{ srsilo_current_virus.lapis_port }}"
-srsilo_current_silo_port: "{{ srsilo_current_virus.silo_port }}"
 
 # =============================================================================
 # API Configuration
@@ -103,7 +117,6 @@ srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 #   - fetch_days: Number of days to fetch (e.g., 90)
 #   - fetch_max_reads: Max reads per batch (e.g., 172500000 for COVID)
 #   - chunk_size: Chunk size for processing (e.g., 1000000 for high RAM)
-#   - docker_memory_limit: Container memory limit (e.g., 200g for COVID)
 
 # =============================================================================
 # Retention Policy

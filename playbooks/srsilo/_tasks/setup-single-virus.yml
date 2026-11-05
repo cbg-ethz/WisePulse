@@ -5,10 +5,8 @@
 - name: "Set virus-specific variables for {{ current_virus }}"
   set_fact:
     srsilo_virus: "{{ current_virus }}"
-    srsilo_docker_memory_limit: "{{ srsilo_virus_config[current_virus].docker_memory_limit }}"
     srsilo_virus_path: "{{ srsilo_base_path }}/{{ current_virus }}"
     srsilo_virus_input: "{{ srsilo_base_path }}/{{ current_virus }}/input"
-    srsilo_virus_output: "{{ srsilo_base_path }}/{{ current_virus }}/output"
     srsilo_virus_sorted_chunks: "{{ srsilo_base_path }}/{{ current_virus }}/sorted_chunks"
     srsilo_virus_tmp: "{{ srsilo_base_path }}/{{ current_virus }}/tmp"
     srsilo_virus_config_path: "{{ srsilo_base_path }}/{{ current_virus }}/config"
@@ -19,7 +17,6 @@
     srsilo_current_organism: "{{ srsilo_viruses[current_virus].organism }}"
     srsilo_current_instance_name: "{{ srsilo_viruses[current_virus].instance_name }}"
     srsilo_current_lapis_port: "{{ srsilo_viruses[current_virus].lapis_port }}"
-    srsilo_current_silo_port: "{{ srsilo_viruses[current_virus].silo_port }}"
 
 - name: "Setup prerequisites for {{ current_virus }}"
   include_role:

@@ -15,28 +15,19 @@ enabled_viruses:
 viruses:
   covid:
     organism: covid
-    instance_name: wise-sarsCoV2
-    lapis_port: 8083
-    silo_port: 8081
+    table: data
     fetch_days: 120
     fetch_max_reads: 20000000
     chunk_size: 30000
-    docker_memory_limit: 7g
   rsva:
     organism: rsva
-    instance_name: wise-rsva
-    lapis_port: 8084
-    silo_port: 8082
+    table: rsva
     fetch_days: 120
     fetch_max_reads: 20000000
     chunk_size: 30000
-    docker_memory_limit: 7g
   rsvb:
     organism: rsvb
-    instance_name: wise-rsvb
-    lapis_port: 8085
-    silo_port: 8086
+    table: rsvb
     fetch_days: 120
     fetch_max_reads: 20000000
     chunk_size: 30000
-    docker_memory_limit: 7g

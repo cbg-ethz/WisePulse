@@ -10,7 +10,7 @@
     mode: '0755'
   become: yes
 
-- name: Deploy SILO configuration files
+- name: Deploy LAPIS configuration files
   copy:
     src: "{{ item.src }}"
     dest: "{{ srsilo_virus_config_path }}/{{ item.dest }}"
@@ -21,7 +21,6 @@
   loop:
     - { src: 'viruses/{{ srsilo_virus }}/database_config.yaml', dest: 'database_config.yaml' }
     - { src: 'viruses/{{ srsilo_virus }}/reference_genomes.json', dest: 'reference_genomes.json' }
-    - { src: 'viruses/{{ srsilo_virus }}/schema.rhyql', dest: 'schema.rhyql' }
 
 - name: Deploy pipeline.yml config for srsilo-updater
   template:
@@ -38,5 +37,4 @@
       - "✓ Configuration files deployed for {{ srsilo_virus }}"
       - "  database_config.yaml"
       - "  reference_genomes.json"
-      - "  schema.rhyql"
       - "  Destination: {{ srsilo_virus_config_path }}/"

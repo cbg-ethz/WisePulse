@@ -57,37 +57,52 @@ Upstream data processing is handled separately:
 All components run on a single server and are managed by Ansible playbooks, which you run from your own machine (the control machine) over SSH.
 
 ```
-                         Internet
-                            │
-              ┌─────────────┴─────────────┐
-              │   Nginx (SSL, routing)    │   + firewalld
-              └─────────────┬─────────────┘
-        ┌───────────────────┼───────────────────┐
-        ▼                   ▼                   ▼
-┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│   Loculus     │   │ srSILO/LAPIS  │   │  Monitoring   │
-│  (Kubernetes) │   │   (Docker)    │   │ (Prometheus/  │
-│               │   │ one instance  │   │   Grafana)    │
-│               │   │  per virus    │   │               │
-└───────────────┘   └───────────────┘   └───────────────┘
+                                  Internet
+                                     │
+        ┌────────────────────────────┴────────────────────────────┐
+        │                  Nginx (SSL, routing)                   │  + firewalld
+        └─────┬──────────────────────┬──────────────────────┬─────┘
+              │ db.<domain>          │ lapis.<domain>/      │ rhydb.<domain>
+              │ api.db.<domain>      │   <virus>/           │ silo.<domain>
+              ▼                      ▼                      │
+     ┌─────────────────┐   ┌─────── srSILO (Docker) ────────┼───────┐
+     │     Loculus     │   │  ┌───────┐ ┌───────┐ ┌───────┐ │       │
+     │  (Kubernetes)   │   │  │ LAPIS │ │ LAPIS │ │ LAPIS │ │       │
+     │                 │   │  │ covid │ │ rsva  │ │ rsvb  │ │       │
+     └────────┬────────┘   │  └───┬───┘ └───┬───┘ └───┬───┘ │       │
+              │            │      ▼         ▼         ▼     ▼       │
+              │            │  ┌──────────────────────────────────┐  │
+              │            │  │ RhyDB (one instance), tables:    │  │
+              │            │  │   data (covid), rsva, rsvb       │  │
+              │            │  └─────────────────▲────────────────┘  │
+              │            └────────────────────┼───────────────────┘
+              │                                 │ new state
+              │  fetch new data       ┌─────────┴──────────┐
+              └──────────────────────►│   srsilo-updater   │
+                                      │ (daily, systemd)   │
+                                      └────────────────────┘
 ```
+
+Monitoring (Prometheus/Grafana) runs on the host, scrapes the LAPIS instances and is only reachable from localhost (e.g. via SSH tunnel).
 
 **Data flow:**
 
 1. V-pipe produces BAM alignments.
 2. [sr2silo](https://github.com/cbg-ethz/sr2silo) converts them and submits them to Loculus (which stores files in S3).
-3. The srSILO pipeline ([`srsilo-updater/`](srsilo-updater/README.md)) runs daily (02:00, systemd timer), fetches new data from the Loculus API, and builds a new SILO index per virus. SILO picks up new indexes automatically; old ones are removed by a retention policy.
-4. LAPIS serves the data; nginx exposes it at `lapis.<domain>/<virus>/`.
+3. The srSILO pipeline ([`srsilo-updater/`](srsilo-updater/README.md)) runs daily (02:00, systemd timer), fetches and sorts new data from the Loculus API per virus, then, if any virus got new data, builds a fresh RhyDB (SILO) state from all viruses' sorted data. RhyDB picks up new states automatically; old ones are removed by a retention policy.
+4. Each virus' LAPIS serves its table; nginx exposes it at `lapis.<domain>/<virus>/`, and RhyDB itself at `rhydb.<domain>` / `silo.<domain>`.
 
-**Virus instances** (registry in `roles/srsilo/defaults/main.yml`):
+**Instances** (registry in `roles/srsilo/defaults/main.yml`, all in one docker-compose project `/opt/srsilo/docker-compose.yml`):
 
-| Virus | Key | LAPIS port | SILO port | Containers |
-|-------|-----|-----------:|----------:|------------|
-| SARS-CoV-2 | `covid` | 8083 | 8081 | `wise-sarsCoV2-{lapis,silo}` |
-| RSV-A | `rsva` | 8084 | 8082 | `wise-rsva-{lapis,silo}` |
-| RSV-B | `rsvb` | 8085 | 8086 | `wise-rsvb-{lapis,silo}` |
+One RhyDB instance, `wise-rhydb` on port 8081, serves all viruses. Its tables are defined in `roles/srsilo/files/rhydb/schema.rhyql`. Each virus has its own LAPIS, which reads its table via `--rhydb.table`:
 
-Nginx routes `lapis.<domain>/<virus>/*` and `silo.<domain>/<virus>/*` to these ports, stripping the `/<virus>` prefix (and setting `X-Forwarded-Prefix`). For backward compatibility, the root path `lapis.<domain>/` is proxied (not redirected, to keep CORS preflight working) to the COVID instance. `rhydb.<domain>/` also serves the COVID RhyDB (SILO) instance at the root path.
+| Virus | Key | RhyDB table | LAPIS port | LAPIS container |
+|-------|-----|-------------|-----------:|-----------------|
+| SARS-CoV-2 | `covid` | `data` | 8083 | `wise-sarsCoV2-lapis` |
+| RSV-A | `rsva` | `rsva` | 8084 | `wise-rsva-lapis` |
+| RSV-B | `rsvb` | `rsvb` | 8085 | `wise-rsvb-lapis` |
+
+Nginx routes `lapis.<domain>/<virus>/*` to these ports, stripping the `/<virus>` prefix (and setting `X-Forwarded-Prefix`). For backward compatibility, the root path `lapis.<domain>/` is proxied (not redirected, to keep CORS preflight working) to the COVID LAPIS. `rhydb.<domain>/`, `silo.<domain>/` and `silo.<domain>/covid/` serve the shared RhyDB instance.
 
 ## Installation
 
@@ -118,7 +133,7 @@ Edit the configuration for your environment:
 
 | File | Contents |
 |------|----------|
-| `group_vars/srsilo/main.yml` | Enabled viruses, per-virus `fetch_days` / `fetch_max_reads` / `chunk_size` / `docker_memory_limit`, retention |
+| `group_vars/srsilo/main.yml` | Enabled viruses, per-virus `fetch_days` / `fetch_max_reads` / `chunk_size`, `srsilo_rhydb_memory_limit`, retention |
 | `group_vars/loculus/main.yml`, `vault.yml` | Loculus app settings, S3 bucket; DB / Keycloak / S3 secrets |
 | `group_vars/monitoring/main.yml`, `vault.yml` | LAPIS scrape targets, Prometheus retention; Grafana admin password |
 | `roles/nginx/defaults/main.yml` | `nginx_domain_name`, backend ports, SSL certificate paths, enabled sites |
