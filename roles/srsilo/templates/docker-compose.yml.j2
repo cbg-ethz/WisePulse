@@ -2,7 +2,7 @@ name: {{ srsilo_current_instance_name }}
 services:
   lapisOpen:
     container_name: {{ srsilo_current_instance_name }}-lapis
-    image: ghcr.io/genspectrum/lapis:0.9.1
+    image: ghcr.io/genspectrum/lapis:0.9.2
     restart: unless-stopped
     ports:
       - {{ srsilo_current_lapis_port }}:8080
