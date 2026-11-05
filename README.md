@@ -152,7 +152,7 @@ Monitoring services listen on localhost only (Grafana `:3000`, Prometheus `:9090
 
 ### Adding a new virus
 
-1. Add `database_config.yaml`, `preprocessing_config.yaml` and `reference_genomes.json` under `roles/srsilo/files/viruses/<virus>/`.
+1. Add `schema.rhyql` (RhyDB tables), plus `database_config.yaml` and `reference_genomes.json` (LAPIS, same `data` table) under `roles/srsilo/files/viruses/<virus>/`.
 2. Register it in `srsilo_viruses` in `roles/srsilo/defaults/main.yml` (organism, instance name, LAPIS/SILO ports).
 3. Add an entry to `srsilo_virus_config` and `srsilo_enabled_viruses` in `group_vars/srsilo/main.yml`.
 4. Add nginx routes in `roles/nginx/templates/sites-available/{lapis,silo}.j2` and the monitoring target in `group_vars/monitoring/main.yml`.

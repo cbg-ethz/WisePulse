@@ -5,10 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "srsilo-updater"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"  # rhydb wheels: cp311+, manylinux_2_35
 dependencies = [
     "pyyaml>=6.0",
     "requests>=2.31",
+    # Must match the RhyDB server image (serialization version), see roles/srsilo/templates/docker-compose.yml.j2
+    "rhydb==0.17.4",
+    "zstandard>=0.22",
 ]
 
 [project.optional-dependencies]

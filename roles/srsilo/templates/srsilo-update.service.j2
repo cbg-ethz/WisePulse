@@ -17,6 +17,9 @@ SyslogIdentifier=srsilo-update
 
 Restart=no
 
+# The RhyDB state is built inside this process (Python bindings), not in a container
+MemoryMax={{ srsilo_pipeline_memory_max | default('infinity') }}
+
 PrivateTmp=yes
 NoNewPrivileges=yes
 ProtectSystem=strict

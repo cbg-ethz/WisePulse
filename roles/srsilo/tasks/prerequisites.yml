@@ -96,7 +96,6 @@
   become: yes
   loop:
     - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
-    - { src: 'docker-compose-preprocessing.yml.j2', dest: 'docker-compose-preprocessing.yml' }
 
 - name: Ensure python3-venv is installed
   apt:

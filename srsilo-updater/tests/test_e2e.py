@@ -5,13 +5,11 @@ Covers the full run_virus() path:
   → cleanup (Python, no external deps)
   → fetch_silo_data (real Rust binary, mock HTTP + file download)
   → split_into_sorted_chunks + merge_sorted_chunks (real Rust binaries, no network)
-  → preprocessing (real SILO Docker container)
+  → build_state (RhyDB Python bindings, covid config from this repo)
   → timestamp promotion (__main__.py logic)
 
 Requires:
   - Rust binaries built:  cd rust && cargo build --release
-  - Docker + SILO image:  ghcr.io/genspectrum/lapis-silo (pulled by Ansible or manually)
-  - Production SILO config files at /opt/srsilo/covid/config/
 """
 
 import json
@@ -29,57 +27,7 @@ TEST_DATA = Path(__file__).parent / "data"
 _TEST_FILE = "sampleId-D1_10_2025_07_06.ndjson.zst"
 _FAKE_TIMESTAMP = 1751500000
 
-_SILO_CONFIG_SRC = Path("/opt/srsilo/covid/config")
-
-
-def _setup_preprocessing_config(virus_dir: Path) -> None:
-    """Populate config/ with SILO config files and a rendered docker-compose."""
-    if not _SILO_CONFIG_SRC.exists():
-        pytest.skip(f"SILO config not found at {_SILO_CONFIG_SRC} — is this the production server?")
-
-    config_dir = virus_dir / "config"
-    for fname in ("preprocessing_config.yaml", "database_config.yaml", "reference_genomes.json"):
-        shutil.copy2(_SILO_CONFIG_SRC / fname, config_dir / fname)
-
-    # Read the image name from the production compose so we stay in sync
-    prod_compose = _SILO_CONFIG_SRC / "docker-compose-preprocessing.yml"
-    import yaml
-    image = yaml.safe_load(prod_compose.read_text())["services"]["siloPreprocessing"]["image"]
-
-    output_dir = virus_dir / "output"
-    sorted_file = virus_dir / "sorted.ndjson.zst"
-
-    compose = f"""\
-services:
-  siloPreprocessing:
-    container_name: test-silo-preprocessing
-    image: {image}
-    command: preprocessing
-    mem_limit: 2g
-    volumes:
-      - type: bind
-        source: {output_dir}
-        target: /preprocessing/output
-        read_only: false
-      - type: bind
-        source: {config_dir}/preprocessing_config.yaml
-        target: /app/preprocessing_config.yaml
-        read_only: true
-      - type: bind
-        source: {config_dir}/database_config.yaml
-        target: /preprocessing/input/database_config.yaml
-        read_only: true
-      - type: bind
-        source: {config_dir}/reference_genomes.json
-        target: /preprocessing/input/reference_genomes.json
-        read_only: true
-      - type: bind
-        source: {sorted_file}
-        target: /preprocessing/input/sorted.ndjson.zst
-        read_only: true
-    stop_grace_period: 5s
-"""
-    (config_dir / "docker-compose-preprocessing.yml").write_text(compose)
+COVID_CONFIG = Path(__file__).parent.parent.parent / "roles" / "srsilo" / "files" / "viruses" / "covid"
 
 
 @pytest.fixture
@@ -94,7 +42,9 @@ def test_pipeline_e2e(httpserver, rust_bins, virus_dir):
     today = date.today().isoformat()
     file_bytes = (TEST_DATA / _TEST_FILE).read_bytes()
 
-    _setup_preprocessing_config(virus_dir)
+    pytest.importorskip("rhydb")
+    for fname in ("schema.rhyql", "database_config.yaml"):  # database_config.yaml: `date` injection
+        shutil.copy2(COVID_CONFIG / fname, virus_dir / "config" / fname)
 
     # Serve the .ndjson.zst file that fetch_silo_data will download
     httpserver.expect_request(f"/files/{_TEST_FILE}").respond_with_data(
@@ -166,7 +116,14 @@ def test_pipeline_e2e(httpserver, rust_bins, virus_dir):
     assert paths.sorted_file.stat().st_size > 0, "sorted.ndjson.zst is empty"
     assert paths.last_update.read_text().strip() == str(_FAKE_TIMESTAMP)
 
-    # SILO should have written an index directory under output/
+    # The builder should have written one RhyDB state under output/
     index_dirs = [d for d in paths.output.iterdir() if d.is_dir()]
-    assert index_dirs, "SILO did not write any index directory to output/"
-    assert (index_dirs[0] / "data_version.silo").exists(), "SILO index is incomplete"
+    assert len(index_dirs) == 1, "expected exactly one RhyDB state in output/"
+    assert (index_dirs[0] / "data_version.silo").exists(), "RhyDB state is incomplete"
+
+    from rhydb import Database
+    db = Database(str(paths.output))
+    rows = db.query("data.group(by := {}, aggs := {n := count()})").column("n")[0].as_py()
+    assert rows > 0, "data table is empty"
+    dates = db.query("data.filter(isNotNull(date)).project({readId})").num_rows
+    assert dates == rows, "`date` must be copied from samplingDate for covid"

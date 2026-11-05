@@ -49,6 +49,9 @@ srsilo_virus_config:
 
 srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 
+# Memory cap of the pipeline service, which builds the RhyDB state in-process (systemd MemoryMax)
+srsilo_pipeline_memory_max: 250G
+
 srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 

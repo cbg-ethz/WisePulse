@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from pipeline.config import PipelineConfig
-from pipeline.phases import check_new_data, cleanup, fetch, preprocessing, sort_and_merge
+from pipeline.phases import build_state, check_new_data, cleanup, fetch, sort_and_merge
 
 
 def setup_logging() -> None:
@@ -40,7 +40,7 @@ def run_virus(virus_name: str, config: PipelineConfig) -> bool:
         cleanup.run(config, virus, paths)
         fetch.run(config, virus, paths)
         sort_and_merge.run(config, virus, paths)
-        preprocessing.run(config, virus, paths)
+        build_state.run(config, virus, paths)
 
         # promote timestamp
         if paths.next_timestamp.exists():
