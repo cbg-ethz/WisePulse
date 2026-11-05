@@ -33,7 +33,7 @@ srsilo-updater/
 
 | Phase | What happens |
 |---|---|
-| 1 | Ansible setup (prerequisites, build tools, deploy configs) |
+| 1 | Ansible setup (prerequisites, pipeline install, per-virus configs) |
 | 2 | `check_new_data` binary queries the LAPIS API; exits early if nothing new |
 | 3 | Retention cleanup of old indexes; reset working directories |
 | 4 | `fetch_silo_data` binary downloads `.ndjson.zst` files from the API |
@@ -98,7 +98,7 @@ ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
 
 ## Rust binaries
 
-The binaries in `rust/` are built by Ansible (`roles/srsilo/tasks/build_tools.yml`) and are not built as part of the Python package. They are standalone Cargo workspaces. To build manually:
+The binaries in `rust/` are built by Ansible (`roles/srsilo/tasks/install_pipeline.yml`) and are not built as part of the Python package. They are standalone Cargo workspaces. To build manually:
 
 ```bash
 cd rust/

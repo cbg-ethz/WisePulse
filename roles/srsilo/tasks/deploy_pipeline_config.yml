@@ -1,0 +1,11 @@
+---
+# Deploy the shared pipeline.yml for srsilo-updater (covers all enabled viruses).
+
+- name: Deploy pipeline.yml config for srsilo-updater
+  template:
+    src: pipeline.yml.j2
+    dest: "{{ srsilo_base_path }}/pipeline.yml"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+  become: yes

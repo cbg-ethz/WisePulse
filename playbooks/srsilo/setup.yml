@@ -7,7 +7,10 @@
     - name: Load srsilo role defaults
       include_vars:
         file: "{{ playbook_dir }}/../../roles/srsilo/defaults/main.yml"
+      tags: [always]
 
+  # Tags on dynamic includes only tag the include itself; `apply` propagates them
+  # to the included tasks so that e.g. --tags build actually runs the build.
   tasks:
     - name: Display configuration
       debug:
@@ -19,20 +22,43 @@
           - "Tools path: {{ srsilo_tools_path }}"
           - "API: {{ srsilo_api_base_url }}"
           - "Enabled viruses: {{ srsilo_enabled_viruses | join(', ') }}"
+      tags: [always]
 
-    - name: Setup per-virus prerequisites and configs
-      include_tasks: _tasks/setup-single-virus.yml
+    - name: Setup shared prerequisites (Docker, user, base directories)
+      include_role:
+        name: srsilo
+        tasks_from: prerequisites
+        apply:
+          tags: [prerequisites]
+      tags: [prerequisites]
+
+    - name: Install srsilo-updater pipeline (Rust tools + Python package)
+      include_role:
+        name: srsilo
+        tasks_from: install_pipeline
+        apply:
+          tags: [build]
+      tags: [build]
+
+    - name: Setup per-virus directories and configs
+      include_role:
+        name: srsilo
+        tasks_from: virus_setup
+        apply:
+          tags: [config]
       loop: "{{ srsilo_enabled_viruses }}"
       loop_control:
         loop_var: current_virus
         label: "{{ current_virus }}"
-      tags: [prerequisites, config]
+      tags: [config]
 
-    - name: Build Rust tools (once, shared across viruses)
+    - name: Deploy shared pipeline config
       include_role:
         name: srsilo
-        tasks_from: build_tools
-      tags: [build]
+        tasks_from: deploy_pipeline_config
+        apply:
+          tags: [config]
+      tags: [config]
 
     - name: Display setup complete message
       debug:

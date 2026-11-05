@@ -1,13 +1,35 @@
 ---
-# Deploy application configuration files
+# Per-virus setup: data directories, docker-compose file and SILO configs.
+# Included once per enabled virus with current_virus as the loop var.
+# All srsilo_virus_* / srsilo_current_* vars derive from srsilo_virus (see defaults).
 
-- name: Ensure virus config directory exists
+- name: "Select virus {{ current_virus }}"
+  set_fact:
+    srsilo_virus: "{{ current_virus }}"
+
+- name: Ensure virus directories exist
   file:
-    path: "{{ srsilo_virus_config_path }}"
+    path: "{{ item }}"
     state: directory
     owner: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
     mode: '0755'
+  become: yes
+  loop:
+    - "{{ srsilo_virus_input }}"
+    - "{{ srsilo_virus_output }}"
+    - "{{ srsilo_virus_sorted_chunks }}"
+    - "{{ srsilo_virus_tmp }}"
+    - "{{ srsilo_virus_config_path }}"
+    - "{{ srsilo_virus_path }}/logs"
+
+- name: Template docker-compose file with virus-specific paths
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ srsilo_virus_config_path }}/docker-compose.yml"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
   become: yes
 
 - name: Deploy SILO configuration files
@@ -23,20 +45,9 @@
     - { src: 'viruses/{{ srsilo_virus }}/reference_genomes.json', dest: 'reference_genomes.json' }
     - { src: 'viruses/{{ srsilo_virus }}/schema.rhyql', dest: 'schema.rhyql' }
 
-- name: Deploy pipeline.yml config for srsilo-updater
-  template:
-    src: pipeline.yml.j2
-    dest: "{{ srsilo_base_path }}/pipeline.yml"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0644'
-  become: yes
-
-- name: Display config deployment complete message
+- name: Display virus setup complete message
   debug:
     msg:
-      - "✓ Configuration files deployed for {{ srsilo_virus }}"
-      - "  database_config.yaml"
-      - "  reference_genomes.json"
-      - "  schema.rhyql"
-      - "  Destination: {{ srsilo_virus_config_path }}/"
+      - "✓ Setup complete for {{ srsilo_virus }}"
+      - "  Data: {{ srsilo_virus_path }}"
+      - "  Config: {{ srsilo_virus_config_path }}/"

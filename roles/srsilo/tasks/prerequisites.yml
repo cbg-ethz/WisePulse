@@ -1,5 +1,6 @@
 ---
-# Prerequisites: Create user, directories, and set permissions
+# Shared system prerequisites: Docker, user/group and base directories.
+# Runs once per host, independent of the enabled viruses.
 
 - name: Ensure Docker is installed
   apt:
@@ -45,20 +46,6 @@
     mode: '0755'
   become: yes
 
-- name: Ensure virus data directories exist
-  file:
-    path: "{{ item }}"
-    state: directory
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0755'
-  become: yes
-  loop:
-    - "{{ srsilo_virus_input }}"
-    - "{{ srsilo_virus_output }}"
-    - "{{ srsilo_virus_sorted_chunks }}"
-    - "{{ srsilo_virus_tmp }}"
-
 - name: Ensure Ansible log directory exists
   file:
     path: /var/log/ansible
@@ -68,91 +55,9 @@
     mode: '0750'
   become: yes
 
-- name: Ensure virus config directory exists
-  file:
-    path: "{{ srsilo_virus_config_path }}"
-    state: directory
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0755'
-  become: yes
-
-- name: Ensure virus logs directory exists
-  file:
-    path: "{{ srsilo_virus_path }}/logs"
-    state: directory
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0755'
-  become: yes
-
-- name: Template docker-compose files with virus-specific paths
-  template:
-    src: "{{ item.src }}"
-    dest: "{{ srsilo_virus_config_path }}/{{ item.dest }}"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0644'
-  become: yes
-  loop:
-    - { src: 'docker-compose.yml.j2', dest: 'docker-compose.yml' }
-
-- name: Ensure python3-venv is installed
-  apt:
-    name: python3-venv
-    state: present
-  become: yes
-
-- name: Create Python virtualenv for srsilo-updater
-  command:
-    cmd: python3 -m venv "{{ srsilo_base_path }}/venv"
-    creates: "{{ srsilo_base_path }}/venv/bin/python"
-  become: yes
-
-# The source is only a build input for pip; the service runs the copy installed in the venv.
-# A fresh temp dir per deploy means no removed modules or stale build/ output carry over.
-- name: Install srsilo-updater package into venv
-  block:
-    - name: Create temp dir for srsilo-updater package source
-      tempfile:
-        state: directory
-        suffix: srsilo-updater
-      register: srsilo_updater_tmp
-
-    - name: Copy srsilo-updater package source to remote host
-      copy:
-        src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
-        dest: "{{ srsilo_updater_tmp.path }}/"
-      loop:
-        - pyproject.toml
-        - pipeline
-
-    # pip always reinstalls from a local directory, even when the version is unchanged
-    - name: Install srsilo-updater package into venv
-      pip:
-        name: "{{ srsilo_updater_tmp.path }}"
-        virtualenv: "{{ srsilo_base_path }}/venv"
-  always:
-    - name: Remove temp dir for srsilo-updater package source
-      file:
-        path: "{{ srsilo_updater_tmp.path }}"
-        state: absent
-  become: yes
-
-- name: Set ownership of virtualenv
-  file:
-    path: "{{ srsilo_base_path }}/venv"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    recurse: yes
-  become: yes
-
 - name: Display prerequisites complete message
   debug:
     msg:
       - "✓ Prerequisites setup complete"
       - "  User/Group: {{ srsilo_user }}:{{ srsilo_group }}"
       - "  Base path: {{ srsilo_base_path }}"
-      - "  Tools path: {{ srsilo_tools_path }}"
-      - "  Venv: {{ srsilo_base_path }}/venv"
-      - "  Docker compose files rendered with absolute paths"

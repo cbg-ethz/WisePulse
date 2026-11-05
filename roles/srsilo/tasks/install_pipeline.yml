@@ -1,7 +1,8 @@
 ---
-# Build Rust utilities for srSILO pipeline
-# This task is equivalent to running 'make build' from the Makefile
-# which executes: cargo build --release
+# Install the srsilo-updater pipeline code from srsilo-updater/:
+#   - Rust utilities (rust/), built with cargo build --release
+#   - Python package (pyproject.toml + pipeline/), installed into a venv
+# Runs once per host; shared by all viruses.
 
 - name: Ensure build dependencies are installed
   apt:
@@ -9,8 +10,11 @@
       - build-essential
       - pkg-config
       - libssl-dev
+      - python3-venv
     state: present
   become: yes
+
+# --- Rust utilities ---
 
 - name: Check if Rust/Cargo is installed for srsilo user
   stat:
@@ -61,11 +65,6 @@
   register: build_result
   changed_when: "'Compiling' in build_result.stderr or 'Finished' in build_result.stderr"
 
-- name: Display build result
-  debug:
-    msg: "✓ Rust tools built successfully. Binaries available in target/release/"
-  when: build_result.rc == 0
-
 - name: Verify built binaries exist
   stat:
     path: "{{ srsilo_tools_path }}/target/release/{{ item }}"
@@ -82,3 +81,56 @@
     msg: "Binary {{ item.item }} was not built successfully"
   loop: "{{ binary_checks.results }}"
   when: not item.stat.exists
+
+# --- Python package ---
+
+- name: Create Python virtualenv for srsilo-updater
+  command:
+    cmd: python3 -m venv "{{ srsilo_base_path }}/venv"
+    creates: "{{ srsilo_base_path }}/venv/bin/python"
+  become: yes
+
+# The source is only a build input for pip; the service runs the copy installed in the venv.
+# A fresh temp dir per deploy means no removed modules or stale build/ output carry over.
+- name: Install srsilo-updater package into venv
+  block:
+    - name: Create temp dir for srsilo-updater package source
+      tempfile:
+        state: directory
+        suffix: srsilo-updater
+      register: srsilo_updater_tmp
+
+    - name: Copy srsilo-updater package source to remote host
+      copy:
+        src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
+        dest: "{{ srsilo_updater_tmp.path }}/"
+      loop:
+        - pyproject.toml
+        - pipeline
+
+    # pip always reinstalls from a local directory, even when the version is unchanged
+    - name: Install srsilo-updater package into venv
+      pip:
+        name: "{{ srsilo_updater_tmp.path }}"
+        virtualenv: "{{ srsilo_base_path }}/venv"
+  always:
+    - name: Remove temp dir for srsilo-updater package source
+      file:
+        path: "{{ srsilo_updater_tmp.path }}"
+        state: absent
+  become: yes
+
+- name: Set ownership of virtualenv
+  file:
+    path: "{{ srsilo_base_path }}/venv"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    recurse: yes
+  become: yes
+
+- name: Display install complete message
+  debug:
+    msg:
+      - "✓ srsilo-updater pipeline installed"
+      - "  Rust binaries: {{ srsilo_tools_path }}/target/release/"
+      - "  Venv: {{ srsilo_base_path }}/venv"
