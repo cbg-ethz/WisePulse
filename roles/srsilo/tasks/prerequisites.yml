@@ -110,25 +110,34 @@
     creates: "{{ srsilo_base_path }}/venv/bin/python"
   become: yes
 
-- name: Remove previous srsilo-updater package source (copy does not delete removed modules)
-  file:
-    path: "{{ srsilo_base_path }}/srsilo-updater-src/pipeline"
-    state: absent
-  become: yes
-
-- name: Copy srsilo-updater package source to remote host
-  copy:
-    src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
-    dest: "{{ srsilo_base_path }}/srsilo-updater-src/"
-  become: yes
-  loop:
-    - pyproject.toml
-    - pipeline
-
+# The source is only a build input for pip; the service runs the copy installed in the venv.
+# A fresh temp dir per deploy means no removed modules or stale build/ output carry over.
 - name: Install srsilo-updater package into venv
-  pip:
-    name: "{{ srsilo_base_path }}/srsilo-updater-src"
-    virtualenv: "{{ srsilo_base_path }}/venv"
+  block:
+    - name: Create temp dir for srsilo-updater package source
+      tempfile:
+        state: directory
+        suffix: srsilo-updater
+      register: srsilo_updater_tmp
+
+    - name: Copy srsilo-updater package source to remote host
+      copy:
+        src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
+        dest: "{{ srsilo_updater_tmp.path }}/"
+      loop:
+        - pyproject.toml
+        - pipeline
+
+    # pip always reinstalls from a local directory, even when the version is unchanged
+    - name: Install srsilo-updater package into venv
+      pip:
+        name: "{{ srsilo_updater_tmp.path }}"
+        virtualenv: "{{ srsilo_base_path }}/venv"
+  always:
+    - name: Remove temp dir for srsilo-updater package source
+      file:
+        path: "{{ srsilo_updater_tmp.path }}"
+        state: absent
   become: yes
 
 - name: Set ownership of virtualenv
