@@ -87,7 +87,7 @@ All components run on a single server and are managed by Ansible playbooks, whic
 | RSV-A | `rsva` | 8084 | 8082 | `wise-rsva-{lapis,silo}` |
 | RSV-B | `rsvb` | 8085 | 8086 | `wise-rsvb-{lapis,silo}` |
 
-Nginx routes `lapis.<domain>/<virus>/*` and `silo.<domain>/<virus>/*` to these ports, stripping the `/<virus>` prefix (and setting `X-Forwarded-Prefix`). For backward compatibility, the root path `lapis.<domain>/` is proxied (not redirected, to keep CORS preflight working) to the COVID instance.
+Nginx routes `lapis.<domain>/<virus>/*` and `silo.<domain>/<virus>/*` to these ports, stripping the `/<virus>` prefix (and setting `X-Forwarded-Prefix`). For backward compatibility, the root path `lapis.<domain>/` is proxied (not redirected, to keep CORS preflight working) to the COVID instance. `rhydb.<domain>/` also serves the COVID RhyDB (SILO) instance at the root path.
 
 ## Installation
 
