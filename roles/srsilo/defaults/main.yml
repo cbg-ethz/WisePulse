@@ -120,6 +120,3 @@ srsilo_retention_min_keep: 2
 # See srsilo_virus_config dictionary for per-virus settings
 # No defaults here - fails loudly if config missing
 
-# Repository path (for development/deployment)
-# This can be overridden in host_vars if the repo is cloned elsewhere
-wisepulse_repo_path: /opt/WisePulse

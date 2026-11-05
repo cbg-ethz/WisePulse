@@ -7,7 +7,6 @@ Requires=docker.service
 [Service]
 Type=oneshot
 User={{ srsilo_user }}
-WorkingDirectory={{ wisepulse_repo_path }}/srsilo-updater
 
 ExecStart={{ srsilo_base_path }}/venv/bin/python -m pipeline \
     --config {{ srsilo_base_path }}/pipeline.yml
