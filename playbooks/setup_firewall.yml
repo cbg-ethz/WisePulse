@@ -18,6 +18,7 @@
         state: enabled
       loop:
         - { zone: public, service: ssh }
+        - { zone: public, service: http }
         - { zone: public, service: https }
         - { zone: public, port: 8000-9080/tcp }
         - { zone: docker, service: https }
