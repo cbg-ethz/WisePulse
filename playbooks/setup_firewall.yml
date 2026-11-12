@@ -16,10 +16,12 @@
         permanent: true
         immediate: true
         state: enabled
+      # Public traffic only reaches sshd and nginx. Backend services (LAPIS/SILO,
+      # Loculus, monitoring) are proxied by nginx via 127.0.0.1 and must not be
+      # exposed directly. Port 80 is needed for the HTTPS redirect and certbot renewals.
       loop:
         - { zone: public, service: ssh }
         - { zone: public, service: http }
         - { zone: public, service: https }
-        - { zone: public, port: 8000-9080/tcp }
         - { zone: docker, service: https }
         - { zone: docker, port: 8000-9500/tcp }
