@@ -11,6 +11,9 @@ nginx_lapis_ssl_certificate_key_path: "/etc/letsencrypt/live/lapis.{{ nginx_doma
 nginx_silo_ssl_certificate_path: "/etc/letsencrypt/live/silo.{{ nginx_domain_name }}/fullchain.pem"
 nginx_silo_ssl_certificate_key_path: "/etc/letsencrypt/live/silo.{{ nginx_domain_name }}/privkey.pem"
 
+nginx_rhydb_ssl_certificate_path: "/etc/letsencrypt/live/rhydb.{{ nginx_domain_name }}/fullchain.pem"
+nginx_rhydb_ssl_certificate_key_path: "/etc/letsencrypt/live/rhydb.{{ nginx_domain_name }}/privkey.pem"
+
 nginx_loculus_ssl_certificate_path: "/etc/letsencrypt/live/db.{{ nginx_domain_name }}/fullchain.pem"
 nginx_loculus_ssl_certificate_key_path: "/etc/letsencrypt/live/db.{{ nginx_domain_name }}/privkey.pem"
 
@@ -36,6 +39,7 @@ nginx_sites:
   - lapis
   - loculus
   - monitoring
+  - rhydb
   - silo
   - wasap-scout
 
@@ -43,5 +47,6 @@ nginx_enabled_sites:
   - lapis
   - loculus
   - monitoring
+  - rhydb
   - silo
   - wasap-scout
