@@ -62,7 +62,7 @@ createTable(data, {
   sampleId := string(generateIndex := true),
   batchId := string(generateIndex := true),
   locationCode := string(generateIndex := true),
-  samplingDate := date,
+  samplingDate := date(generateIndex := true),
   date := string(generateIndex := true),
   locationName := string(generateIndex := true),
   readId := string,
