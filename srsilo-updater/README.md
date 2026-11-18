@@ -14,7 +14,7 @@ srsilo-updater/
       cleanup.py         # Phase 3: retention policy + reset working dirs
       fetch.py           # Phase 4: download .ndjson.zst files
       sort_and_merge.py  # Phase 6a: chunk, sort, merge reads
-      build_state.py     # Phase 6b: build the RhyDB state (Python bindings)
+      build_state.py     # Phase 6b: build the shared RhyDB state (Python bindings)
   rust/                  # Rust binaries (built by Ansible, called by pipeline)
     src/
       check_new_data/
@@ -35,12 +35,14 @@ srsilo-updater/
 |---|---|
 | 1 | Ansible setup (prerequisites, build tools, deploy configs) |
 | 2 | `check_new_data` binary queries the LAPIS API; exits early if nothing new |
-| 3 | Retention cleanup of old indexes; reset working directories |
+| 3 | Retention cleanup of old states in `rhydb/output/`; reset working directories |
 | 4 | `fetch_silo_data` binary downloads `.ndjson.zst` files from the API |
 | 6a | `split_into_sorted_chunks` + `merge_sorted_chunks` produce `sorted.ndjson.zst` |
 | 6a | Records get a `date` field copied from `samplingDate`, but only for viruses whose `database_config.yaml` declares `date` (Loculus does not send it) |
-| 6b | `build_state` runs `schema.rhyql`, appends `sorted.ndjson.zst` to `data` and saves the state (RhyDB Python bindings) |
-| 7 | `.next_timestamp` promoted to `.last_update`; SILO picks up the new index automatically |
+| 6b | Once, after phases 2–6a ran for every virus, if at least one got new data: `build_state` creates an empty database from `rhydb/schema.rhyql`, appends every enabled virus' `sorted.ndjson.zst` to its table and saves one new state (RhyDB Python bindings). A virus without a sorted file yet gets an empty table |
+| 7 | `.next_timestamp` promoted to `.last_update` for each virus with new data; RhyDB picks up the new state automatically. If phase 6b fails, no virus' timestamp is promoted, so all of them are retried next run |
+
+All viruses are served by one RhyDB instance (`wise-rhydb`), one table each (`covid` → `data`, `rsva` → `rsva`, `rsvb` → `rsvb`); each virus' LAPIS reads its table via `--rhydb.table`.
 
 ## Running locally
 
@@ -72,10 +74,10 @@ enabled_viruses: [covid, rsva]
 
 viruses:
   covid:
+    table: data               # Table of the shared RhyDB instance (see roles/srsilo/files/rhydb/schema.rhyql)
     fetch_days: 120           # How far back to look for new sampling dates
     fetch_max_reads: 20000000 # Must exceed the largest single-day read count
     chunk_size: 30000
-    docker_memory_limit: 7g
 ```
 
 **Common gotcha:** `fetch_days` must be large enough to cover the actual age of the newest data in the API, and `fetch_max_reads` must exceed the total read count for the busiest single sampling day — otherwise the fetch binary exits with zero downloads.

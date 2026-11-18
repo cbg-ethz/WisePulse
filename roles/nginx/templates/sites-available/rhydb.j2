@@ -8,9 +8,9 @@ server {
     proxy_buffers 4 64k;
     proxy_busy_buffers_size 128k;
 
-    # Serves the COVID RhyDB instance at the root path
+    # Serves the shared RhyDB instance (tables data = covid, rsva, rsvb) at the root path
     location / {
-        proxy_pass http://silo-covid;
+        proxy_pass http://rhydb;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

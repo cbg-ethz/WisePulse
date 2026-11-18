@@ -9,16 +9,18 @@ log = logging.getLogger(__name__)
 
 
 def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
-    """Phase 3: retention policy, reset working dirs."""
+    """Phase 3: retention policy on the shared RhyDB states, reset working dirs."""
     log.info("PHASE 3: Cleanup")
-    _apply_retention(paths, config.retention_days, config.retention_min_keep)
+    _apply_retention(config.rhydb_paths().output, config.retention_days, config.retention_min_keep)
     _reset_working_dirs(paths)
     log.info("PHASE 3: Cleanup complete")
 
 
-def _apply_retention(paths: VirusPaths, retention_days: int, min_keep: int) -> None:
+def _apply_retention(output: Path, retention_days: int, min_keep: int) -> None:
+    if not output.exists():
+        return
     index_dirs = sorted(
-        [d for d in paths.output.iterdir() if d.is_dir() and not d.name.startswith(".")],
+        [d for d in output.iterdir() if d.is_dir() and not d.name.startswith(".")],
         key=lambda d: d.stat().st_mtime,
     )
     total = len(index_dirs)

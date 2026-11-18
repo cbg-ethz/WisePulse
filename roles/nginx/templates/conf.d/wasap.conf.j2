@@ -15,11 +15,12 @@ upstream lapis-rsvb {
     server 127.0.0.1:{{ nginx_lapis_rsvb_port }};
 }
 
-# SILO instances per virus
-upstream silo-covid {
-    server 127.0.0.1:{{ nginx_silo_covid_port }};
+# Shared RhyDB instance, one table per virus (covid: data, rsva: rsva, rsvb: rsvb)
+upstream rhydb {
+    server 127.0.0.1:{{ nginx_rhydb_port }};
 }
 
+# TODO: remove once nobody uses the old per-virus RSV SILO instances
 upstream silo-rsva {
     server 127.0.0.1:{{ nginx_silo_rsva_port }};
 }

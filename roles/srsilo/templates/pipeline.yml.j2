@@ -16,11 +16,8 @@ viruses:
 {% for virus_name, virus_meta in srsilo_viruses.items() %}
   {{ virus_name }}:
     organism: {{ virus_meta.organism }}
-    instance_name: {{ virus_meta.instance_name }}
-    lapis_port: {{ virus_meta.lapis_port }}
-    silo_port: {{ virus_meta.silo_port }}
+    table: {{ virus_meta.table }}
     fetch_days: {{ srsilo_virus_config[virus_name].fetch_days }}
     fetch_max_reads: {{ srsilo_virus_config[virus_name].fetch_max_reads }}
     chunk_size: {{ srsilo_virus_config[virus_name].chunk_size }}
-    docker_memory_limit: {{ srsilo_virus_config[virus_name].docker_memory_limit }}
 {% endfor %}

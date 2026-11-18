@@ -13,9 +13,10 @@ server {
         return 301 /covid/;
     }
 
-    # COVID instance - proxy with path stripped via trailing slash
+    # Shared RhyDB instance - proxy with path stripped via trailing slash.
+    # RSV is served by the same instance in the tables `rsva` and `rsvb`.
     location /covid/ {
-        proxy_pass http://silo-covid/;
+        proxy_pass http://rhydb/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -26,12 +27,12 @@ server {
         add_header Access-Control-Allow-Headers * always;
     }
 
-    # Redirect /rsva without trailing slash
+    # TODO: remove once nobody uses the old per-virus RSVA SILO instance
+    # (now served by the shared RhyDB instance in the table `rsva`)
     location = /rsva {
         return 301 /rsva/;
     }
 
-    # RSVA instance - proxy with path stripped via trailing slash
     location /rsva/ {
         proxy_pass http://silo-rsva/;
         proxy_set_header Host $host;
@@ -44,12 +45,12 @@ server {
         add_header Access-Control-Allow-Headers * always;
     }
 
-    # Redirect /rsvb without trailing slash
+    # TODO: remove once nobody uses the old per-virus RSVB SILO instance
+    # (now served by the shared RhyDB instance in the table `rsvb`)
     location = /rsvb {
         return 301 /rsvb/;
     }
 
-    # RSVB instance - proxy with path stripped via trailing slash
     location /rsvb/ {
         proxy_pass http://silo-rsvb/;
         proxy_set_header Host $host;
@@ -62,11 +63,11 @@ server {
         add_header Access-Control-Allow-Headers * always;
     }
 
-    # Backward compatibility: proxy all other requests to COVID backend
+    # Backward compatibility: proxy all other requests to the shared RhyDB instance
     # This catches /, /info, etc. and proxies directly (no redirect)
     # Using proxy instead of redirect to preserve CORS preflight behavior
     location / {
-        proxy_pass http://silo-covid;
+        proxy_pass http://rhydb;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

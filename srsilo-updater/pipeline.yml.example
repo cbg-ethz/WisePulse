@@ -17,28 +17,19 @@ enabled_viruses:
 viruses:
   covid:
     organism: covid
-    instance_name: wise-sarsCoV2
-    lapis_port: 8083
-    silo_port: 8081
+    table: data           # table of the shared RhyDB instance
     fetch_days: 90
     fetch_max_reads: 172500000
     chunk_size: 1000000
-    docker_memory_limit: 200g
   rsva:
     organism: rsva
-    instance_name: wise-rsva
-    lapis_port: 8084
-    silo_port: 8082
+    table: rsva           # table of the shared RhyDB instance
     fetch_days: 90
     fetch_max_reads: 50000000
     chunk_size: 500000
-    docker_memory_limit: 100g
   rsvb:
     organism: rsvb
-    instance_name: wise-rsvb
-    lapis_port: 8085
-    silo_port: 8086
+    table: rsvb           # table of the shared RhyDB instance
     fetch_days: 90
     fetch_max_reads: 50000000
     chunk_size: 500000
-    docker_memory_limit: 100g

@@ -1,7 +1,9 @@
-"""Phase 6b: build the RhyDB state with the RhyDB Python bindings.
+"""Phase 6b: build the shared RhyDB state (Python bindings).
 
-Runs schema.rhyql on an empty database, streams sorted.ndjson.zst into the
-`data` table and saves a new state version to output/.
+Runs once after all per-virus pipelines, if at least one virus got new data:
+creates an empty database from rhydb/schema.rhyql, streams every enabled
+virus' sorted.ndjson.zst into its table and saves a new state version. A virus
+without a sorted file yet gets an empty table.
 """
 from __future__ import annotations
 
@@ -9,10 +11,10 @@ import logging
 import os
 import subprocess
 import sys
+from pathlib import Path
 
-from pipeline.config import PipelineConfig, VirusConfig, VirusPaths
+from pipeline.config import PipelineConfig
 from pipeline import schema
-from pipeline.schema import DEFAULT_TABLE
 
 log = logging.getLogger(__name__)
 
@@ -25,33 +27,35 @@ _DECOMPRESS = (
 )
 
 
-def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
-    if not paths.sorted_file.exists():
-        raise RuntimeError(f"Sorted file not found: {paths.sorted_file}")
+def run(config: PipelineConfig) -> None:
+    rhydb = config.rhydb_paths()
+    log.info("PHASE 6b: Building a fresh RhyDB state from %s", rhydb.schema)
+    db = schema.create_database(schema.load(rhydb.schema))
+    for virus_name in config.enabled_viruses:
+        table = config.viruses[virus_name].table
+        sorted_file = config.virus_paths(virus_name).sorted_file
+        if not sorted_file.exists():
+            log.warning("PHASE 6b: %s not found, table `%s` stays empty", sorted_file, table)
+            continue
+        append_zst(db, table, sorted_file, rhydb.tmp)
+        log.info("PHASE 6b: Appended %d rows to `%s`", row_count(db, table), table)
 
-    statements = schema.load(paths.config / "schema.rhyql")
-    log.info("PHASE 6b: Building RhyDB state from %s", paths.sorted_file.name)
-    db = schema.create_database(statements)
-    append_zst(db, DEFAULT_TABLE, paths)
-    rows = row_count(db, DEFAULT_TABLE)
-    log.info("PHASE 6b: Appended %d rows", rows)
-
-    paths.output.mkdir(parents=True, exist_ok=True)
-    before = set(paths.output.iterdir())
-    db.save_checkpoint(str(paths.output))
-    new = set(paths.output.iterdir()) - before
+    rhydb.output.mkdir(parents=True, exist_ok=True)
+    before = set(rhydb.output.iterdir())
+    db.save_checkpoint(str(rhydb.output))
+    new = set(rhydb.output.iterdir()) - before
     if not new:
         raise RuntimeError("save_checkpoint did not produce a new state version")
     log.info("PHASE 6b: Wrote state %s", max(new).name)
 
 
-def append_zst(db, table: str, paths: VirusPaths) -> None:
-    paths.tmp.mkdir(parents=True, exist_ok=True)
-    fifo = paths.tmp / "sorted.ndjson.fifo"
+def append_zst(db, table: str, sorted_file: Path, tmp: Path) -> None:
+    tmp.mkdir(parents=True, exist_ok=True)
+    fifo = tmp / f"{table}.ndjson.fifo"
     fifo.unlink(missing_ok=True)
     os.mkfifo(fifo)
     writer = subprocess.Popen(
-        [sys.executable, "-c", _DECOMPRESS, str(paths.sorted_file), str(fifo)], stderr=subprocess.PIPE
+        [sys.executable, "-c", _DECOMPRESS, str(sorted_file), str(fifo)], stderr=subprocess.PIPE
     )
     try:
         db.append_data_from_file(table, str(fifo))
@@ -69,7 +73,7 @@ def append_zst(db, table: str, paths: VirusPaths) -> None:
             writer.wait()
         fifo.unlink(missing_ok=True)
     if writer.returncode != 0:
-        raise RuntimeError(f"Decompressing {paths.sorted_file} failed: {writer.stderr.read().decode()[-500:]}")
+        raise RuntimeError(f"Decompressing {sorted_file} failed: {writer.stderr.read().decode()[-500:]}")
 
 
 def row_count(db, table: str) -> int:

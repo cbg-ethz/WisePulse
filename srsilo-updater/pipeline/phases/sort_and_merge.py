@@ -102,6 +102,9 @@ def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
     log.info("PHASE 6a: Merging chunks -> %s", paths.sorted_file)
 
     # cat chunks.list | merge_sorted_chunks ... | zstd > sorted.ndjson.zst
+    # Written next to it and renamed when complete: a failed run must not leave
+    # a partial sorted_file behind, since every state build reads every virus' one.
+    partial = paths.sorted_file.with_name(paths.sorted_file.name + ".partial")
     with chunks_list.open() as chunk_input:
         merge = subprocess.Popen(
             [
@@ -113,16 +116,21 @@ def run(config: PipelineConfig, virus: VirusConfig, paths: VirusPaths) -> None:
             stdout=subprocess.PIPE,
             cwd=paths.base,
         )
-        with paths.sorted_file.open("wb") as out:
-            subprocess.run(
-                ["zstd"],
-                stdin=merge.stdout,
-                stdout=out,
-                check=True,
-            )
-        merge.wait()
-        if merge.returncode != 0:
-            raise RuntimeError("merge_sorted_chunks failed")
+        try:
+            with partial.open("wb") as out:
+                subprocess.run(
+                    ["zstd"],
+                    stdin=merge.stdout,
+                    stdout=out,
+                    check=True,
+                )
+            merge.wait()
+            if merge.returncode != 0:
+                raise RuntimeError("merge_sorted_chunks failed")
+        except BaseException:
+            partial.unlink(missing_ok=True)
+            raise
+    partial.replace(paths.sorted_file)
 
     size_mb = paths.sorted_file.stat().st_size / 1024 / 1024
     log.info("PHASE 6a: Sort/merge complete — %.1f MB", size_mb)

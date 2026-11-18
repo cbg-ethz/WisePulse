@@ -28,6 +28,12 @@
         label: "{{ current_virus }}"
       tags: [prerequisites, config]
 
+    - name: Setup the shared RhyDB instance and its docker-compose project
+      include_role:
+        name: srsilo
+        tasks_from: rhydb_setup
+      tags: [prerequisites, config]
+
     - name: Build Rust tools (once, shared across viruses)
       include_role:
         name: srsilo

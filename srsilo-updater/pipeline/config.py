@@ -10,13 +10,10 @@ import yaml
 @dataclass
 class VirusConfig:
     organism: str
-    instance_name: str
-    lapis_port: int
-    silo_port: int
+    table: str  # table of the shared RhyDB instance that holds this virus
     fetch_days: int
     fetch_max_reads: int
     chunk_size: int
-    docker_memory_limit: str
 
 
 @dataclass
@@ -37,13 +34,10 @@ class PipelineConfig:
         viruses = {
             name: VirusConfig(
                 organism=cfg["organism"],
-                instance_name=cfg["instance_name"],
-                lapis_port=int(cfg["lapis_port"]),
-                silo_port=int(cfg["silo_port"]),
+                table=cfg["table"],
                 fetch_days=int(cfg["fetch_days"]),
                 fetch_max_reads=int(cfg["fetch_max_reads"]),
                 chunk_size=int(cfg["chunk_size"]),
-                docker_memory_limit=cfg["docker_memory_limit"],
             )
             for name, cfg in data["viruses"].items()
         }
@@ -61,6 +55,9 @@ class PipelineConfig:
     def virus_paths(self, virus: str) -> "VirusPaths":
         return VirusPaths(self.base_path / virus)
 
+    def rhydb_paths(self) -> "RhydbPaths":
+        return RhydbPaths(self.base_path / "rhydb")
+
     def binaries(self) -> Path:
         return self.tools_path / "target" / "release"
 
@@ -72,10 +69,6 @@ class VirusPaths:
     @property
     def input(self) -> Path:
         return self.base / "input"
-
-    @property
-    def output(self) -> Path:
-        return self.base / "output"
 
     @property
     def sorted_chunks(self) -> Path:
@@ -100,3 +93,20 @@ class VirusPaths:
     @property
     def sorted_file(self) -> Path:
         return self.base / "sorted.ndjson.zst"
+
+
+@dataclass
+class RhydbPaths:
+    base: Path
+
+    @property
+    def schema(self) -> Path:
+        return self.base / "schema.rhyql"
+
+    @property
+    def output(self) -> Path:
+        return self.base / "output"
+
+    @property
+    def tmp(self) -> Path:
+        return self.base / "tmp"
