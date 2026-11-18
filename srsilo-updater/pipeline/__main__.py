@@ -74,9 +74,18 @@ def build(config: PipelineConfig, staged: List[str]) -> bool:
     return True
 
 
+def log_build_info(log: logging.Logger) -> None:
+    try:
+        from pipeline._build_info import DEPLOYED_AT, REVISION  # written by Ansible on deploy
+    except ImportError:
+        REVISION, DEPLOYED_AT = "unknown (not deployed by Ansible)", "unknown"
+    log.info("srsilo-updater revision %s, deployed %s, running from %s", REVISION, DEPLOYED_AT, Path(__file__).parent)
+
+
 def main() -> None:
     setup_logging()
     log = logging.getLogger("pipeline")
+    log_build_info(log)
 
     parser = argparse.ArgumentParser(description="srSILO update pipeline")
     parser.add_argument("--config", type=Path, required=True, help="Path to pipeline.yml")

@@ -106,6 +106,26 @@
         - pyproject.toml
         - pipeline
 
+    # Logged at the start of every run, to see which code the timer actually runs
+    - name: Get the git revision of the deployed srsilo-updater source
+      shell: |
+        rev=$(git rev-parse --short HEAD)
+        if [ -n "$(git status --porcelain -- srsilo-updater)" ]; then rev="$rev-dirty"; fi
+        echo "$rev"
+      args:
+        chdir: "{{ inventory_dir }}"
+      delegate_to: localhost
+      become: no
+      changed_when: false
+      register: srsilo_updater_revision
+
+    - name: Write build info into the srsilo-updater package source
+      copy:
+        content: |
+          REVISION = "{{ srsilo_updater_revision.stdout }}"
+          DEPLOYED_AT = "{{ now(utc=true).isoformat(timespec='seconds') }}Z"
+        dest: "{{ srsilo_updater_tmp.path }}/pipeline/_build_info.py"
+
     # pip always reinstalls from a local directory, even when the version is unchanged
     - name: Install srsilo-updater package into venv
       pip:
