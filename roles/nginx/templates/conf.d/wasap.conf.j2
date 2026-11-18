@@ -20,6 +20,15 @@ upstream rhydb {
     server 127.0.0.1:{{ nginx_rhydb_port }};
 }
 
+# TODO: remove once nobody uses the old per-virus RSV SILO instances
+upstream silo-rsva {
+    server 127.0.0.1:{{ nginx_silo_rsva_port }};
+}
+
+upstream silo-rsvb {
+    server 127.0.0.1:{{ nginx_silo_rsvb_port }};
+}
+
 # Default HTTP to HTTPS redirect
 server {
     listen 80 default_server;

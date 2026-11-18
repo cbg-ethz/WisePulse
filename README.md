@@ -102,7 +102,7 @@ One RhyDB instance, `wise-rhydb` on port 8081, serves all viruses. Its tables ar
 | RSV-A | `rsva` | `rsva` | 8084 | `wise-rsva-lapis` |
 | RSV-B | `rsvb` | `rsvb` | 8085 | `wise-rsvb-lapis` |
 
-Nginx routes `lapis.<domain>/<virus>/*` to these ports, stripping the `/<virus>` prefix (and setting `X-Forwarded-Prefix`). For backward compatibility, the root path `lapis.<domain>/` is proxied (not redirected, to keep CORS preflight working) to the COVID LAPIS. `rhydb.<domain>/`, `silo.<domain>/` and `silo.<domain>/covid/` serve the shared RhyDB instance.
+Nginx routes `lapis.<domain>/<virus>/*` to these ports, stripping the `/<virus>` prefix (and setting `X-Forwarded-Prefix`). For backward compatibility, the root path `lapis.<domain>/` is proxied (not redirected, to keep CORS preflight working) to the COVID LAPIS. `rhydb.<domain>/`, `silo.<domain>/` and `silo.<domain>/covid/` serve the shared RhyDB instance. `silo.<domain>/rsva/` and `/rsvb/` still route to the old per-virus RSV SILO instances (ports 8082, 8086) during the transition (TODO: remove).
 
 ## Installation
 
