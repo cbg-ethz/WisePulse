@@ -52,6 +52,18 @@ jobs:
         run: cargo test --workspace
         working-directory: srsilo-updater/rust
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install Python dependencies
+        run: uv sync --locked --extra dev
+        working-directory: srsilo-updater
+
+      # Runs after the release build so test_e2e.py finds rust/target/release binaries
+      - name: Python tests
+        run: uv run --extra dev pytest -v -rs
+        working-directory: srsilo-updater
+
   # srsilo-integration:
   #   name: srSILO Pipeline - Integration Test
   #   runs-on: ubuntu-latest
