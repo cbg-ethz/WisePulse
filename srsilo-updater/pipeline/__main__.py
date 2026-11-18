@@ -9,6 +9,7 @@ is built from all viruses' sorted data at the end.
 """
 
 import argparse
+import json
 import logging
 import shutil
 import sys
@@ -75,11 +76,12 @@ def build(config: PipelineConfig, staged: List[str]) -> bool:
 
 
 def log_build_info(log: logging.Logger) -> None:
-    try:
-        from pipeline._build_info import DEPLOYED_AT, REVISION  # written by Ansible on deploy
-    except ImportError:
-        REVISION, DEPLOYED_AT = "unknown (not deployed by Ansible)", "unknown"
-    log.info("srsilo-updater revision %s, deployed %s, running from %s", REVISION, DEPLOYED_AT, Path(__file__).parent)
+    build_info = Path(__file__).parent / "build_info.json"  # written by Ansible on deploy
+    info = json.loads(build_info.read_text()) if build_info.exists() else {}
+    log.info(
+        "srsilo-updater revision %s, deployed %s, running from %s",
+        info.get("revision", "unknown (not deployed by Ansible)"), info.get("deployed_at", "unknown"), build_info.parent,
+    )
 
 
 def main() -> None:

@@ -121,10 +121,8 @@
 
     - name: Write build info into the srsilo-updater package source
       copy:
-        content: |
-          REVISION = "{{ srsilo_updater_revision.stdout }}"
-          DEPLOYED_AT = "{{ now(utc=true).isoformat(timespec='seconds') }}Z"
-        dest: "{{ srsilo_updater_tmp.path }}/pipeline/_build_info.py"
+        content: "{{ {'revision': srsilo_updater_revision.stdout, 'deployed_at': now(utc=true).isoformat(timespec='seconds') ~ 'Z'} | to_nice_json }}"
+        dest: "{{ srsilo_updater_tmp.path }}/pipeline/build_info.json"
 
     # pip always reinstalls from a local directory, even when the version is unchanged
     - name: Install srsilo-updater package into venv

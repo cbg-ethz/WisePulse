@@ -26,3 +26,6 @@ testpaths = ["tests"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pipeline*"]
+
+[tool.setuptools.package-data]
+pipeline = ["build_info.json"]  # written by Ansible on deploy
