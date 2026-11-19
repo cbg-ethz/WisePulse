@@ -24,6 +24,12 @@
     dest: /etc/nginx/conf.d/wasap.conf
   notify: reload nginx
 
+- name: Ensure sites-available directory exists
+  file:
+    path: /etc/nginx/sites-available
+    state: directory
+    mode: '0755'
+
 - name: Deploy site configurations
   template:
     src: "sites-available/{{ item }}.j2"
