@@ -136,7 +136,7 @@ Edit the configuration for your environment:
 | `group_vars/srsilo/main.yml` | Enabled viruses, per-virus `fetch_days` / `fetch_max_reads` / `chunk_size`, `srsilo_rhydb_memory_limit`, retention |
 | `group_vars/loculus/main.yml`, `vault.yml` | Loculus app settings, S3 bucket; DB / Keycloak / S3 secrets |
 | `group_vars/monitoring/main.yml`, `vault.yml` | LAPIS scrape targets, Prometheus retention; Grafana admin password |
-| `roles/nginx/defaults/main.yml` | `nginx_domain_name`, backend ports, SSL certificate paths, enabled sites |
+| `roles/nginx/defaults/main.yml` | `nginx_domain_name`, backend ports, SSL certificate paths, enabled sites, `nginx_official_repo_channel` (`stable`/`mainline`) |
 
 ### Deploy
 
@@ -145,7 +145,10 @@ Edit the configuration for your environment:
 ansible-playbook playbooks/setup_firewall.yml -i inventory.ini --ask-become-pass
 
 # Nginx reverse proxy (Let's Encrypt certs expected at the default certbot paths;
-# add -e "generate_self_signed_certs=true" for test environments)
+# add -e "generate_self_signed_certs=true" for test environments).
+# nginx is installed from the official nginx.org apt repo. Hosts still on the distro
+# package need a one-off manual switch first:
+#   sudo apt install -o Dpkg::Options::=--force-confold nginx nginx-common-
 ansible-playbook playbooks/setup_nginx.yml -i inventory.ini --ask-become-pass
 
 # Loculus on Kubernetes

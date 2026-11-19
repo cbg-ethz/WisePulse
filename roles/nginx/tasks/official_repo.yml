@@ -1,0 +1,38 @@
+---
+# Install nginx from the official nginx.org apt repository instead of the distro.
+# Mirrors https://nginx.org/en/linux_packages.html (works for Debian and Ubuntu).
+#
+# Switching an existing host from the distro package is a manual one-off,
+# because nginx.org's `nginx` conflicts with the distro's `nginx-common`:
+#   sudo apt install -o Dpkg::Options::=--force-confold nginx nginx-common-
+
+- name: Add nginx.org signing key
+  shell: >
+    curl -fsSL https://nginx.org/keys/nginx_signing.key
+    | gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/nginx-archive-keyring.gpg
+  register: nginx_repo_key
+
+- name: Add nginx.org apt repository
+  copy:
+    dest: /etc/apt/sources.list.d/nginx.list
+    mode: '0644'
+    content: |
+      deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] {{ nginx_official_repo_url }} {{ ansible_facts['distribution_release'] }} nginx
+  register: nginx_repo_list
+
+- name: Prefer nginx.org packages over distro packages
+  copy:
+    dest: /etc/apt/preferences.d/99nginx
+    mode: '0644'
+    content: |
+      Package: *
+      Pin: origin nginx.org
+      Pin: release o=nginx
+      Pin-Priority: 900
+
+- name: Update apt cache after repository change
+  apt:
+    update_cache: true
+  when: nginx_repo_key is changed or nginx_repo_list is changed

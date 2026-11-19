@@ -1,4 +1,8 @@
 ---
+# nginx.org repository channel: "stable" or "mainline"
+nginx_official_repo_channel: "stable"
+nginx_official_repo_url: "https://nginx.org/packages/{{ 'mainline/' if nginx_official_repo_channel == 'mainline' else '' }}{{ ansible_facts['distribution'] | lower }}"
+
 nginx_domain_name: "wasap.genspectrum.org"
 nginx_ssl_certificate_path: "/etc/letsencrypt/live/{{ nginx_domain_name }}/fullchain.pem"
 nginx_ssl_certificate_key_path: "/etc/letsencrypt/live/{{ nginx_domain_name }}/privkey.pem"
