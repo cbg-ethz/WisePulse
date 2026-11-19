@@ -1,4 +1,7 @@
 ---
+- name: Set up nginx.org apt repository
+  include_tasks: official_repo.yml
+
 - name: Include geerlingguy.nginx role
   include_role:
     name: geerlingguy.nginx
