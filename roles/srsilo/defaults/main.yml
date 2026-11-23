@@ -57,6 +57,18 @@ srsilo_viruses:
   flua_h3:                    # RhyDB table only, no LAPIS
     organism: flua-h3
     table: flua_h3
+  flua_h1:                    # RhyDB table only, no LAPIS
+    organism: flua-h1
+    table: flua_h1
+  flua_n1:                    # RhyDB table only, no LAPIS
+    organism: flua-n1
+    table: flua_n1
+  flua_n2:                    # RhyDB table only, no LAPIS
+    organism: flua-n2
+    table: flua_n2
+  flua_mp:                    # RhyDB table only, no LAPIS
+    organism: flua-mp
+    table: flua_mp
 
 # List of enabled viruses (for multi-virus playbooks)
 # This controls which viruses are actually processed - override in group_vars

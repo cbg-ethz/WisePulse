@@ -13,7 +13,7 @@ SCHEMA = FILES / "rhydb" / "schema.rhyql"
 # virus -> table, as in srsilo_viruses (roles/srsilo/defaults/main.yml)
 TABLES = {"covid": "data", "rsva": "rsva", "rsvb": "rsvb"}
 # viruses without a LAPIS instance, so without LAPIS config files to keep in sync
-RHYDB_ONLY_TABLES = {"flua_h3": "flua_h3"}
+RHYDB_ONLY_TABLES = {v: v for v in ["flua_h1", "flua_h3", "flua_n1", "flua_n2", "flua_mp"]}
 
 # RhyDB schema() type -> (LAPIS database_config type, generateIndex)
 LAPIS_TYPES = {
