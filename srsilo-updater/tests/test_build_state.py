@@ -34,7 +34,7 @@ def flua_h3_record(read_id):
     return {
         "readId": read_id, **METADATA,
         "main": {"sequence": "ACGTACGT", "insertions": [], "offset": 100},
-        "H3-HA": None,
+        "HA": None,
     }
 
 
