@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="influenza_virion" x="0px" y="0px" width="328px" height="328px" viewBox="0 0 328 328" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="influenza_virion" width="511px" height="341px" viewBox="-91.95 -7.64 510.90 340.60" xml:space="preserve">
 <defs><filter id="faded" x="0" y="0" width="1" height="1"><feColorMatrix type="saturate" values="0" /><feComponentTransfer><feFuncR type="linear" slope="0.35" intercept="0.62" /><feFuncG type="linear" slope="0.35" intercept="0.62" /><feFuncB type="linear" slope="0.35" intercept="0.62" /></feComponentTransfer></filter></defs><g id="Layer_5" filter="url(#faded)">
 	<path fill="#E4BD95" stroke="#000000" stroke-width="0.5" id="theMotionPath" d="M257.781,145.513c9.098,51.958-25.865,101.562-78.087,110.792   c-52.222,9.23-101.935-25.406-111.032-77.364c-9.098-51.962,25.865-101.562,78.086-110.792   C198.972,58.916,248.683,93.551,257.781,145.513z" />
 </g>
-  <g id="M1"><title>Matrix (M1)</title>
+  <g id="M1" filter="url(#faded)"><title>Matrix (M1)</title>
 	<g id="highlight:influenza_genome:M1">
 		<g id="css:colorshift_8_">
 			<g>
@@ -52,7 +52,7 @@
 	</g>
 </g>
 <path fill="#B4CED4" stroke="#000000" stroke-width="0.5" d="M277.667,142.516c-10.974-62.69-70.95-104.482-133.961-93.344  C80.698,60.308,38.517,120.156,49.492,182.846c10.977,62.688,70.953,104.48,133.961,93.344  C246.464,265.052,288.644,205.202,277.667,142.516z M180.052,256.759c-52.222,9.23-101.935-25.406-111.031-77.364  c-9.098-51.962,25.865-101.562,78.085-110.792c52.225-9.232,101.936,25.402,111.034,77.364  C267.237,197.925,232.274,247.528,180.052,256.759z" filter="url(#faded)" />
-<g id="HA" filter="url(#faded)"><title>Hemagglutinin (HA)</title>
+<g id="HA"><title>Hemagglutinin (HA)</title>
 	<g id="highlight:influenza_genome:HA">
 		<g id="css:colorshift_7_">
 			<g>
@@ -399,7 +399,7 @@
 		</g>
 	</g>
 </g>
-<g id="M2"><title>M2 ion channel</title>
+<g id="M2" filter="url(#faded)"><title>M2 ion channel</title>
 	<g id="highlight:influenza_genome:M2">
 		<g id="css:colorshift_5_">
 			<g>
@@ -1345,5 +1345,4 @@
 		</g>
 	</g>
 </g>
-
 </svg>

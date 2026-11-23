@@ -44,7 +44,7 @@ organisms:
   covid:
     schema:
       organismName: 'SARS-CoV-2'
-      image: 'https://db.wasap.genspectrum.org/static/images/covid-virus.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/sars-cov-2-virion.png'
       metadata:
         - name: date
           type: date
@@ -117,7 +117,7 @@ organisms:
   rsva:
     schema:
       organismName: 'RSV-A'
-      image: 'https://db.wasap.genspectrum.org/static/images/rsv-virus.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/rsv-virion.png'
       metadata:
         - name: date
           type: date
@@ -190,7 +190,7 @@ organisms:
   rsvb:
     schema:
       organismName: 'RSV-B'
-      image: 'https://db.wasap.genspectrum.org/static/images/rsv-virus.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/rsv-virion.png'
       metadata:
         - name: date
           type: date
@@ -263,7 +263,7 @@ organisms:
   flua-h3:
     schema:
       organismName: 'Influenza A, Segment H3'
-      image: 'https://db.wasap.genspectrum.org/static/images/influenza-ha.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-a-ha.png'
       metadata:
         - name: date
           type: date
@@ -336,7 +336,7 @@ organisms:
   flua-h1:
     schema:
       organismName: 'Influenza A, Segment H1'
-      image: 'https://db.wasap.genspectrum.org/static/images/influenza-ha.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-a-ha.png'
       metadata:
         - name: date
           type: date
@@ -409,7 +409,7 @@ organisms:
   flua-n1:
     schema:
       organismName: 'Influenza A, Segment N1'
-      image: 'https://db.wasap.genspectrum.org/static/images/influenza-na.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-a-na.png'
       metadata:
         - name: date
           type: date
@@ -482,7 +482,7 @@ organisms:
   flua-n2:
     schema:
       organismName: 'Influenza A, Segment N2'
-      image: 'https://db.wasap.genspectrum.org/static/images/influenza-na.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-a-na.png'
       metadata:
         - name: date
           type: date
@@ -555,7 +555,7 @@ organisms:
   flua-mp:
     schema:
       organismName: 'Influenza A, Segment MP'
-      image: 'https://db.wasap.genspectrum.org/static/images/influenza-mp.png'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-a-mp.png'
       metadata:
         - name: date
           type: date
