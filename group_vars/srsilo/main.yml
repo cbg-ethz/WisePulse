@@ -23,6 +23,7 @@ srsilo_enabled_viruses:
   - covid
   - rsva
   - rsvb
+  - flua_h3
 
 # Per-virus configuration overrides
 # Use this to override global defaults for specific viruses
@@ -39,6 +40,10 @@ srsilo_virus_config:
     fetch_days: 365
     fetch_max_reads: 50_000_000     # 50M reads
     chunk_size: 500_000            # Smaller chunks
+  flua_h3:
+    fetch_days: 365
+    fetch_max_reads: 50_000_000   # 50M reads
+    chunk_size: 500_000           # Smaller chunks
 
 # =============================================================================
 # API & Retention

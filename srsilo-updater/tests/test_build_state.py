@@ -30,6 +30,14 @@ def covid_record(read_id):
     }
 
 
+def flua_h3_record(read_id):
+    return {
+        "readId": read_id, **METADATA,
+        "main": {"sequence": "ACGTACGT", "insertions": [], "offset": 100},
+        "H3-HA": None,
+    }
+
+
 def rsva_record(read_id):
     return {
         "readId": read_id, **METADATA,
@@ -119,3 +127,15 @@ def test_failed_build_promotes_no_timestamp(config):
     for virus in ("covid", "rsva"):
         assert not config.virus_paths(virus).last_update.exists()
         assert not config.virus_paths(virus).next_timestamp.exists()
+
+
+def test_table_without_lapis_is_built_like_the_others(config):
+    config.enabled_viruses.append("flua_h3")
+    config.viruses["flua_h3"] = VirusConfig(
+        organism="flua-h3", table="flua_h3", fetch_days=1, fetch_max_reads=1, chunk_size=1,
+    )
+    write_sorted(config, "covid", [covid_record("c1")])
+    build(config, "flua_h3", [flua_h3_record("f1"), flua_h3_record("f2")])
+
+    assert read_ids(config, "flua_h3") == ["f1", "f2"]
+    assert read_ids(config, "data") == ["c1"]

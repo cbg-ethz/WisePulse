@@ -12,6 +12,8 @@ VIRUSES = FILES / "viruses"
 SCHEMA = FILES / "rhydb" / "schema.rhyql"
 # virus -> table, as in srsilo_viruses (roles/srsilo/defaults/main.yml)
 TABLES = {"covid": "data", "rsva": "rsva", "rsvb": "rsvb"}
+# viruses without a LAPIS instance, so without LAPIS config files to keep in sync
+RHYDB_ONLY_TABLES = {"flua_h3": "flua_h3"}
 
 # RhyDB schema() type -> (LAPIS database_config type, generateIndex)
 LAPIS_TYPES = {
@@ -57,7 +59,7 @@ def shared_db():
 
 def test_schema_has_a_table_per_virus(shared_db):
     _, db = shared_db
-    assert set(TABLES.values()) <= set(db.query("tables()").to_pydict()["tableName"])
+    assert set(TABLES.values()) | set(RHYDB_ONLY_TABLES.values()) <= set(db.query("tables()").to_pydict()["tableName"])
 
 
 @pytest.mark.parametrize("virus", TABLES)

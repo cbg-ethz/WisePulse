@@ -26,7 +26,7 @@ def _declares_date_field(paths: VirusPaths) -> bool:
     """True if the virus schema declares a `date` metadata field."""
     db_config = paths.config / "database_config.yaml"
     if not db_config.exists():
-        log.warning("No database_config.yaml at %s — skipping `date` injection", db_config)
+        log.info("No database_config.yaml at %s (no LAPIS) — skipping `date` injection", db_config)
         return False
 
     with db_config.open() as f:
