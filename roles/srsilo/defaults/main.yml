@@ -28,11 +28,13 @@ srsilo_virus: covid
 # The 'instance_name' field names the virus' LAPIS container (<instance_name>-lapis)
 #
 # To add a new virus:
-#   1. Add entry here with organism, table, instance_name and lapis_port
-#   2. Create LAPIS config files in roles/srsilo/files/viruses/<virus>/
-#   3. Add its references and table to roles/srsilo/files/rhydb/schema.rhyql
+#   1. Add entry here with organism and table
+#   2. Add its references and table to roles/srsilo/files/rhydb/schema.rhyql
 #      (prefix reference names with '<virus>_', they are global to the instance)
-#   4. Add to srsilo_enabled_viruses in group_vars when ready
+#   3. Only if it gets its own LAPIS: set instance_name and lapis_port, create LAPIS
+#      config files in roles/srsilo/files/viruses/<virus>/ and add it to nginx.
+#      Without lapis_port it is only imported into its RhyDB table.
+#   4. Add to srsilo_enabled_viruses and srsilo_virus_config in group_vars when ready
 #
 # Note: For viruses with hyphens in API name (e.g., flu-h1), use underscore
 # for the key (flu_h1) and set organism to the API value (flu-h1)
@@ -52,6 +54,21 @@ srsilo_viruses:
     table: rsvb
     instance_name: wise-rsvb
     lapis_port: 8085
+  flua_h3:                    # RhyDB table only, no LAPIS
+    organism: flua-h3
+    table: flua_h3
+  flua_h1:                    # RhyDB table only, no LAPIS
+    organism: flua-h1
+    table: flua_h1
+  flua_n1:                    # RhyDB table only, no LAPIS
+    organism: flua-n1
+    table: flua_n1
+  flua_n2:                    # RhyDB table only, no LAPIS
+    organism: flua-n2
+    table: flua_n2
+  flua_mp:                    # RhyDB table only, no LAPIS
+    organism: flua-mp
+    table: flua_mp
 
 # List of enabled viruses (for multi-virus playbooks)
 # This controls which viruses are actually processed - override in group_vars
@@ -102,8 +119,6 @@ srsilo_virus_sorted_file: "{{ srsilo_virus_path }}/sorted.ndjson.zst"
 
 srsilo_current_virus: "{{ srsilo_viruses[srsilo_virus] }}"
 srsilo_current_organism: "{{ srsilo_current_virus.organism }}"
-srsilo_current_instance_name: "{{ srsilo_current_virus.instance_name }}"
-srsilo_current_lapis_port: "{{ srsilo_current_virus.lapis_port }}"
 
 # =============================================================================
 # API Configuration

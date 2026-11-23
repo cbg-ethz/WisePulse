@@ -15,8 +15,6 @@
     srsilo_virus_sorted_file: "{{ srsilo_base_path }}/{{ current_virus }}/sorted.ndjson.zst"
     srsilo_current_virus: "{{ srsilo_viruses[current_virus] }}"
     srsilo_current_organism: "{{ srsilo_viruses[current_virus].organism }}"
-    srsilo_current_instance_name: "{{ srsilo_viruses[current_virus].instance_name }}"
-    srsilo_current_lapis_port: "{{ srsilo_viruses[current_virus].lapis_port }}"
 
 - name: "Setup prerequisites for {{ current_virus }}"
   include_role:

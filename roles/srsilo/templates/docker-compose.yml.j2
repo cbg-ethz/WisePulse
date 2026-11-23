@@ -20,6 +20,7 @@ services:
     stop_grace_period: 0s
 {% for virus in srsilo_enabled_viruses %}
 {% set meta = srsilo_viruses[virus] %}
+{% if meta.lapis_port is defined %}
 {% set config_path = srsilo_base_path ~ '/' ~ virus ~ '/config' %}
 
   lapis-{{ virus }}:
@@ -42,4 +43,5 @@ services:
         target: /workspace/reference_genomes.json
         read_only: true
     stop_grace_period: 0s
+{% endif %}
 {% endfor %}
