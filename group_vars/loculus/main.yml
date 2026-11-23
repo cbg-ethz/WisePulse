@@ -263,6 +263,7 @@ organisms:
   flua-h3:
     schema:
       organismName: 'Influenza A, Segment H3'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-ha.png'
       metadata:
         - name: date
           type: date
@@ -335,6 +336,7 @@ organisms:
   flua-h1:
     schema:
       organismName: 'Influenza A, Segment H1'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-ha.png'
       metadata:
         - name: date
           type: date
@@ -407,6 +409,7 @@ organisms:
   flua-n1:
     schema:
       organismName: 'Influenza A, Segment N1'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-na.png'
       metadata:
         - name: date
           type: date
@@ -479,6 +482,7 @@ organisms:
   flua-n2:
     schema:
       organismName: 'Influenza A, Segment N2'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-na.png'
       metadata:
         - name: date
           type: date
@@ -551,6 +555,7 @@ organisms:
   flua-mp:
     schema:
       organismName: 'Influenza A, Segment MP'
+      image: 'https://db.wasap.genspectrum.org/static/images/influenza-mp.png'
       metadata:
         - name: date
           type: date
