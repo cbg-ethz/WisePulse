@@ -16,7 +16,7 @@ runDevelopmentMainDatabase: false
 runDevelopmentKeycloakDatabase: false
 runDevelopmentS3: false
 
-genspectrum_covid_url: 'https://genspectrum.org/swiss-wastewater/covid'
+genspectrum_covid_url: 'https://dashboard.wasap.genspectrum.org/covid'
 
 public:
   backendUrl: 'https://api.db.wasap.genspectrum.org/backend'
