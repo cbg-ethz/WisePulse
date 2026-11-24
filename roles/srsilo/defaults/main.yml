@@ -70,13 +70,6 @@ srsilo_viruses:
     organism: flua-mp
     table: flua_mp
 
-# List of enabled viruses (for multi-virus playbooks)
-# This controls which viruses are actually processed - override in group_vars
-srsilo_enabled_viruses:
-  - covid
-  - rsva
-  - rsvb
-
 # =============================================================================
 # Shared RhyDB Instance
 # =============================================================================
