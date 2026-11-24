@@ -92,15 +92,15 @@ The pipeline is invoked daily by a systemd timer (`srsilo-update.timer`) which r
 
 All output goes to the systemd journal (`journalctl -u srsilo-update`).
 
-To set up the timer:
+The timer is set up by the srSILO setup playbook; to redeploy only the timer and service:
 
 ```bash
-ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --ask-become-pass --tags timer
 ```
 
 ## Rust binaries
 
-The binaries in `rust/` are built by Ansible (`roles/srsilo/tasks/build_tools.yml`) and are not built as part of the Python package. They are standalone Cargo workspaces. To build manually:
+The binaries in `rust/` are built by Ansible (`roles/srsilo/tasks/main.yml`, tag `build`) and are not built as part of the Python package. They are standalone Cargo workspaces. To build manually:
 
 ```bash
 cd rust/

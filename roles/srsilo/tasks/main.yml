@@ -1,0 +1,191 @@
+---
+# Sets up srSILO: the srsilo-updater pipeline and its systemd timer, the shared
+# RhyDB instance and one LAPIS per enabled virus with a lapis_port.
+# All variables come from group_vars/srsilo/main.yml.
+
+- name: Show enabled viruses
+  debug:
+    msg: "Enabled viruses: {{ srsilo_enabled_viruses | join(', ') }}"
+
+# --- System ------------------------------------------------------------------
+
+# Hosts may already run Docker from docker.com, whose packages conflict with docker.io
+- name: Install Docker
+  apt:
+    name: [docker.io, docker-compose]
+  failed_when: false
+
+- name: Install pipeline and build dependencies
+  apt:
+    name: [python3-venv, build-essential, pkg-config, libssl-dev]
+
+- name: Start Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Create srsilo group
+  group:
+    name: "{{ srsilo_group }}"
+
+- name: Create srsilo user
+  user:
+    name: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    groups: docker
+    append: true
+    shell: /bin/bash
+    comment: srSILO Pipeline User
+
+# The pipeline creates and resets input/, sorted_chunks/ and tmp/ inside each virus directory
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0755'
+  loop: "{{ [srsilo_base_path, srsilo_tools_path] + rhydb_dirs + virus_dirs }}"
+  vars:
+    rhydb_dirs: "{{ ['', '/output', '/tmp', '/logs'] | map('regex_replace', '^', srsilo_base_path ~ '/rhydb') | list }}"
+    virus_dirs: "{{ srsilo_enabled_viruses | map('regex_replace', '^', srsilo_base_path ~ '/') | list }}"
+
+# --- Configuration -------------------------------------------------------------
+
+- name: Deploy LAPIS config files
+  copy:
+    src: "viruses/{{ item }}/"
+    dest: "{{ srsilo_base_path }}/{{ item }}/config/"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+    directory_mode: '0755'
+  loop: "{{ srsilo_enabled_viruses }}"
+  when: srsilo_viruses[item].lapis_port is defined
+
+- name: Deploy RhyDB schema
+  copy:
+    src: rhydb/schema.rhyql
+    dest: "{{ srsilo_base_path }}/rhydb/schema.rhyql"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+
+- name: Deploy pipeline.yml and docker-compose.yml
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ srsilo_base_path }}/{{ item }}"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+  loop: [pipeline.yml, docker-compose.yml]
+
+# --- srsilo-updater ----------------------------------------------------------
+
+- name: Create Python virtualenv for srsilo-updater
+  command:
+    cmd: python3 -m venv {{ srsilo_base_path }}/venv
+    creates: "{{ srsilo_base_path }}/venv/bin/python"
+
+# The source is only a build input for pip; the service runs the copy installed in the venv.
+# A fresh temp dir per deploy means no removed modules or stale build/ output carry over.
+- name: Install srsilo-updater into the virtualenv
+  block:
+    - name: Create temp dir for srsilo-updater source
+      tempfile:
+        state: directory
+        suffix: srsilo-updater
+      register: srsilo_updater_tmp
+
+    - name: Copy srsilo-updater source
+      copy:
+        src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
+        dest: "{{ srsilo_updater_tmp.path }}/"
+      loop: [pyproject.toml, pipeline]
+
+    # Logged at the start of every run, to see which code the timer actually runs
+    - name: Get the git revision of the deployed srsilo-updater source
+      shell: |
+        rev=$(git rev-parse --short HEAD)
+        if [ -n "$(git status --porcelain -- srsilo-updater)" ]; then rev="$rev-dirty"; fi
+        echo "$rev"
+      args:
+        chdir: "{{ inventory_dir }}"
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      register: srsilo_updater_revision
+
+    - name: Write build info into the srsilo-updater source
+      copy:
+        content: "{{ {'revision': srsilo_updater_revision.stdout, 'deployed_at': now(utc=true).isoformat(timespec='seconds') ~ 'Z'} | to_nice_json }}"
+        dest: "{{ srsilo_updater_tmp.path }}/pipeline/build_info.json"
+
+    # pip always reinstalls from a local directory, even when the version is unchanged
+    - name: Install srsilo-updater
+      pip:
+        name: "{{ srsilo_updater_tmp.path }}"
+        virtualenv: "{{ srsilo_base_path }}/venv"
+  always:
+    - name: Remove temp dir for srsilo-updater source
+      file:
+        path: "{{ srsilo_updater_tmp.path }}"
+        state: absent
+
+- name: Set ownership of the virtualenv
+  file:
+    path: "{{ srsilo_base_path }}/venv"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    recurse: true
+
+# --- Rust tools ---------------------------------------------------------------
+
+- name: Build the Rust tools
+  become_user: "{{ srsilo_user }}"
+  environment:
+    PATH: "/home/{{ srsilo_user }}/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+  tags: [build]
+  block:
+    - name: Install Rust
+      shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      args:
+        creates: "/home/{{ srsilo_user }}/.cargo/bin/cargo"
+
+    - name: Copy Rust sources
+      copy:
+        src: "{{ inventory_dir }}/srsilo-updater/rust/{{ item }}"
+        dest: "{{ srsilo_tools_path }}/"
+      loop: [Cargo.toml, Cargo.lock, src]
+
+    - name: Build Rust tools
+      command: cargo build --release
+      args:
+        chdir: "{{ srsilo_tools_path }}"
+      register: cargo_build
+      changed_when: "'Compiling' in cargo_build.stderr"
+
+# --- Timer ---------------------------------------------------------------------
+
+- name: Deploy systemd service and timer
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: '0644'
+  loop: [srsilo-update.service, srsilo-update.timer]
+  tags: [timer]
+
+- name: Enable srsilo-update service
+  systemd:
+    name: srsilo-update.service
+    enabled: true
+    daemon_reload: true
+  tags: [timer]
+
+- name: Enable and start srsilo-update timer
+  systemd:
+    name: srsilo-update.timer
+    enabled: true
+    state: started
+  tags: [timer]

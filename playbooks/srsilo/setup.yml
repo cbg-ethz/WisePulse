@@ -1,53 +1,16 @@
 ---
-- name: srSILO Setup - Initial Setup and Configuration
+# Sets up srSILO: user, packages, configs, srsilo-updater, Rust tools and the daily
+# systemd timer. Configuration: group_vars/srsilo/main.yml.
+#
+#   ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --ask-become-pass
+#
+# Only redeploy the timer and service (e.g. after changing srsilo_pipeline_memory_max):
+#   ... --tags timer
+# Skip the (slow) Rust build:
+#   ... --skip-tags build
+
+- name: Set up srSILO
   hosts: srsilo
-  gather_facts: yes
-
-  pre_tasks:
-    - name: Load srsilo role defaults
-      include_vars:
-        file: "{{ playbook_dir }}/../../roles/srsilo/defaults/main.yml"
-
-  tasks:
-    - name: Display configuration
-      debug:
-        msg:
-          - "=== srSILO Setup Configuration ==="
-          - "User: {{ srsilo_user }}"
-          - "Group: {{ srsilo_group }}"
-          - "Base path: {{ srsilo_base_path }}"
-          - "Tools path: {{ srsilo_tools_path }}"
-          - "API: {{ srsilo_api_base_url }}"
-          - "Enabled viruses: {{ srsilo_enabled_viruses | join(', ') }}"
-
-    - name: Setup per-virus prerequisites and configs
-      include_tasks: _tasks/setup-single-virus.yml
-      loop: "{{ srsilo_enabled_viruses }}"
-      loop_control:
-        loop_var: current_virus
-        label: "{{ current_virus }}"
-      tags: [prerequisites, config]
-
-    - name: Setup the shared RhyDB instance and its docker-compose project
-      include_role:
-        name: srsilo
-        tasks_from: rhydb_setup
-      tags: [prerequisites, config]
-
-    - name: Build Rust tools (once, shared across viruses)
-      include_role:
-        name: srsilo
-        tasks_from: build_tools
-      tags: [build]
-
-    - name: Display setup complete message
-      debug:
-        msg:
-          - "=== srSILO Setup Complete ==="
-          - "Binaries: {{ srsilo_tools_path }}/target/release/"
-          - "Data will be stored in: {{ srsilo_base_path }}"
-          - "Logs: Use 'journalctl -u srsilo-update' to view logs"
-          - ""
-          - "Next steps:"
-          - "  - Run playbooks/srsilo/setup-timer.yml for daily automated runs"
-          - "  - Or run once: sudo systemctl start srsilo-update.service"
+  become: true
+  roles:
+    - srsilo
