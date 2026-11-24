@@ -3,7 +3,7 @@
 -- Each virus has its own table; its LAPIS instance (if any) reads it via --rhydb.table:
 --   covid -> data, rsva -> rsva, rsvb -> rsvb,
 --   flua_h1/h3/n1/n2/mp -> flua_h1/h3/n1/n2/mp (no LAPIS)
---   (see roles/srsilo/defaults/main.yml).
+--   (see srsilo_viruses in group_vars/srsilo/main.yml).
 -- Reference names are global to the instance, so non-covid references are prefixed with
 -- '<virus>_'; the sequence column names (what LAPIS sees) are not.
 -- LAPIS keeps a copy of each table in viruses/<virus>/database_config.yaml and

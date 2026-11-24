@@ -13,11 +13,11 @@ enabled_viruses:
 {% endfor %}
 
 viruses:
-{% for virus_name, virus_meta in srsilo_viruses.items() %}
-  {{ virus_name }}:
-    organism: {{ virus_meta.organism }}
-    table: {{ virus_meta.table }}
-    fetch_days: {{ srsilo_virus_config[virus_name].fetch_days }}
-    fetch_max_reads: {{ srsilo_virus_config[virus_name].fetch_max_reads }}
-    chunk_size: {{ srsilo_virus_config[virus_name].chunk_size }}
+{% for name, virus in srsilo_viruses.items() %}
+  {{ name }}:
+    organism: {{ virus.organism }}
+    table: {{ virus.table }}
+    fetch_days: {{ virus.fetch_days }}
+    fetch_max_reads: {{ virus.fetch_max_reads }}
+    chunk_size: {{ virus.chunk_size }}
 {% endfor %}

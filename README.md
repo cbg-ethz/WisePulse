@@ -92,7 +92,7 @@ Monitoring (Prometheus/Grafana) runs on the host, scrapes the LAPIS instances an
 3. The srSILO pipeline ([`srsilo-updater/`](srsilo-updater/README.md)) runs daily (02:00, systemd timer), fetches and sorts new data from the Loculus API per virus, then, if any virus got new data, builds a fresh RhyDB (SILO) state from all viruses' sorted data. RhyDB picks up new states automatically; old ones are removed by a retention policy.
 4. Each virus' LAPIS serves its table; nginx exposes it at `lapis.<domain>/<virus>/`, and RhyDB itself at `rhydb.<domain>` / `silo.<domain>`.
 
-**Instances** (registry in `roles/srsilo/defaults/main.yml`, all in one docker-compose project `/opt/srsilo/docker-compose.yml`):
+**Instances** (registry `srsilo_viruses` in `group_vars/srsilo/main.yml`, all in one docker-compose project `/opt/srsilo/docker-compose.yml`):
 
 One RhyDB instance, `wise-rhydb` on port 8081, serves all viruses. Its tables are defined in `roles/srsilo/files/rhydb/schema.rhyql`. Each virus has its own LAPIS, which reads its table via `--rhydb.table`:
 
@@ -133,7 +133,7 @@ Edit the configuration for your environment:
 
 | File | Contents |
 |------|----------|
-| `group_vars/srsilo/main.yml` | Enabled viruses, per-virus `fetch_days` / `fetch_max_reads` / `chunk_size`, `srsilo_rhydb_memory_limit`, retention |
+| `group_vars/srsilo/main.yml` | Virus registry (organism, table, LAPIS port, `fetch_days` / `fetch_max_reads` / `chunk_size`), enabled viruses, memory limits, retention |
 | `group_vars/loculus/main.yml`, `vault.yml` | Loculus app settings, S3 bucket; DB / Keycloak / S3 secrets |
 | `group_vars/monitoring/main.yml`, `vault.yml` | LAPIS scrape targets, Prometheus retention; Grafana admin password |
 | `roles/nginx/defaults/main.yml` | `nginx_domain_name`, backend ports, SSL certificate paths, enabled sites, `nginx_official_repo_channel` (`stable`/`mainline`) |
@@ -170,11 +170,10 @@ Monitoring services listen on localhost only (Grafana `:3000`, Prometheus `:9090
 
 ### Adding a new virus
 
-1. Add `schema.rhyql` (RhyDB tables), plus `database_config.yaml` and `reference_genomes.json` (LAPIS, same `data` table) under `roles/srsilo/files/viruses/<virus>/`.
-2. Register it in `srsilo_viruses` in `roles/srsilo/defaults/main.yml` (organism, instance name, LAPIS/SILO ports).
-3. Add an entry to `srsilo_virus_config` and `srsilo_enabled_viruses` in `group_vars/srsilo/main.yml`.
-4. Add nginx routes in `roles/nginx/templates/sites-available/{lapis,silo}.j2` and the monitoring target in `group_vars/monitoring/main.yml`.
-5. Re-run the srSILO setup, nginx and monitoring playbooks.
+1. Add its table (and references, prefixed `<virus>_`) to `roles/srsilo/files/rhydb/schema.rhyql`.
+2. Add it to `srsilo_viruses` (organism, table, fetch settings) and `srsilo_enabled_viruses` in `group_vars/srsilo/main.yml`.
+3. Only if it gets its own LAPIS: set `instance_name` and `lapis_port`, add `database_config.yaml` and `reference_genomes.json` under `roles/srsilo/files/viruses/<virus>/`, nginx routes in `roles/nginx/templates/sites-available/{lapis,silo}.j2` and the monitoring target in `group_vars/monitoring/main.yml`.
+4. Re-run the srSILO setup playbook (and the nginx and monitoring playbooks for a new LAPIS).
 
 ## Operations
 

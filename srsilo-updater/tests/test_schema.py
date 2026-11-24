@@ -10,7 +10,7 @@ from pipeline import schema
 FILES = Path(__file__).parent.parent.parent / "roles" / "srsilo" / "files"
 VIRUSES = FILES / "viruses"
 SCHEMA = FILES / "rhydb" / "schema.rhyql"
-# virus -> table, as in srsilo_viruses (roles/srsilo/defaults/main.yml)
+# virus -> table, as in srsilo_viruses (group_vars/srsilo/main.yml)
 TABLES = {"covid": "data", "rsva": "rsva", "rsvb": "rsvb"}
 # viruses without a LAPIS instance, so without LAPIS config files to keep in sync
 RHYDB_ONLY_TABLES = {v: v for v in ["flua_h1", "flua_h3", "flua_n1", "flua_n2", "flua_mp"]}

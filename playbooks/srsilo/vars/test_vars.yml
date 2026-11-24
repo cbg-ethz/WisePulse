@@ -1,41 +1,36 @@
 ---
-# Test variables for srSILO update pipeline
-# These override group_vars/srsilo/main.yml for safe testing with reduced resources
+# Overrides of group_vars/srsilo/main.yml for a low-memory (~8 GB RAM) test server.
 #
-# Usage (writes a reduced-resource /opt/srsilo/pipeline.yml):
 #   ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become --ask-become-pass \
 #     -e "@playbooks/srsilo/vars/test_vars.yml"
+#
+# Extra vars replace a whole dict, so srsilo_viruses lists complete entries for
+# the enabled viruses only.
 
-# Enabled viruses for testing (can be overridden to test single virus)
 srsilo_enabled_viruses:
   - covid
   - rsva
 
-# Per-virus configuration overrides for test environment (8GB RAM)
-srsilo_virus_config:
+srsilo_viruses:
   covid:
-    fetch_days: 45                  # Fetch only 45 days instead of 90
-    fetch_max_reads: 5000000        # Limit to 5M reads instead of 172.5M
-    chunk_size: 30000               # Reduced for 8GB RAM test environment
+    organism: covid
+    table: data
+    instance_name: wise-sarsCoV2
+    lapis_port: 8083
+    fetch_days: 45
+    fetch_max_reads: 5_000_000
+    chunk_size: 30_000
   rsva:
-    fetch_days: 45                  # Fetch only 45 days instead of 90
-    fetch_max_reads: 2000000        # Limit to 2M reads instead of 50M
-    chunk_size: 30000               # Reduced for 8GB RAM test environment
-  rsvb:
-    fetch_days: 45                  # Fetch only 45 days instead of 90
-    fetch_max_reads: 2000000        # Limit to 2M reads instead of 50M
-    chunk_size: 30000               # Reduced for 8GB RAM test environment
+    organism: rsva
+    table: rsva
+    instance_name: wise-rsva
+    lapis_port: 8084
+    fetch_days: 45
+    fetch_max_reads: 2_000_000
+    chunk_size: 30_000
 
 srsilo_rhydb_memory_limit: 7g         # 90% of 8GB RAM
 srsilo_pipeline_memory_max: 7G
 
-# Shared configuration (same as production)
-srsilo_api_base_url: https://api.db.wasap.genspectrum.org
-
-# Retention policy - More aggressive for testing
-srsilo_retention_days: 3            # More aggressive cleanup for testing
+srsilo_retention_days: 3
 srsilo_retention_min_keep: 2
-
-# Optional: Override start date for testing
-# Uncomment and adjust if you want to test a specific date range
-# fetch_start_date: "2025-10-23"
