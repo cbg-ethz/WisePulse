@@ -1,24 +1,16 @@
 ---
-# Group variables for srsilo hosts
-# These override the role defaults in roles/srsilo/defaults/main.yml
-
-# =============================================================================
-# Base Configuration
-# =============================================================================
+# srSILO on this server: the srsilo-updater pipeline (systemd timer), the shared
+# RhyDB instance and one LAPIS container per virus that has a lapis_port.
+# This file is the only place these settings are defined.
 
 srsilo_base_path: /opt/srsilo
 srsilo_tools_path: "{{ srsilo_base_path }}/tools"
-
-# User and group
 srsilo_user: srsilo
 srsilo_group: srsilo
 
-# =============================================================================
-# Multi-Virus Configuration
-# =============================================================================
+srsilo_api_base_url: https://api.db.wasap.genspectrum.org
 
-# Enable specific viruses for this host group
-# Add viruses here as they become ready for production
+# Viruses the pipeline processes and RhyDB / LAPIS serve
 srsilo_enabled_viruses:
   - covid
   - rsva
@@ -29,47 +21,69 @@ srsilo_enabled_viruses:
   - flua_n2
   - flua_mp
 
-# Per-virus configuration overrides
-# Use this to override global defaults for specific viruses
-srsilo_virus_config:
+# All known viruses. The key names the directory /opt/srsilo/<key>.
+#   organism       Loculus organism, as used by the API
+#   table          the virus' table in the shared RhyDB instance (roles/srsilo/files/rhydb/schema.rhyql)
+#   instance_name  only with its own LAPIS: container name <instance_name>-lapis
+#   lapis_port     only with its own LAPIS: host port; also needs the LAPIS config
+#                  files in roles/srsilo/files/viruses/<key>/ and an nginx route
+#   fetch_days, fetch_max_reads, chunk_size   pipeline settings
+# To add a virus, see "Adding a new virus" in README.md.
+srsilo_viruses:
   covid:
+    organism: covid
+    table: data               # LAPIS' default table, kept for existing RhyDB API users
+    instance_name: wise-sarsCoV2
+    lapis_port: 8083
     fetch_days: 365
-    fetch_max_reads: 600_000_000  # 600M reads
-    chunk_size: 1_000_000         # Large chunks for production
+    fetch_max_reads: 600_000_000
+    chunk_size: 1_000_000
   rsva:
+    organism: rsva
+    table: rsva
+    instance_name: wise-rsva
+    lapis_port: 8084
     fetch_days: 365
-    fetch_max_reads: 50_000_000   # 50M reads
-    chunk_size: 500_000           # Smaller chunks
+    fetch_max_reads: 50_000_000
+    chunk_size: 500_000
   rsvb:
+    organism: rsvb
+    table: rsvb
+    instance_name: wise-rsvb
+    lapis_port: 8085
     fetch_days: 365
-    fetch_max_reads: 50_000_000     # 50M reads
-    chunk_size: 500_000            # Smaller chunks
+    fetch_max_reads: 50_000_000
+    chunk_size: 500_000
   flua_h3:
+    organism: flua-h3
+    table: flua_h3
     fetch_days: 365
-    fetch_max_reads: 50_000_000   # 50M reads
-    chunk_size: 500_000           # Smaller chunks
+    fetch_max_reads: 50_000_000
+    chunk_size: 500_000
   flua_h1:
+    organism: flua-h1
+    table: flua_h1
     fetch_days: 365
-    fetch_max_reads: 50_000_000   # 50M reads
-    chunk_size: 500_000           # Smaller chunks
+    fetch_max_reads: 50_000_000
+    chunk_size: 500_000
   flua_n1:
+    organism: flua-n1
+    table: flua_n1
     fetch_days: 365
-    fetch_max_reads: 50_000_000   # 50M reads
-    chunk_size: 500_000           # Smaller chunks
+    fetch_max_reads: 50_000_000
+    chunk_size: 500_000
   flua_n2:
+    organism: flua-n2
+    table: flua_n2
     fetch_days: 365
-    fetch_max_reads: 50_000_000   # 50M reads
-    chunk_size: 500_000           # Smaller chunks
+    fetch_max_reads: 50_000_000
+    chunk_size: 500_000
   flua_mp:
+    organism: flua-mp
+    table: flua_mp
     fetch_days: 365
-    fetch_max_reads: 50_000_000   # 50M reads
-    chunk_size: 500_000           # Smaller chunks
-
-# =============================================================================
-# API & Retention
-# =============================================================================
-
-srsilo_api_base_url: https://api.db.wasap.genspectrum.org
+    fetch_max_reads: 50_000_000
+    chunk_size: 500_000
 
 # Memory cap of the shared RhyDB container that serves all viruses
 srsilo_rhydb_memory_limit: 250g
@@ -77,12 +91,8 @@ srsilo_rhydb_memory_limit: 250g
 # Memory cap of the pipeline service, which builds the RhyDB state of all viruses in-process (systemd MemoryMax)
 srsilo_pipeline_memory_max: 250G
 
+# Old RhyDB states are deleted after this many days, keeping at least min_keep
 srsilo_retention_days: 7
 srsilo_retention_min_keep: 2
 
-# =============================================================================
-# Testing Notes
-# =============================================================================
-# For testing with constrained resources (8GB RAM), override with:
-#   ansible-playbook ... -e "@playbooks/srsilo/vars/test_vars.yml"
-# Test overrides: 7g memory, 30 days, 5M reads, 30k chunk size
+# For a low-memory test server, see playbooks/srsilo/vars/test_vars.yml

@@ -3,11 +3,6 @@
   hosts: srsilo
   gather_facts: yes
 
-  pre_tasks:
-    - name: Load srsilo role defaults
-      include_vars:
-        file: "{{ playbook_dir }}/../../roles/srsilo/defaults/main.yml"
-
   tasks:
     - name: Display configuration
       debug:
