@@ -25,11 +25,11 @@ loculus_helm_chart_path: "{{ loculus_repo_path }}/kubernetes/loculus"
 # Static images to deploy
 # Add new virus images here as needed
 virus_images:
-  - covid-virus.png
-  - rsv-virus.png
-  - influenza-ha.png
-  - influenza-na.png
-  - influenza-mp.png
+  - influenza-a-ha.png
+  - influenza-a-na.png
+  - influenza-a-mp.png
+  - rsv-virion.png
+  - sars-cov-2-virion.png
 
 # Static branding/logo images
 static_images:
