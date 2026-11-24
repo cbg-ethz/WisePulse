@@ -1,9 +1,11 @@
 ---
-# Sets up srSILO: user, packages, configs, srsilo-updater and Rust tools.
-# Configuration: group_vars/srsilo/main.yml.
+# Sets up srSILO: user, packages, configs, srsilo-updater, Rust tools and the daily
+# systemd timer. Configuration: group_vars/srsilo/main.yml.
 #
 #   ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --ask-become-pass
 #
+# Only redeploy the timer and service (e.g. after changing srsilo_pipeline_memory_max):
+#   ... --tags timer
 # Skip the (slow) Rust build:
 #   ... --skip-tags build
 

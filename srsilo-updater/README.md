@@ -92,10 +92,10 @@ The pipeline is invoked daily by a systemd timer (`srsilo-update.timer`) which r
 
 All output goes to the systemd journal (`journalctl -u srsilo-update`).
 
-To set up the timer:
+The timer is set up by the srSILO setup playbook; to redeploy only the timer and service:
 
 ```bash
-ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
+ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --ask-become-pass --tags timer
 ```
 
 ## Rust binaries

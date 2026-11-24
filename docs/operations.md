@@ -66,7 +66,7 @@ Don't edit `docker-compose.yml` on the server; it is overwritten by the setup pl
 
 ## Troubleshooting
 
-**Pipeline runs out of memory:** for sorting, lower `chunk_size` for that virus; for the state build (which holds the whole shared state), raise `srsilo_pipeline_memory_max`. Both are in `group_vars/srsilo/main.yml`; re-run `playbooks/srsilo/setup.yml` (and `setup-timer.yml` for the memory cap) afterwards. RhyDB serving runs out of memory: raise `srsilo_rhydb_memory_limit`.
+**Pipeline runs out of memory:** for sorting, lower `chunk_size` for that virus; for the state build (which holds the whole shared state), raise `srsilo_pipeline_memory_max`. Both are in `group_vars/srsilo/main.yml`; re-run `playbooks/srsilo/setup.yml` afterwards (`--tags timer` is enough for the memory cap). RhyDB serving runs out of memory: raise `srsilo_rhydb_memory_limit`.
 
 **Fetch downloads nothing even though there is new data:** `fetch_days` must cover the age of the newest data, and `fetch_max_reads` must exceed the read count of the busiest single sampling day.
 

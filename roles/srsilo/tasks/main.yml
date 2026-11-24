@@ -1,5 +1,5 @@
 ---
-# Sets up srSILO: the srsilo-updater pipeline, the shared
+# Sets up srSILO: the srsilo-updater pipeline and its systemd timer, the shared
 # RhyDB instance and one LAPIS per enabled virus with a lapis_port.
 # All variables come from group_vars/srsilo/main.yml.
 
@@ -165,3 +165,27 @@
         chdir: "{{ srsilo_tools_path }}"
       register: cargo_build
       changed_when: "'Compiling' in cargo_build.stderr"
+
+# --- Timer ---------------------------------------------------------------------
+
+- name: Deploy systemd service and timer
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: '0644'
+  loop: [srsilo-update.service, srsilo-update.timer]
+  tags: [timer]
+
+- name: Enable srsilo-update service
+  systemd:
+    name: srsilo-update.service
+    enabled: true
+    daemon_reload: true
+  tags: [timer]
+
+- name: Enable and start srsilo-update timer
+  systemd:
+    name: srsilo-update.timer
+    enabled: true
+    state: started
+  tags: [timer]
