@@ -1,7 +1,7 @@
 ---
 # Overrides of group_vars/srsilo/main.yml for a low-memory (~8 GB RAM) test server.
 #
-#   ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become --ask-become-pass \
+#   ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --ask-become-pass \
 #     -e "@playbooks/srsilo/vars/test_vars.yml"
 #
 # Extra vars replace a whole dict, so srsilo_viruses lists complete entries for

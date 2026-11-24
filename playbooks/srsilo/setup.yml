@@ -1,7 +1,14 @@
 ---
-- name: srSILO Setup - Initial Setup and Configuration
-  hosts: srsilo
-  gather_facts: yes
+# Sets up srSILO: user, packages, configs, srsilo-updater and Rust tools.
+# Configuration: group_vars/srsilo/main.yml.
+#
+#   ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --ask-become-pass
+#
+# Skip the (slow) Rust build:
+#   ... --skip-tags build
 
+- name: Set up srSILO
+  hosts: srsilo
+  become: true
   roles:
     - srsilo
