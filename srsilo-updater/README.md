@@ -100,7 +100,7 @@ ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini
 
 ## Rust binaries
 
-The binaries in `rust/` are built by Ansible (`roles/srsilo/tasks/build_tools.yml`) and are not built as part of the Python package. They are standalone Cargo workspaces. To build manually:
+The binaries in `rust/` are built by Ansible (`roles/srsilo/tasks/main.yml`) and are not built as part of the Python package. They are standalone Cargo workspaces. To build manually:
 
 ```bash
 cd rust/
