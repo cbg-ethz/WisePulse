@@ -1,20 +1,20 @@
 name: wise-srsilo
 services:
   rhydb:
-    container_name: {{ srsilo_rhydb_container_name }}
+    container_name: wise-rhydb
     image: ghcr.io/rhyorg/rhydb:0.17.4
     mem_limit: {{ srsilo_rhydb_memory_limit }}
     restart: unless-stopped
     ports:
-      - {{ srsilo_rhydb_port }}:8081
+      - 8081:8081
     command: api --api-threads-for-http-connections 96 --api-max-queued-http-connections 1024
     volumes:
       - type: bind
-        source: {{ srsilo_rhydb_output }}
+        source: {{ srsilo_base_path }}/rhydb/output
         target: /data
         read_only: true
       - type: bind
-        source: {{ srsilo_rhydb_path }}/logs
+        source: {{ srsilo_base_path }}/rhydb/logs
         target: /app/logs
         read_only: false
     stop_grace_period: 0s
