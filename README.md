@@ -154,8 +154,8 @@ ansible-playbook playbooks/setup_nginx.yml -i inventory.ini --ask-become-pass
 # Loculus on Kubernetes
 ansible-playbook playbooks/loculus/deploy-loculus.yml -i inventory.ini
 
-# srSILO: user, directories, Rust tools, configs, Python venv, /opt/srsilo/pipeline.yml
-ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --become --ask-become-pass
+# srSILO: user, directories, configs, Python venv, Rust tools (--skip-tags build: skip the Rust build)
+ansible-playbook playbooks/srsilo/setup.yml -i inventory.ini --ask-become-pass
 
 # srSILO: daily systemd timer
 ansible-playbook playbooks/srsilo/setup-timer.yml -i inventory.ini --become --ask-become-pass

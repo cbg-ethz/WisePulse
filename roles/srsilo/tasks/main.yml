@@ -1,114 +1,108 @@
 ---
-# Sets up srSILO: the srsilo-updater pipeline, the shared RhyDB instance and
-# one LAPIS per enabled virus with a lapis_port.
+# Sets up srSILO: the srsilo-updater pipeline, the shared
+# RhyDB instance and one LAPIS per enabled virus with a lapis_port.
 # All variables come from group_vars/srsilo/main.yml.
 
 - name: Show enabled viruses
   debug:
     msg: "Enabled viruses: {{ srsilo_enabled_viruses | join(', ') }}"
 
-- name: Ensure Docker is installed
+# --- System ------------------------------------------------------------------
+
+# Hosts may already run Docker from docker.com, whose packages conflict with docker.io
+- name: Install Docker
   apt:
-    name:
-      - docker.io
-      - docker-compose
-    state: present
-  become: yes
-  register: docker_install
+    name: [docker.io, docker-compose]
   failed_when: false
 
-- name: Start and enable Docker service
+- name: Install pipeline and build dependencies
+  apt:
+    name: [python3-venv, build-essential, pkg-config, libssl-dev]
+
+- name: Start Docker
   systemd:
     name: docker
     state: started
-    enabled: yes
-  become: yes
-  when: docker_install is succeeded
+    enabled: true
 
-- name: Ensure srsilo group exists
+- name: Create srsilo group
   group:
     name: "{{ srsilo_group }}"
-    state: present
-  become: yes
 
-- name: Ensure srsilo user exists
+- name: Create srsilo user
   user:
     name: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
-    shell: /bin/bash
-    create_home: yes
-    comment: "srSILO Pipeline User"
     groups: docker
-    append: yes
-  become: yes
+    append: true
+    shell: /bin/bash
+    comment: srSILO Pipeline User
 
-- name: Ensure base directory exists
-  file:
-    path: "{{ srsilo_base_path }}"
-    state: directory
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0755'
-  become: yes
-
-- name: Ensure virus data directories exist
+# The pipeline creates and resets input/, sorted_chunks/ and tmp/ inside each virus directory
+- name: Create directories
   file:
     path: "{{ item }}"
     state: directory
     owner: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
     mode: '0755'
-  become: yes
-  loop: "{{ srsilo_enabled_viruses | product(['input', 'sorted_chunks', 'tmp']) | map('join', '/') | map('regex_replace', '^', srsilo_base_path ~ '/') | list }}"
+  loop: "{{ [srsilo_base_path, srsilo_tools_path] + rhydb_dirs + virus_dirs }}"
+  vars:
+    rhydb_dirs: "{{ ['', '/output', '/tmp', '/logs'] | map('regex_replace', '^', srsilo_base_path ~ '/rhydb') | list }}"
+    virus_dirs: "{{ srsilo_enabled_viruses | map('regex_replace', '^', srsilo_base_path ~ '/') | list }}"
 
-- name: Ensure Ansible log directory exists
-  file:
-    path: /var/log/ansible
-    state: directory
-    owner: root
-    group: adm
-    mode: '0750'
-  become: yes
+# --- Configuration -------------------------------------------------------------
 
-- name: Ensure virus config directories exist
-  file:
-    path: "{{ srsilo_base_path }}/{{ item }}/config"
-    state: directory
+- name: Deploy LAPIS config files
+  copy:
+    src: "viruses/{{ item }}/"
+    dest: "{{ srsilo_base_path }}/{{ item }}/config/"
     owner: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
-    mode: '0755'
-  become: yes
+    mode: '0644'
+    directory_mode: '0755'
   loop: "{{ srsilo_enabled_viruses }}"
+  when: srsilo_viruses[item].lapis_port is defined
 
-- name: Ensure python3-venv is installed
-  apt:
-    name: python3-venv
-    state: present
-  become: yes
+- name: Deploy RhyDB schema
+  copy:
+    src: rhydb/schema.rhyql
+    dest: "{{ srsilo_base_path }}/rhydb/schema.rhyql"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+
+- name: Deploy pipeline.yml and docker-compose.yml
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ srsilo_base_path }}/{{ item }}"
+    owner: "{{ srsilo_user }}"
+    group: "{{ srsilo_group }}"
+    mode: '0644'
+  loop: [pipeline.yml, docker-compose.yml]
+
+# --- srsilo-updater ----------------------------------------------------------
 
 - name: Create Python virtualenv for srsilo-updater
   command:
-    cmd: python3 -m venv "{{ srsilo_base_path }}/venv"
+    cmd: python3 -m venv {{ srsilo_base_path }}/venv
     creates: "{{ srsilo_base_path }}/venv/bin/python"
-  become: yes
 
 # The source is only a build input for pip; the service runs the copy installed in the venv.
 # A fresh temp dir per deploy means no removed modules or stale build/ output carry over.
-- name: Install srsilo-updater package into venv
+- name: Install srsilo-updater into the virtualenv
   block:
-    - name: Create temp dir for srsilo-updater package source
+    - name: Create temp dir for srsilo-updater source
       tempfile:
         state: directory
         suffix: srsilo-updater
       register: srsilo_updater_tmp
 
-    - name: Copy srsilo-updater package source to remote host
+    - name: Copy srsilo-updater source
       copy:
         src: "{{ inventory_dir }}/srsilo-updater/{{ item }}"
         dest: "{{ srsilo_updater_tmp.path }}/"
-      loop:
-        - pyproject.toml
-        - pipeline
+      loop: [pyproject.toml, pipeline]
 
     # Logged at the start of every run, to see which code the timer actually runs
     - name: Get the git revision of the deployed srsilo-updater source
@@ -119,181 +113,55 @@
       args:
         chdir: "{{ inventory_dir }}"
       delegate_to: localhost
-      become: no
+      become: false
       changed_when: false
       register: srsilo_updater_revision
 
-    - name: Write build info into the srsilo-updater package source
+    - name: Write build info into the srsilo-updater source
       copy:
         content: "{{ {'revision': srsilo_updater_revision.stdout, 'deployed_at': now(utc=true).isoformat(timespec='seconds') ~ 'Z'} | to_nice_json }}"
         dest: "{{ srsilo_updater_tmp.path }}/pipeline/build_info.json"
 
     # pip always reinstalls from a local directory, even when the version is unchanged
-    - name: Install srsilo-updater package into venv
+    - name: Install srsilo-updater
       pip:
         name: "{{ srsilo_updater_tmp.path }}"
         virtualenv: "{{ srsilo_base_path }}/venv"
   always:
-    - name: Remove temp dir for srsilo-updater package source
+    - name: Remove temp dir for srsilo-updater source
       file:
         path: "{{ srsilo_updater_tmp.path }}"
         state: absent
-  become: yes
 
-- name: Set ownership of virtualenv
+- name: Set ownership of the virtualenv
   file:
     path: "{{ srsilo_base_path }}/venv"
     owner: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
-    recurse: yes
-  become: yes
+    recurse: true
 
-- name: Display prerequisites complete message
-  debug:
-    msg:
-      - "✓ Prerequisites setup complete"
-      - "  User/Group: {{ srsilo_user }}:{{ srsilo_group }}"
-      - "  Base path: {{ srsilo_base_path }}"
-      - "  Tools path: {{ srsilo_tools_path }}"
-      - "  Venv: {{ srsilo_base_path }}/venv"
+# --- Rust tools ---------------------------------------------------------------
 
-# Deploy application configuration files
-
-- name: Deploy LAPIS configuration files
-  copy:
-    src: "viruses/{{ item.0 }}/{{ item.1 }}"
-    dest: "{{ srsilo_base_path }}/{{ item.0 }}/config/{{ item.1 }}"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0644'
-  become: yes
-  loop: "{{ srsilo_enabled_viruses | product(['database_config.yaml', 'reference_genomes.json']) | list }}"
-  when: srsilo_viruses[item.0].lapis_port is defined
-
-- name: Deploy pipeline.yml config for srsilo-updater
-  template:
-    src: pipeline.yml.j2
-    dest: "{{ srsilo_base_path }}/pipeline.yml"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0644'
-  become: yes
-
-# The shared RhyDB instance (one table per virus) and the docker-compose
-# project that runs it together with one LAPIS per enabled virus.
-
-- name: Ensure RhyDB directories exist
-  file:
-    path: "{{ item }}"
-    state: directory
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0755'
-  become: yes
-  loop:
-    - "{{ srsilo_base_path }}/rhydb"
-    - "{{ srsilo_base_path }}/rhydb/output"
-    - "{{ srsilo_base_path }}/rhydb/tmp"
-    - "{{ srsilo_base_path }}/rhydb/logs"
-
-- name: Deploy RhyDB schema
-  copy:
-    src: rhydb/schema.rhyql
-    dest: "{{ srsilo_base_path }}/rhydb/schema.rhyql"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0644'
-  become: yes
-
-- name: Template docker-compose file
-  template:
-    src: docker-compose.yml.j2
-    dest: "{{ srsilo_base_path }}/docker-compose.yml"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0644'
-  become: yes
-
-# Build Rust utilities for srSILO pipeline
-# This task is equivalent to running 'make build' from the Makefile
-# which executes: cargo build --release
-
-- name: Ensure build dependencies are installed
-  apt:
-    name:
-      - build-essential
-      - pkg-config
-      - libssl-dev
-    state: present
-  become: yes
-
-- name: Check if Rust/Cargo is installed for srsilo user
-  stat:
-    path: "/home/{{ srsilo_user }}/.cargo/bin/cargo"
-  register: cargo_bin
-  become: yes
-
-- name: Install Rust for srsilo user if not present
-  shell: |
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-  args:
-    creates: "/home/{{ srsilo_user }}/.cargo/bin/cargo"
-  become: yes
-  become_user: "{{ srsilo_user }}"
-  when: not cargo_bin.stat.exists
-
-- name: Ensure tools directory exists
-  file:
-    path: "{{ srsilo_tools_path }}"
-    state: directory
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-    mode: '0755'
-  become: yes
-
-- name: Copy Rust source files to tools path
-  copy:
-    src: "{{ inventory_dir }}/srsilo-updater/rust/{{ item }}"
-    dest: "{{ srsilo_tools_path }}/"
-    owner: "{{ srsilo_user }}"
-    group: "{{ srsilo_group }}"
-  become: yes
-  loop:
-    - Cargo.toml
-    - Cargo.lock
-    - src
-
-- name: Build Rust utilities
-  command: cargo build --release
-  args:
-    chdir: "{{ srsilo_tools_path }}"
-  become: yes
+- name: Build the Rust tools
   become_user: "{{ srsilo_user }}"
   environment:
     PATH: "/home/{{ srsilo_user }}/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
-    CARGO_HOME: "/home/{{ srsilo_user }}/.cargo"
-    RUSTUP_HOME: "/home/{{ srsilo_user }}/.rustup"
-  register: build_result
-  changed_when: "'Compiling' in build_result.stderr or 'Finished' in build_result.stderr"
+  tags: [build]
+  block:
+    - name: Install Rust
+      shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      args:
+        creates: "/home/{{ srsilo_user }}/.cargo/bin/cargo"
 
-- name: Display build result
-  debug:
-    msg: "✓ Rust tools built successfully. Binaries available in target/release/"
-  when: build_result.rc == 0
+    - name: Copy Rust sources
+      copy:
+        src: "{{ inventory_dir }}/srsilo-updater/rust/{{ item }}"
+        dest: "{{ srsilo_tools_path }}/"
+      loop: [Cargo.toml, Cargo.lock, src]
 
-- name: Verify built binaries exist
-  stat:
-    path: "{{ srsilo_tools_path }}/target/release/{{ item }}"
-  register: binary_checks
-  loop:
-    - split_into_sorted_chunks
-    - merge_sorted_chunks
-    - fetch_silo_data
-    - check_new_data
-  become: yes
-
-- name: Report missing binaries
-  fail:
-    msg: "Binary {{ item.item }} was not built successfully"
-  loop: "{{ binary_checks.results }}"
-  when: not item.stat.exists
+    - name: Build Rust tools
+      command: cargo build --release
+      args:
+        chdir: "{{ srsilo_tools_path }}"
+      register: cargo_build
+      changed_when: "'Compiling' in cargo_build.stderr"
