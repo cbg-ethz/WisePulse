@@ -11,15 +11,15 @@
     mode: '0755'
   become: yes
   loop:
-    - "{{ srsilo_rhydb_path }}"
-    - "{{ srsilo_rhydb_output }}"
-    - "{{ srsilo_rhydb_path }}/tmp"
-    - "{{ srsilo_rhydb_path }}/logs"
+    - "{{ srsilo_base_path }}/rhydb"
+    - "{{ srsilo_base_path }}/rhydb/output"
+    - "{{ srsilo_base_path }}/rhydb/tmp"
+    - "{{ srsilo_base_path }}/rhydb/logs"
 
 - name: Deploy RhyDB schema
   copy:
     src: rhydb/schema.rhyql
-    dest: "{{ srsilo_rhydb_path }}/schema.rhyql"
+    dest: "{{ srsilo_base_path }}/rhydb/schema.rhyql"
     owner: "{{ srsilo_user }}"
     group: "{{ srsilo_group }}"
     mode: '0644'

@@ -17,10 +17,6 @@ srsilo_group: srsilo
 # Multi-Virus Configuration
 # =============================================================================
 
-# Current virus being processed (set per-playbook or per-run)
-# This is the key into srsilo_viruses registry
-srsilo_virus: covid
-
 # Virus registry - defines all supported viruses and their configurations
 # Keys are used for directory names and Ansible variable references
 # The 'organism' field is the exact value passed to the LAPIS API
@@ -76,49 +72,6 @@ srsilo_enabled_viruses:
   - covid
   - rsva
   - rsvb
-
-# =============================================================================
-# Shared RhyDB Instance
-# =============================================================================
-# One RhyDB instance serves all viruses, one table each (see schema.rhyql).
-# Its state is built by the pipeline from every virus' sorted data.
-
-srsilo_rhydb_path: "{{ srsilo_base_path }}/rhydb"
-srsilo_rhydb_output: "{{ srsilo_rhydb_path }}/output"
-srsilo_rhydb_container_name: wise-rhydb
-srsilo_rhydb_port: 8081
-# srsilo_rhydb_memory_limit: REQUIRED in group_vars (container memory limit, e.g. 250g)
-
-# =============================================================================
-# Derived Virus-Specific Paths (New Multi-Virus Structure)
-# =============================================================================
-# These paths follow the new per-virus directory structure:
-#   /opt/srsilo/{virus}/input, /opt/srsilo/{virus}/sorted.ndjson.zst, etc.
-# Tasks will be migrated to use these in PR5.
-
-# Virus-specific base path (e.g., /opt/srsilo/covid)
-srsilo_virus_path: "{{ srsilo_base_path }}/{{ srsilo_virus }}"
-
-# Virus-specific config directory (e.g., /opt/srsilo/covid/config)
-srsilo_virus_config_path: "{{ srsilo_virus_path }}/config"
-
-# Virus-specific data directories
-srsilo_virus_input: "{{ srsilo_virus_path }}/input"
-srsilo_virus_sorted_chunks: "{{ srsilo_virus_path }}/sorted_chunks"
-srsilo_virus_tmp: "{{ srsilo_virus_path }}/tmp"
-
-# Virus-specific state files
-srsilo_virus_last_update: "{{ srsilo_virus_path }}/.last_update"
-srsilo_virus_next_timestamp: "{{ srsilo_virus_path }}/.next_timestamp"
-srsilo_virus_sorted_file: "{{ srsilo_virus_path }}/sorted.ndjson.zst"
-
-# =============================================================================
-# Current Virus Configuration Lookup
-# =============================================================================
-# Convenience variables to access current virus settings from registry
-
-srsilo_current_virus: "{{ srsilo_viruses[srsilo_virus] }}"
-srsilo_current_organism: "{{ srsilo_current_virus.organism }}"
 
 # =============================================================================
 # API Configuration
